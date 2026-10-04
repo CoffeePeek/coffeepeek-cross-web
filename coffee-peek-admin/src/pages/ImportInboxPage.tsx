@@ -421,7 +421,7 @@ export const ImportInboxPage: React.FC<{
     },
     {
       accessorKey: 'name',
-      header: () => <div className="flex min-w-52 flex-col gap-1.5"><SortButton label="Название" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><Input value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Название, адрес..." className="h-8 text-xs" /><NativeSelect value={source} onChange={(event) => patchParams({ source: event.target.value })} className={headerControl} aria-label="Источник"><option value="">Все источники</option><option value="File">Из файла</option><option value="Osm">OSM</option></NativeSelect></div>,
+      header: () => <div className="flex min-w-52 flex-col gap-1.5"><SortButton label="Название" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><Input value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Название, адрес..." className="h-8 text-xs" /><NativeSelect value={source} onChange={(event) => patchParams({ source: event.target.value })} className={headerControl} aria-label="Источник"><option value="">Все источники</option><option value="File">Внешний импорт</option><option value="Osm">OSM</option></NativeSelect></div>,
       cell: ({ row }) => {
         const candidate = row.original;
         const candidateSearch = new URLSearchParams(searchParams);

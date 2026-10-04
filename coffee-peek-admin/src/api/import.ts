@@ -26,6 +26,7 @@ import {
   parseRejectReason,
 } from '../constants/catalogIngest';
 import { parseFacts, safeHttpUrl } from '../utils/importDossier';
+import { LinkImportDraft, LinkImportField, newCandidateFromLink } from '../utils/linkImport';
 import {
   AttachMenuPhotosRequest,
   ShopMenuDto,
@@ -398,7 +399,7 @@ export async function updateImportCandidateMenu(
 
 export async function patchImportCandidate(
   id: string,
-  body: { instagram?: string | null; phone?: string | null; website?: string | null }
+  body: { instagram?: string | null; phone?: string | null; website?: string | null; openingHours?: string | null }
 ): Promise<ApiResponse<ImportCandidate> & { patchMissing?: boolean }> {
   try {
     const response = await httpClient.patch<Record<string, unknown>>(
@@ -419,6 +420,21 @@ export async function patchImportCandidate(
     }
     throw error;
   }
+}
+
+export async function saveNewLinkImport(draft: LinkImportDraft, selected: ReadonlySet<LinkImportField>) {
+  const payload = newCandidateFromLink(draft, selected);
+  // Existing ingestion route stores the extracted fields. Source pages are read only by the extension.
+  const response = await httpClient.post<Record<string, unknown>>('/api/admin/import/file', [payload]);
+  const data = asRecord(response.data);
+  const inserted = Number(pick(data, 'inserted', 'Inserted') ?? 0);
+  const enriched = Number(pick(data, 'enriched', 'Enriched') ?? 0);
+  const unchanged = Number(pick(data, 'unchanged', 'Unchanged') ?? 0);
+  const invalid = Number(pick(data, 'invalid', 'Invalid') ?? 0);
+  if (response.isSuccess === false || response.success === false || invalid > 0 || inserted + enriched + unchanged !== 1) {
+    throw new Error(response.message || 'API не подтвердил сохранение кофейни');
+  }
+  return { inserted, enriched, unchanged };
 }
 
 export async function decideImportCandidate(

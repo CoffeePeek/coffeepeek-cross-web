@@ -19,6 +19,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/Dialog';
 import { DossierMap } from '../components/import/DossierMap';
 import { DossierQueue } from '../components/import/DossierQueue';
+import { LinkImportDialog } from '../components/import/LinkImportDialog';
 import { MenuEditor } from '../components/menu/MenuEditor';
 import LogoMark from '../components/LogoMark';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -84,6 +85,7 @@ export const ImportQueuePage: React.FC = () => {
   const panel = parseWorkspacePanel(searchParams.get('panel'));
   const queuePage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const [queueOpen, setQueueOpen] = useState(false);
+  const [linkImportOpen, setLinkImportOpen] = useState(false);
   const [focus, setFocus] = useState<CoffeeFocus | undefined>();
   const [tagSlugs, setTagSlugs] = useState<string[]>([]);
   const [instagramDraft, setInstagramDraft] = useState('');
@@ -97,6 +99,7 @@ export const ImportQueuePage: React.FC = () => {
   const [advancing, setAdvancing] = useState(false);
   const idRef = useRef(id);
   idRef.current = id;
+  useEffect(() => { setLinkImportOpen(false); }, [id]);
 
   const queueQuery = useQuery({
     queryKey: ['admin', 'import', 'queue', queuePage],
@@ -442,6 +445,7 @@ export const ImportQueuePage: React.FC = () => {
           ))}
         </div>
         <span className="flex-1" />
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => setLinkImportOpen(true)}>По ссылке</Button>
         {candidate && panel !== 'stats' && (
           <>
             <span className="text-sm text-text-muted tabular-nums hidden sm:inline">
@@ -461,6 +465,13 @@ export const ImportQueuePage: React.FC = () => {
           </>
         )}
       </header>
+
+      {linkImportOpen && <LinkImportDialog candidate={candidate} onClose={() => setLinkImportOpen(false)} onUpdated={(updated) => {
+        qc.setQueryData(['admin', 'import', 'candidate', updated.id], updated);
+        if (idRef.current === updated.id) {
+          setInstagramDraft(''); setPhoneDraft(''); setWebsiteDraft(''); setIgPaste('');
+        }
+      }} />}
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
         {showMapQueue && isDesktop && <div className="w-[248px] shrink-0 min-h-0">{queuePanel}</div>}
