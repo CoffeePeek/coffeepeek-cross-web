@@ -1,9 +1,10 @@
+import { PublishedShopLink } from '../components/PublishedShopLink';
 import { useEffect, useState } from 'react';
 import { Flag, MessageSquareText, Star, Trash2, ShieldCheck, X, ArrowUpRight, RefreshCw, Clock } from 'lucide-react';
 import { Badge, type BadgeVariant } from '../components/ui/Badge';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { getReviewReports, getReviewReport, resolveReviewReport, type ReviewReport } from '../api/reviewReports';
 import { DataTable } from '../components/ui/DataTable';
 import { Button } from '../components/ui/Button';
@@ -91,7 +92,7 @@ export function ReviewReportsPage() {
               <p className="whitespace-pre-wrap break-words text-base leading-relaxed">{report.text}</p>
             </section>
             <section className="rounded-2xl border border-border-light p-5 dark:border-border-dark">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-sm font-semibold text-text-muted"><MessageSquareText className="h-4 w-4" />Отзыв пользователя</h3><Link className="flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline dark:text-primary" to={`/coffee-shops/${review.coffeeShopId}`}>Открыть кофейню<ArrowUpRight className="h-4 w-4" /></Link></div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-sm font-semibold text-text-muted"><MessageSquareText className="h-4 w-4" />Отзыв пользователя</h3><PublishedShopLink className="flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline dark:text-primary" shopId={review.coffeeShopId}>Открыть кофейню<ArrowUpRight className="h-4 w-4" /></PublishedShopLink></div>
               <div className="mb-4 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 text-lg font-bold dark:bg-white/10">{(review.userName || '?').charAt(0).toUpperCase()}</span><div><p className="font-semibold">{review.userName || 'Пользователь'}</p><p className="flex items-center gap-1 text-sm text-text-muted"><Star className="h-3.5 w-3.5 fill-primary text-primary" />{((review.ratingCoffee + review.ratingService + review.ratingPlace) / 3).toFixed(1)}<span>· Средняя оценка</span></p></div></div>
               <h4 className="mb-2 break-words text-lg font-bold">{review.header || 'Отзыв без заголовка'}</h4><p className="whitespace-pre-wrap break-words leading-relaxed text-stone-600 dark:text-stone-300">{review.comment || 'Без комментария'}</p>
               <div className="mt-5 grid grid-cols-3 gap-2">{[['Кофе', review.ratingCoffee], ['Сервис', review.ratingService], ['Аура', review.ratingPlace]].map(([label, rating]) => <div key={label} className="rounded-xl bg-stone-50 px-3 py-2.5 text-center dark:bg-white/5"><p className="text-xs text-text-muted">{label}</p><p className="mt-1 font-semibold">{rating}<span className="text-xs font-normal text-text-muted"> / 5</span></p></div>)}</div>

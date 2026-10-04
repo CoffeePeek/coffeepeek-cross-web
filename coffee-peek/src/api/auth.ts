@@ -68,17 +68,8 @@ export interface UpdateEmailRequest {
   email: string;
 }
 
-export interface UpdatePhoneNumberRequest {
-  phoneNumber: string;
-}
-
 export interface UpdateUsernameRequest {
   username: string;
-}
-
-export interface ChangePasswordRequest {
-  currentPassword: string;
-  newPassword: string;
 }
 
 export interface ForgotPasswordRequest {
@@ -202,30 +193,6 @@ export async function googleLogin(idToken: string): Promise<AuthResponse> {
 }
 
 /**
- * Обновление access token через HttpOnly refresh cookie.
- */
-export async function refreshAccessToken(): Promise<AuthResponse> {
-  const response = await httpClient.put<AuthData>(
-    API_ENDPOINTS.AUTH.REFRESH,
-    undefined,
-    {
-      requiresAuth: false,
-      skipAuthHeader: true,
-    }
-  );
-
-  if (response.success && response.data) {
-    const tokens = pickAuthTokens(response.data);
-    if (tokens.accessToken) {
-      TokenManager.setAccessToken(tokens.accessToken);
-      response.data.accessToken = tokens.accessToken;
-    }
-  }
-
-  return response;
-}
-
-/**
  * Выход из системы
  */
 export async function logout(): Promise<void> {
@@ -251,15 +218,6 @@ export async function getProfile(): Promise<ApiResponse<UserProfile>> {
 }
 
 /**
- * Получает профиль пользователя по ID
- */
-export async function getProfileByUserId(userId: string): Promise<ApiResponse<UserProfile>> {
-  return httpClient.get<UserProfile>(API_ENDPOINTS.USER.BY_ID(userId), {
-    requiresAuth: false, // Публичный профиль может быть доступен без авторизации
-  });
-}
-
-/**
  * Обновляет информацию "о себе" пользователя
  */
 export async function updateAbout(
@@ -277,17 +235,6 @@ export async function updateEmail(
   data: UpdateEmailRequest
 ): Promise<ApiResponse<string>> {
   return httpClient.patch<string>(API_ENDPOINTS.USER.UPDATE_EMAIL, data, {
-    requiresAuth: true,
-  });
-}
-
-/**
- * Обновляет номер телефона пользователя
- */
-export async function updatePhoneNumber(
-  data: UpdatePhoneNumberRequest
-): Promise<ApiResponse<string>> {
-  return httpClient.patch<string>(API_ENDPOINTS.USER.UPDATE_PHONE_NUMBER, data, {
     requiresAuth: true,
   });
 }
@@ -373,15 +320,6 @@ export async function cancelAccountDeletionRequest(
 }
 
 /**
- * Повторно отправляет подтверждение email (для авторизованных пользователей)
- */
-export async function resendEmailConfirmation(): Promise<ApiResponse<void>> {
-  return httpClient.post<void>(API_ENDPOINTS.USER.EMAIL_CONFIRMATION, undefined, {
-    requiresAuth: true,
-  });
-}
-
-/**
  * Повторно отправляет подтверждение email по адресу (публичный, без авторизации)
  */
 export async function resendEmailConfirmationByEmail(email: string): Promise<ApiResponse<void>> {
@@ -402,18 +340,6 @@ export async function confirmEmail(token: string): Promise<ApiResponse<void>> {
       requiresAuth: false,
     }
   );
-}
-
-/**
- * Смена пароля авторизованного пользователя.
- * Текущая сессия обычно остаётся живой.
- */
-export async function changePassword(
-  data: ChangePasswordRequest
-): Promise<ApiResponse<void>> {
-  return httpClient.put<void>(API_ENDPOINTS.USER.UPDATE_PASSWORD, data, {
-    requiresAuth: true,
-  });
 }
 
 /**

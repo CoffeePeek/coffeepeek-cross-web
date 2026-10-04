@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   createShopChangeRequest,
   getBrewMethods,
-  getCoffeeShopById,
+  getCoffeeShopBySlug,
   getEquipments,
   getPhotoUrl,
   getRoasters,
@@ -121,7 +121,7 @@ const EditCoffeeShopPage: React.FC = () => {
     // Переход /shops/A/edit → /shops/B/edit: не показываем и не отправляем форму A, пока грузится B.
     setLoading(true);
     Promise.all([
-      getCoffeeShopById(shopId), getShopTags(), getRoasters(), getEquipments(), getBrewMethods(), getMenuDrinks(),
+      getCoffeeShopBySlug(shopId), getShopTags(), getRoasters(), getEquipments(), getBrewMethods(), getMenuDrinks(),
     ]).then(([shopResponse, tags, roasters, equipment, brewMethods, menuDrinks]) => {
       if (!active) return;
       if (!shopResponse.success || !shopResponse.data) throw new Error(shopResponse.message || 'Кофейня не найдена');

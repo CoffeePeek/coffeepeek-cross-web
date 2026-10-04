@@ -8,9 +8,7 @@ import type { ApiResponse } from './core/types';
 import type { SendShopSuccessResponse } from './core/apiError';
 import {
   localTimeToUtc,
-  normalizeDayOfWeek,
   uiDayToDotNetName,
-  utcTimeToLocal,
 } from '../utils/shopUtils';
 
 // ==================== Types ====================
@@ -69,25 +67,6 @@ export interface FrontendShopContact {
   instagram?: string;
 }
 
-export interface CreateEntityResponse {
-  id: string;
-}
-
-export interface UpdateEntityResponse<T> {
-  id: string;
-  data: T;
-}
-
-export interface UploadUrlRequest {
-  fileName: string;
-  contentType: string;
-}
-
-export interface UploadUrlResponse {
-  uploadUrl: string;
-  storageKey: string;
-}
-
 export interface SendCoffeeShopToModerationRequest {
   name: string;
   notValidatedAddress: string;
@@ -135,23 +114,6 @@ export interface SendRoasterModerationResult {
   isAddressValidated: boolean;
 }
 
-export interface SendReviewToModerationRequest {
-  shop: string;
-  header?: string | null;
-  comment: string;
-  ratingService: number;
-  ratingPlace: number;
-  ratingCoffee: number;
-}
-
-export interface UpdateCoffeeShopReviewRequest {
-  header?: string | null;
-  comment: string;
-  ratingCoffee: number;
-  ratingService: number;
-  ratingPlace: number;
-}
-
 // ==================== Transformation Functions ====================
 
 /**
@@ -190,29 +152,6 @@ export function transformSchedulesToBackend(
 }
 
 /**
- * Преобразует расписание из бэкенд формата в фронтенд формат
- */
-export function transformSchedulesFromBackend(
-  schedules: ScheduleDto[]
-): FrontendSchedule[] {
-  return schedules
-    .filter(schedule => !schedule.isClosed && schedule.intervals && schedule.intervals.length > 0)
-    .map(schedule => {
-      const interval = schedule.intervals![0];
-      const dayOfWeek = normalizeDayOfWeek(schedule.dayOfWeek);
-      if (dayOfWeek === null) return null;
-      const open = utcTimeToLocal(dayOfWeek, interval.openTime.substring(0, 5));
-      const close = utcTimeToLocal(dayOfWeek, interval.closeTime.substring(0, 5));
-      return {
-        dayOfWeek: open.dayOfWeek,
-        openTime: open.time,
-        closeTime: close.time,
-      };
-    })
-    .filter((s): s is FrontendSchedule => s !== null);
-}
-
-/**
  * Преобразует контакты из фронтенд формата в бэкенд формат
  */
 export function transformContactToBackend(
@@ -229,41 +168,6 @@ export function transformContactToBackend(
     siteLink: contact.website || null,
     instagramLink: contact.instagram || null,
   };
-}
-
-/**
- * Преобразует контакты из бэкенд формата в фронтенд формат
- */
-export function transformContactFromBackend(
-  contact: ShopContactDto | null | undefined
-): FrontendShopContact | undefined {
-  if (!contact) return undefined;
-
-  const hasAnyValue = contact.phoneNumber || contact.email || contact.siteLink || contact.instagramLink;
-  if (!hasAnyValue) return undefined;
-
-  return {
-    phone: contact.phoneNumber || undefined,
-    email: contact.email || undefined,
-    website: contact.siteLink || undefined,
-    instagram: contact.instagramLink || undefined,
-  };
-}
-
-// ==================== API Functions ====================
-
-/**
- * Получает URL для загрузки фотографий
- */
-export async function getUploadUrls(
-  _accessToken: string,
-  requests: UploadUrlRequest[]
-): Promise<ApiResponse<UploadUrlResponse[]>> {
-  return httpClient.post<UploadUrlResponse[]>(
-    API_ENDPOINTS.MODERATION.UPLOAD_URLS,
-    requests,
-    { requiresAuth: true }
-  );
 }
 
 export interface SendShopModerationResult {
@@ -331,36 +235,5 @@ export async function sendRoasterToModeration(
       photos: roasterData.photos,
     },
     { requiresAuth: false }
-  );
-}
-
-/**
- * Отправляет отзыв
- */
-export async function sendReviewToModeration(
-  reviewData: SendReviewToModerationRequest
-): Promise<ApiResponse<CreateEntityResponse>> {
-  return httpClient.post<CreateEntityResponse>(
-    API_ENDPOINTS.MODERATION.REVIEWS,
-    reviewData,
-    {
-      requiresAuth: true,
-    }
-  );
-}
-
-/**
- * Обновляет отзыв
- */
-export async function updateCoffeeShopReview(
-  reviewId: string,
-  reviewData: UpdateCoffeeShopReviewRequest
-): Promise<ApiResponse<any>> {
-  return httpClient.put<any>(
-    API_ENDPOINTS.MODERATION.REVIEW_UPDATE(reviewId),
-    reviewData,
-    {
-      requiresAuth: true,
-    }
   );
 }

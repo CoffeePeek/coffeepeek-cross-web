@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   getProfile, updateAbout, updateAvatar, updateEmail, updateUsername, type UserProfile,
 } from '../api/auth';
-import { getAvatarUploadUrl } from '../api/photos';
+import { getAvatarUploadUrl, putPhotoToStorage } from '../api/photos';
 import WobbleRing from '../components/WobbleRing';
 import GuestAuthCard from '../components/GuestAuthCard';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -122,7 +122,7 @@ const ProfilePage: React.FC = () => {
       if (avatar) {
         const upload = await getAvatarUploadUrl({ fileName: avatar.name, contentType: avatar.type, sizeBytes: avatar.size });
         if (!upload.data) throw new Error('Не удалось подготовить загрузку фотографии');
-        const response = await fetch(upload.data.uploadUrl, { method: 'PUT', headers: { 'Content-Type': avatar.type }, body: avatar });
+        const response = await putPhotoToStorage(upload.data.uploadUrl, avatar);
         if (!response.ok) throw new Error('Не удалось загрузить фотографию');
         updates.push(updateAvatar({ uploadedPhoto: { fileName: avatar.name, contentType: avatar.type, storageKey: upload.data.storageKey, size: avatar.size } }));
       }

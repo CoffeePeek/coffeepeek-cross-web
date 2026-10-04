@@ -1,0 +1,40 @@
+name: Frontend validation
+
+on:
+  push:
+    paths:
+      - 'coffee-peek/**'
+      - 'coffee-peek-admin/**'
+      - '.github/workflows/frontend-validation.yml'
+  pull_request:
+    paths:
+      - 'coffee-peek/**'
+      - 'coffee-peek-admin/**'
+      - '.github/workflows/frontend-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [coffee-peek, coffee-peek-admin]
+    defaults:
+      run:
+        working-directory: ${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test -- --silent
+      - run: npm run build
+      - if: matrix.app == 'coffee-peek'
+        run: npm run test:ssr

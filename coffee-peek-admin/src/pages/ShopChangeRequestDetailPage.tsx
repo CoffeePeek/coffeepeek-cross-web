@@ -292,7 +292,7 @@ export const ShopChangeRequestDetailPage: React.FC = () => {
               )}
               <div className="min-w-0 flex-1">
                 <Link
-                  to={`/users?search=${encodeURIComponent(user.userName || user.id)}`}
+                  to={`/users?search=${encodeURIComponent(user.userName || request.submittedByUserId)}`}
                   className="font-semibold text-text-main hover:text-primary dark:text-white"
                 >
                   {userName}
@@ -303,7 +303,7 @@ export const ShopChangeRequestDetailPage: React.FC = () => {
                 <p className="mt-2 text-xs text-text-muted dark:text-stone-400">
                   Отзывов: {user.reviewCount ?? 0} · Отметок: {user.checkInCount ?? 0}
                 </p>
-                <p className="mt-1 text-[11px] font-mono text-text-muted/80">{user.id}</p>
+                <p className="mt-1 text-[11px] font-mono text-text-muted/80">{request.submittedByUserId}</p>
               </div>
             </div>
           ) : (

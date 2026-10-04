@@ -146,6 +146,7 @@ export async function rejectRoaster(id: string, comment?: string): Promise<ApiRe
 
 export interface RoasterDetails {
   id: string;
+  cityId?: string | null;
   name: string;
   about?: string | null;
   location?: RoasterLocation | null;
@@ -155,8 +156,8 @@ export interface RoasterDetails {
 }
 
 export async function getRoasterById(id: string): Promise<ApiResponse<RoasterDetails>> {
-  const response = await httpClient.get<Record<string, unknown>>(API_ENDPOINTS.ROASTERS.BY_ID(id), {
-    requiresAuth: false,
+  const response = await httpClient.get<Record<string, unknown>>(API_ENDPOINTS.ADMIN.CATALOG_ROASTER_BY_ID(id), {
+    requiresAuth: true,
   });
   const raw = response.data ?? {};
 
@@ -164,6 +165,7 @@ export async function getRoasterById(id: string): Promise<ApiResponse<RoasterDet
     ...response,
     data: {
       id: String(raw.id ?? id),
+      cityId: (raw.cityId as string | null | undefined) ?? null,
       name: String(raw.name ?? ''),
       about: (raw.about as string | null | undefined) ?? undefined,
       location: (raw.location as RoasterLocation | null | undefined) ?? undefined,

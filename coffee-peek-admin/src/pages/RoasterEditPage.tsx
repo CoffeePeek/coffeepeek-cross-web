@@ -58,7 +58,7 @@ export const RoasterEditPage: React.FC = () => {
     if (!roaster) return;
     setName(roaster.name);
     setAbout(roaster.about ?? '');
-    setCityId('');
+    setCityId(roaster.cityId ?? '');
     setAddress(roaster.location?.address ?? '');
     setInstagramLink(roaster.contact?.instagramLink ?? '');
     setSiteLink(roaster.contact?.siteLink ?? '');

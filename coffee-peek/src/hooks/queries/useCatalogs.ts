@@ -4,7 +4,7 @@ import {
   getEquipments,
   getCoffeeBeans,
   getRoasters,
-  getRoasterById,
+  getRoasterBySlug,
   getBrewMethods,
 } from '../../api/coffeeshop';
 
@@ -101,7 +101,7 @@ export function useRoaster(roasterId: string | null, enabled: boolean = true) {
     queryKey: catalogKeys.roaster(roasterId!),
     queryFn: async () => {
       if (!roasterId) throw new Error('Roaster ID is required');
-      const response = await getRoasterById(roasterId);
+      const response = await getRoasterBySlug(roasterId);
       if (!response.success) {
         throw new Error(response.message || 'Failed to fetch roaster');
       }

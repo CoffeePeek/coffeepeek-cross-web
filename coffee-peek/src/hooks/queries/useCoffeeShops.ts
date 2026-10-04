@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  getCoffeeShops,
-  getCoffeeShopById,
+  getCoffeeShopBySlug,
   searchCoffeeShops,
-  getCoffeeShopsByCity,
   type CoffeeShopFilters,
 } from '../../api/coffeeshop';
 
@@ -24,28 +22,6 @@ export const coffeeShopKeys = {
 };
 
 /**
- * Hook to fetch coffee shops with filters and pagination
- */
-export function useCoffeeShops(
-  filters?: CoffeeShopFilters,
-  page: number = 1,
-  pageSize: number = 10,
-  enabled: boolean = true
-) {
-  return useQuery({
-    queryKey: coffeeShopKeys.list(filters, page, pageSize),
-    queryFn: async () => {
-      const response = await getCoffeeShops(filters, page, pageSize);
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to fetch coffee shops');
-      }
-      return response.data;
-    },
-    enabled,
-  });
-}
-
-/**
  * Hook to fetch a single coffee shop by ID
  */
 export function useCoffeeShop(shopId: string | null, enabled: boolean = true) {
@@ -53,7 +29,7 @@ export function useCoffeeShop(shopId: string | null, enabled: boolean = true) {
     queryKey: coffeeShopKeys.detail(shopId!),
     queryFn: async () => {
       if (!shopId) throw new Error('Shop ID is required');
-      const response = await getCoffeeShopById(shopId);
+      const response = await getCoffeeShopBySlug(shopId);
       if (!response.success) {
         throw new Error(response.message || 'Failed to fetch coffee shop');
       }
@@ -84,29 +60,6 @@ export function useSearchCoffeeShops(
       return response.data;
     },
     enabled: enabled && (!!searchQuery || !!filters),
-  });
-}
-
-/**
- * Hook to fetch coffee shops by city
- */
-export function useCoffeeShopsByCity(
-  cityId: string | null,
-  page: number = 1,
-  pageSize: number = 10,
-  enabled: boolean = true
-) {
-  return useQuery({
-    queryKey: coffeeShopKeys.byCity(cityId!, page, pageSize),
-    queryFn: async () => {
-      if (!cityId) throw new Error('City ID is required');
-      const response = await getCoffeeShopsByCity(cityId, page, pageSize);
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to fetch coffee shops by city');
-      }
-      return response.data;
-    },
-    enabled: enabled && !!cityId,
   });
 }
 

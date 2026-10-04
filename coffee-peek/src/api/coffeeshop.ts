@@ -384,6 +384,7 @@ export interface Review extends SavedDrink {
   author?: PublicAddress | null;
   shop?: PublicAddress | null;
   id: string;
+  moderationReviewId?: string;
   coffeeShopId: string;
   shopName?: string;
   userId: string;
@@ -412,20 +413,37 @@ export interface GetReviewsResponse {
 export interface CreateReviewRequest {
   drinkSlug?: string;
   customDrinkName?: string;
-  clearDrink?: boolean;
   shop: string;
   header?: string | null;
   comment: string;
   ratingCoffee: number;
   ratingService: number;
   ratingPlace: number;
-  visitedAt?: string; // ISO date string
   photos?: Array<{
     fileName: string;
     contentType: string;
     storageKey: string;
     size: number;
   }>;
+}
+
+/** Published review IDs are used for reading; this command updates its moderation source. */
+export interface UpdateReviewRequest {
+  header?: string | null;
+  comment: string;
+  rating: RatingDto;
+  drinkSlug?: string;
+  customDrinkName?: string;
+  clearDrink?: boolean;
+  photos?: CreateReviewRequest['photos'];
+}
+
+export interface CreateReviewResult {
+  entityId: string;
+}
+
+export interface UpdateReviewResult {
+  reviewId: string;
 }
 
 export interface RatingDto {
@@ -484,44 +502,9 @@ export interface CheckInDateRange {
   to: string;
 }
 
-// ==================== API Functions ====================
-
-/**
- * Получает список кофеен с фильтрами
- */
-export async function getCoffeeShops(
-  filters?: CoffeeShopFilters,
-  page: number = 1,
-  pageSize: number = 10
-): Promise<ApiResponse<GetCoffeeShopsResponse>> {
-  const params: Record<string, any> = {
-    page: page > 0 ? page : 1,
-    pageSize: Math.min(100, pageSize > 0 ? pageSize : 10),
-  };
-
-  if (filters) {
-    if (filters.cityId) params.city = filters.cityId;
-    if (filters.priceRange) params.priceRange = filters.priceRange;
-    if (filters.equipmentIds) params.equipments = filters.equipmentIds;
-    if (filters.coffeeBeanIds) params.beans = filters.coffeeBeanIds;
-    if (filters.roasterIds) params.roasters = filters.roasterIds;
-    if (filters.brewMethodIds) params.brewMethods = filters.brewMethodIds;
-    if (filters.tagIds?.length) params.tags = filters.tagIds;
-    if (filters.coffeeFocus) params.type = SHOP_TYPE_QUERY[filters.coffeeFocus] ?? filters.coffeeFocus;
-    if (filters.isOpen !== undefined) params.isOpen = filters.isOpen;
-    if (filters.isNew !== undefined) params.isNew = filters.isNew;
-    if (filters.isVisited !== undefined) params.isVisited = filters.isVisited;
-  }
-
-  return httpClient.get<GetCoffeeShopsResponse>(API_ENDPOINTS.COFFEE_SHOP.BASE, {
-    params,
-    requiresAuth: false,
-  });
-}
-
 /**
  * Поиск кофеен с фильтрами
- * Использует тот же базовый эндпоинт, что и getCoffeeShops
+ * Использует публичный список кофеен с query-параметрами
  */
 export async function searchCoffeeShops(
   searchQuery?: string,
@@ -565,14 +548,6 @@ export async function searchCoffeeShops(
     params,
     requiresAuth: false,
   });
-}
-
-export async function getCoffeeShopsByCity(
-  cityId: string,
-  page: number = 1,
-  pageSize: number = 10
-): Promise<ApiResponse<GetCoffeeShopsResponse>> {
-  return getCoffeeShops({ cityId }, page, pageSize);
 }
 
 function normalizeLongitude(longitude: number): number {
@@ -791,8 +766,8 @@ export async function getRoasters(): Promise<ApiResponse<Roaster[]>> {
 /**
  * Получает полную информацию об обжарщике
  */
-export async function getRoasterById(id: string): Promise<ApiResponse<RoasterDetails>> {
-  return httpClient.get<RoasterDetails>(API_ENDPOINTS.ROASTERS.BY_ID(id), {
+export async function getRoasterBySlug(slug: string): Promise<ApiResponse<RoasterDetails>> {
+  return httpClient.get<RoasterDetails>(API_ENDPOINTS.ROASTERS.BY_SLUG(slug), {
     requiresAuth: false,
   });
 }
@@ -812,10 +787,10 @@ export async function getShopTags(): Promise<ApiResponse<ShopTagDto[]>> {
 }
 
 /**
- * Получает кофейню по ID
+ * Получает кофейню по публичному slug
  */
-export async function getCoffeeShopById(id: string): Promise<ApiResponse<DetailedCoffeeShop>> {
-  return httpClient.get<DetailedCoffeeShop>(API_ENDPOINTS.COFFEE_SHOP.BY_ID(id), {
+export async function getCoffeeShopBySlug(slug: string): Promise<ApiResponse<DetailedCoffeeShop>> {
+  return httpClient.get<DetailedCoffeeShop>(API_ENDPOINTS.COFFEE_SHOP.BY_SLUG(slug), {
     requiresAuth: false,
   });
 }
@@ -868,7 +843,7 @@ export async function getReviewsByUserId(
  */
 export async function getReviewById(reviewId: string): Promise<ApiResponse<Review>> {
   const response = await httpClient.get<any>(API_ENDPOINTS.REVIEW.BY_ID(reviewId), {
-    requiresAuth: false,
+    requiresAuth: true,
   });
 
   const dto = response.data?.review ?? response.data;
@@ -877,9 +852,8 @@ export async function getReviewById(reviewId: string): Promise<ApiResponse<Revie
 
 export async function createReview(
   request: CreateReviewRequest,
-  _token: string
-): Promise<ApiResponse<Review>> {
-  return httpClient.post<Review>(API_ENDPOINTS.MODERATION.REVIEWS, request, {
+): Promise<ApiResponse<CreateReviewResult>> {
+  return httpClient.post<CreateReviewResult>(API_ENDPOINTS.MODERATION.REVIEWS, request, {
     requiresAuth: true,
   });
 }
@@ -888,10 +862,10 @@ export async function createReview(
  * Обновляет отзыв
  */
 export async function updateReview(
-  request: CreateReviewRequest & { id: string },
-  _token: string
-): Promise<ApiResponse<Review>> {
-  return httpClient.put<Review>(API_ENDPOINTS.MODERATION.REVIEW_UPDATE(request.id), request, {
+  moderationReviewId: string,
+  request: UpdateReviewRequest,
+): Promise<ApiResponse<UpdateReviewResult>> {
+  return httpClient.put<UpdateReviewResult>(API_ENDPOINTS.MODERATION.REVIEW_UPDATE(moderationReviewId), request, {
     requiresAuth: true,
   });
 }

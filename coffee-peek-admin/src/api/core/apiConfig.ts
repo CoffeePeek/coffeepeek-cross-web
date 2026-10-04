@@ -15,7 +15,6 @@ export const API_ENDPOINTS = {
 
   AUTH: {
     LOGIN: '/api/tokens',
-    REFRESH: '/api/tokens',
   },
 
   ADMIN: {
@@ -26,6 +25,7 @@ export const API_ENDPOINTS = {
     STATS_MODERATION_INSIGHTS: '/api/admin/stats/moderation/insights',
     USERS: '/api/admin/users',
     USER_STATS: '/api/admin/users/stats',
+    USER_PROFILE: (id: string) => `/api/admin/users/${encodeURIComponent(id)}/profile`,
     USER_ROLE: (id: string) => `/api/admin/users/${encodeURIComponent(id)}/role`,
     USER_BLOCK: (id: string) => `/api/admin/users/${encodeURIComponent(id)}/block`,
     USER_DELETE: (id: string) => `/api/admin/users/${encodeURIComponent(id)}`,
@@ -35,6 +35,8 @@ export const API_ENDPOINTS = {
     AUDIT_MODERATION: '/api/admin/audit/moderation',
     SHOPS: '/api/admin/shops',
     SHOP_BY_ID: (id: string) => `/api/admin/shops/${encodeURIComponent(id)}`,
+    SHOP_PUBLIC_ADDRESS_BY_ID: (id: string) => `/api/admin/shops/${encodeURIComponent(id)}/public-address`,
+    SHOP_PUBLIC_ADDRESS_BY_SLUG: (slug: string) => `/api/admin/shops/by-slug/${encodeURIComponent(slug)}/public-address`,
     SHOP_PHOTOS: (id: string) => `/api/admin/shops/${encodeURIComponent(id)}/photos`,
     SHOP_MENU: (id: string) => `/api/admin/shops/${encodeURIComponent(id)}/menu`,
     SHOP_MENU_PHOTOS: (id: string) => `/api/admin/shops/${encodeURIComponent(id)}/menu/photos`,
@@ -64,7 +66,6 @@ export const API_ENDPOINTS = {
     IMPORT_CANDIDATE_MENU: (id: string) => `/api/admin/import/candidates/${encodeURIComponent(id)}/menu`,
     IMPORT_CANDIDATE_MENU_PHOTOS: (id: string) => `/api/admin/import/candidates/${encodeURIComponent(id)}/menu/photos`,
     IMPORT_CANDIDATE_MENU_PARSE: (id: string) => `/api/admin/import/candidates/${encodeURIComponent(id)}/menu/parse`,
-    IMPORT_CANDIDATE_GOOGLE: (id: string) => `/api/admin/import/candidates/${encodeURIComponent(id)}/google-refresh`,
     IMPORT_CANDIDATE_DECIDE: (id: string) => `/api/admin/import/candidates/${encodeURIComponent(id)}/decide`,
     IMPORT_STATS: '/api/admin/import/stats',
     IMPORT_DUPLICATES: '/api/admin/import/duplicates',
@@ -118,7 +119,6 @@ export const API_ENDPOINTS = {
     SHOP_BY_ID: (id: string) => `/api/ModerationShops/${encodeURIComponent(id)}`,
     SHOP_STATUS: '/api/ModerationShops/status',
     REVIEWS: '/api/ModerationReviews',
-    REVIEW_BY_ID: (id: string) => `/api/ModerationReviews/${encodeURIComponent(id)}`,
     ROASTERS: '/api/ModerationRoasters',
     ROASTER_BY_ID: (id: string) => `/api/ModerationRoasters/${encodeURIComponent(id)}`,
     ROASTER_STATUS: '/api/ModerationRoasters/status',
@@ -126,11 +126,7 @@ export const API_ENDPOINTS = {
 
   COFFEE_SHOP: {
     BASE: '/api/CoffeeShops',
-    BY_ID: (id: string) => `/api/CoffeeShops/${encodeURIComponent(id)}`,
-  },
-
-  USER: {
-    BY_ID: (id: string) => `/api/users/${encodeURIComponent(id)}`,
+    BY_SLUG: (slug: string) => `/api/CoffeeShops/${encodeURIComponent(slug)}`,
   },
 
   MAP: {
@@ -143,18 +139,6 @@ export const API_ENDPOINTS = {
     STATUS: (id: string) => `/api/ShopChangeRequests/${encodeURIComponent(id)}/status`,
   },
 
-  CATALOGS: {
-    CITIES: '/api/Catalogs/cities',
-    EQUIPMENTS: '/api/Catalogs/equipments',
-    BEANS: '/api/Catalogs/beans',
-    ROASTERS: '/api/Catalogs/roasters',
-    BREW_METHODS: '/api/Catalogs/brew-methods',
-    SHOP_TAGS: '/api/Catalogs/shop-tags',
-  },
-
-  ROASTERS: {
-    BY_ID: (id: string) => `/api/roasters/${encodeURIComponent(id)}`,
-  },
 } as const;
 
 export function buildUrlWithParams(

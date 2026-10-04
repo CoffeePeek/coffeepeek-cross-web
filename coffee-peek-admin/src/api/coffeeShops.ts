@@ -5,6 +5,7 @@ import { apiDayOfWeekToUi } from '../utils/dayOfWeek';
 
 export interface BrowseCoffeeShop {
   id: string;
+  canonicalPath: string;
   name: string;
   address?: string;
   description?: string;
@@ -29,6 +30,7 @@ export interface BrowseCoffeeShopDetails extends BrowseCoffeeShop {
 
 export interface MapShop {
   id: string;
+  canonicalPath: string;
   latitude: number;
   longitude: number;
   title: string;
@@ -61,7 +63,8 @@ function firstValue(record: UnknownRecord, ...keys: string[]): unknown {
 function firstString(record: UnknownRecord, ...keys: string[]): string | undefined {
   const value = firstValue(record, ...keys);
   if (value === undefined || value === null) return undefined;
-  const text = String(value).trim();
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
   return text || undefined;
 }
 
@@ -132,6 +135,9 @@ function normalizeSchedules(raw: UnknownRecord): BrowseCoffeeShopDetails['schedu
 
 function mapBrowseShop(raw: Record<string, unknown>): BrowseCoffeeShop {
   const shop = unwrapShop(raw);
+  const address = asRecord(shop.address);
+  const slug = firstString(address ?? {}, 'slug');
+  if (!slug) throw new Error('В ответе отсутствует публичный адрес кофейни');
   const location = asRecord(firstValue(shop, 'location', 'Location'));
   const city = asRecord(firstValue(shop, 'city', 'City'));
   const photos = normalizePhotos(shop);
@@ -139,11 +145,11 @@ function mapBrowseShop(raw: Record<string, unknown>): BrowseCoffeeShop {
     ?? firstString(shop, 'imageUrl', 'ImageUrl');
 
   return {
-    id: firstString(shop, 'id', 'Id') ?? '',
+    id: slug,
+    canonicalPath: firstString(address ?? {}, 'canonicalPath') ?? `/coffee-shops/${encodeURIComponent(slug)}`,
     name: firstString(shop, 'name', 'Name', 'title', 'Title') ?? 'Кофейня',
     address:
-      firstString(shop, 'address', 'Address')
-      ?? (location ? firstString(location, 'address', 'Address') : undefined),
+      (location ? firstString(location, 'address', 'Address') : undefined),
     description: firstString(shop, 'description', 'Description'),
     cityName:
       firstString(shop, 'cityName', 'CityName')
@@ -182,11 +188,11 @@ export async function getBrowseCoffeeShops(
   return { ...response, data: normalized };
 }
 
-export async function getBrowseCoffeeShopById(
-  id: string
+export async function getBrowseCoffeeShopBySlug(
+  slug: string
 ): Promise<ApiResponse<BrowseCoffeeShopDetails>> {
   const response = await httpClient.get<Record<string, unknown>>(
-    API_ENDPOINTS.COFFEE_SHOP.BY_ID(id),
+    API_ENDPOINTS.COFFEE_SHOP.BY_SLUG(slug),
     { requiresAuth: false }
   );
 
@@ -226,19 +232,20 @@ export async function getCoffeeShopsByMapBounds(
   maxLat?: number,
   maxLon?: number
 ): Promise<ApiResponse<{ shops: MapShop[] }>> {
-  const params: Record<string, number> = {};
+  const params: Record<string, number> = { zoom: 14 };
   if (minLat !== undefined) params.minLat = minLat;
   if (minLon !== undefined) params.minLon = minLon;
   if (maxLat !== undefined) params.maxLat = maxLat;
   if (maxLon !== undefined) params.maxLon = maxLon;
 
-  const response = await httpClient.get<{ shops?: MapShop[] }>(API_ENDPOINTS.MAP.BASE, {
+  const response = await httpClient.get<{ shops?: Array<{ address: { slug: string; canonicalPath: string } | null; latitude: number; longitude: number; title: string }> }>(API_ENDPOINTS.MAP.BASE, {
     params,
     requiresAuth: false,
   });
 
-  const shops = (response.data?.shops ?? []).map((shop) => ({
-    id: shop.id,
+  const shops = (response.data?.shops ?? []).filter((shop) => shop.address?.slug && Number.isFinite(Number(shop.latitude)) && Number.isFinite(Number(shop.longitude))).map((shop) => ({
+    id: shop.address!.slug,
+    canonicalPath: shop.address!.canonicalPath,
     latitude: Number(shop.latitude),
     longitude: Number(shop.longitude),
     title: shop.title || 'Кофейня',

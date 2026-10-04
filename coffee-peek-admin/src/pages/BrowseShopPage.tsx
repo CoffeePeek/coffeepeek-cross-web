@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useParams } from 'react-router-dom';
-import { getBrowseCoffeeShopById } from '../api/coffeeShops';
+import { getBrowseCoffeeShopBySlug } from '../api/coffeeShops';
+import { getShopPublicAddressBySlug } from '../api/shopPublicAddresses';
 import { setPublishedShopVisibility } from '../api/admin';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -22,8 +23,14 @@ export const BrowseShopPage: React.FC = () => {
 
   const { data: shop, isLoading, isError } = useQuery({
     queryKey: ['browse', 'coffee-shop', id],
-    queryFn: () => getBrowseCoffeeShopById(id!).then((r) => r.data),
+    queryFn: () => getBrowseCoffeeShopBySlug(id!).then((r) => r.data),
     enabled: Boolean(id),
+  });
+  const { data: adminAddress } = useQuery({
+    queryKey: ['admin', 'shop-public-address', 'slug', id],
+    queryFn: () => getShopPublicAddressBySlug(id!).then(response => response.data),
+    enabled: isAdmin && Boolean(id),
+    staleTime: 60_000,
   });
   type ShopSchedule = NonNullable<NonNullable<typeof shop>['schedules']>[number];
   const scheduleColumns: ColumnDef<ShopSchedule>[] = [
@@ -32,7 +39,10 @@ export const BrowseShopPage: React.FC = () => {
   ];
 
   const hideMutation = useMutation({
-    mutationFn: () => setPublishedShopVisibility(id!, true),
+    mutationFn: () => {
+      if (!adminAddress?.entityId) throw new Error('Не удалось определить кофейню для скрытия');
+      return setPublishedShopVisibility(adminAddress.entityId, true);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['browse'] });
       qc.invalidateQueries({ queryKey: ['admin', 'published-shops'] });
@@ -76,9 +86,9 @@ export const BrowseShopPage: React.FC = () => {
         <Link to="/map">
           <Button variant="secondary" size="sm">На карте</Button>
         </Link>
-        {isAdmin && (
+        {isAdmin && adminAddress?.entityId && (
           <>
-            <Link to={`/published-shops/${shop.id}`}>
+            <Link to={`/published-shops/${adminAddress.entityId}`}>
               <Button variant="secondary" size="sm">Редактировать</Button>
             </Link>
             <Button

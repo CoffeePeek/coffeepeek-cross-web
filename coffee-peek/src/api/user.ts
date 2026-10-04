@@ -70,28 +70,3 @@ export async function getUserPublicProfile(
     };
   }
 }
-
-/**
- * Получает публичные профили нескольких пользователей (batch)
- * Для оптимизации - запрашивает параллельно
- */
-export async function getUsersPublicProfiles(
-  userIds: string[]
-): Promise<Map<string, PublicUserProfile>> {
-  const userMap = new Map<string, PublicUserProfile>();
-  
-  // Убираем дубликаты
-  const uniqueIds = [...new Set(userIds)];
-  
-  // Запрашиваем всех пользователей параллельно
-  const promises = uniqueIds.map(id => getUserPublicProfile(id));
-  const results = await Promise.all(promises);
-  
-  results.forEach((result, index) => {
-    if (result.success && result.data) {
-      userMap.set(uniqueIds[index], result.data);
-    }
-  });
-  
-  return userMap;
-}

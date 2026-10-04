@@ -8,7 +8,7 @@ jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
   MODERATION: { SHOP: '/api/ModerationShops', ROASTER: '/api/ModerationRoasters', REVIEWS: '/api/ModerationReviews' },
 } }));
 import { normalizeResponseData } from '../src/api/core/interceptors';
-import { EquipmentCategory, getEquipmentCategoryLabel, getCoffeeShops, searchCoffeeShops, getMapShops, getReviewsByUserId, createReview } from '../src/api/coffeeshop';
+import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapShops, getReviewsByUserId, createReview } from '../src/api/coffeeshop';
 import { sendCoffeeShopToModeration, sendRoasterToModeration } from '../src/api/moderation';
 import { createShopChangeRequest } from '../src/api/shopChangeRequests';
 import { httpClient } from '../src/api/core/httpClient';
@@ -67,10 +67,10 @@ test('catalog arrays map supplied slugs without modifying address metadata or se
     items: [{ id: 'request-service-id', shopId: '' }], totalItems: 1,
   });
 });
-test('both shop searches send city and slug arrays using the same query fields', async () => {
+test('shop search with or without text send city and slug arrays using the same query fields', async () => {
   jest.mocked(httpClient.get).mockResolvedValue({ data: {} } as never);
   const filters = { cityId: 'minsk', equipmentIds: ['linea'], coffeeBeanIds: ['arabica'], tagIds: ['dog-friendly'] };
-  await getCoffeeShops(filters, 1, 1000);
+  await searchCoffeeShops(undefined, filters, 1, 1000);
   await searchCoffeeShops('coffee', filters);
   for (const [, config] of jest.mocked(httpClient.get).mock.calls) {
     expect(config?.params).toMatchObject({ city: 'minsk', equipments: ['linea'], beans: ['arabica'], tags: ['dog-friendly'] });
@@ -101,7 +101,7 @@ test('moderation, reviews and changes send slug fields and preserve empty/null l
   await sendRoasterToModeration({ name: 'Roaster' });
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/ModerationRoasters', expect.objectContaining({ city: null }), { requiresAuth: false });
   const review = { shop: 'coffee', comment: 'Great', ratingCoffee: 5, ratingPlace: 4, ratingService: 5 };
-  await createReview(review, '');
+  await createReview(review);
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/ModerationReviews', review, { requiresAuth: true });
   const change = { shop: 'coffee', section: 'Tags' as const, payload: { tags: [], roasters: null } };
   await createShopChangeRequest(change);

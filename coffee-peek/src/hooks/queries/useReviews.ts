@@ -5,6 +5,7 @@ import {
   createReview,
   updateReview,
   type CreateReviewRequest,
+  type UpdateReviewRequest,
 } from '../../api/coffeeshop';
 
 /**
@@ -69,8 +70,8 @@ export function useCreateReview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ request, token }: { request: CreateReviewRequest; token: string }) => {
-      const response = await createReview(request, token);
+    mutationFn: async (request: CreateReviewRequest) => {
+      const response = await createReview(request);
       if (!response.success) {
         throw new Error(response.message || 'Failed to create review');
       }
@@ -78,10 +79,10 @@ export function useCreateReview() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: reviewKeys.list(variables.request.shop),
+        queryKey: reviewKeys.list(variables.shop),
       });
       queryClient.invalidateQueries({
-        queryKey: ['coffeeShops', 'detail', variables.request.shop],
+        queryKey: ['coffeeShops', 'detail', variables.shop],
       });
     },
   });
@@ -94,32 +95,19 @@ export function useUpdateReview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      request,
-      token,
-    }: {
-      request: CreateReviewRequest & { id: string };
-      token: string;
+    mutationFn: async ({ moderationReviewId, request }: {
+      moderationReviewId: string;
+      request: UpdateReviewRequest;
     }) => {
-      const response = await updateReview(request, token);
+      const response = await updateReview(moderationReviewId, request);
       if (!response.success) {
         throw new Error(response.message || 'Failed to update review');
       }
       return response.data;
     },
-    onSuccess: (_data, variables) => {
-      // Invalidate reviews for this shop
-      queryClient.invalidateQueries({
-        queryKey: reviewKeys.list(variables.request.shop),
-      });
-      // Invalidate the specific review
-      queryClient.invalidateQueries({
-        queryKey: reviewKeys.detail(variables.request.id),
-      });
-      // Invalidate shop detail to update review count
-      queryClient.invalidateQueries({
-        queryKey: ['coffeeShops', 'detail', variables.request.shop],
-      });
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: reviewKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ['coffeeShops'] });
     },
   });
 }

@@ -87,7 +87,3 @@ export function getMyShopChangeRequests(
 ): Promise<ApiResponse<ShopChangeRequestPageDto>> {
   return httpClient.get<ShopChangeRequestPageDto>(`${BASE}/mine`, { params: query });
 }
-
-export function getMyShopChangeRequest(id: string): Promise<ApiResponse<ShopChangeRequestDto>> {
-  return httpClient.get<ShopChangeRequestDto>(`${BASE}/${id}`);
-}

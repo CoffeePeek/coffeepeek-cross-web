@@ -8,7 +8,7 @@ import * as maplibregl from 'maplibre-gl';
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
-import { getMapShops, getMapZones, getCoffeeShopById, getPhotoUrl } from '../api/coffeeshop';
+import { getMapShops, getMapZones, getCoffeeShopBySlug, getPhotoUrl } from '../api/coffeeshop';
 import type { DetailedCoffeeShop, MapSearchData, MapShop } from '../api/coffeeshop';
 import { CaretRight, Star, NavigationArrow, MagnifyingGlass, X, Polygon, MapPin, Minus, Plus } from '@/components/Icon';
 import ShopPhotoPlaceholder from './ShopPhotoPlaceholder';
@@ -112,7 +112,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
     detailsRequestRef.current = shopId;
     setSelectedShopDetails(null);
     try {
-      const response = await getCoffeeShopById(shopId);
+      const response = await getCoffeeShopBySlug(shopId);
       if (detailsRequestRef.current === shopId && response.success && response.data) {
         setSelectedShopDetails(response.data);
       }
@@ -372,7 +372,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
                     try {
                       const location = shop.location;
                       const details = location?.latitude == null || location?.longitude == null
-                        ? (await getCoffeeShopById(shop.id)).data : shop;
+                        ? (await getCoffeeShopBySlug(shop.id)).data : shop;
                       const coordinates = details.location;
                       if (coordinates?.latitude == null || coordinates?.longitude == null) return;
                       selectShop({ id: shop.id, publicAddress: shop.publicAddress, title: shop.name,

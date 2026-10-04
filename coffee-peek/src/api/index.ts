@@ -4,7 +4,7 @@
 
 // Core
 export { httpClient, TokenManager } from './core/httpClient';
-export { API_ENDPOINTS, API_BASE_URL, buildUrlWithParams, getFullUrl } from './core/apiConfig';
+export { API_ENDPOINTS, API_BASE_URL, buildUrlWithParams } from './core/apiConfig';
 export {
   ApiRequestError,
   isApiRequestError,

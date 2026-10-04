@@ -33,12 +33,12 @@ export const BrowseShopsPage: React.FC = () => {
   };
   const columns: ColumnDef<BrowseShop>[] = [
     { id: 'photo', header: '', cell: ({ row }) => row.original.imageUrl ? <img src={row.original.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover" /> : <span className="text-2xl">☕</span> },
-    { accessorKey: 'name', header: 'Название', cell: ({ row }) => <Button asChild variant="ghost" className="px-0"><Link to={`/coffee-shops/${row.original.id}`}>{row.original.name}</Link></Button> },
+    { accessorKey: 'name', header: 'Название', cell: ({ row }) => <Button asChild variant="ghost" className="px-0"><Link to={row.original.canonicalPath}>{row.original.name}</Link></Button> },
     { accessorKey: 'cityName', header: 'Город', cell: ({ row }) => row.original.cityName || '—' },
     { accessorKey: 'address', header: 'Адрес', cell: ({ row }) => row.original.address || '—' },
     { accessorKey: 'rating', header: 'Рейтинг', cell: ({ row }) => row.original.rating != null ? `★ ${row.original.rating.toFixed(1)}` : '—' },
     { accessorKey: 'reviewCount', header: 'Отзывы', cell: ({ row }) => row.original.reviewCount ?? 0 },
-    { id: 'actions', cell: ({ row }) => <Button asChild variant="secondary" size="sm"><Link to={`/coffee-shops/${row.original.id}`}>Открыть</Link></Button> },
+    { id: 'actions', cell: ({ row }) => <Button asChild variant="secondary" size="sm"><Link to={row.original.canonicalPath}>Открыть</Link></Button> },
   ];
 
   return (

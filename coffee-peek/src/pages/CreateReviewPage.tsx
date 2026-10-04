@@ -14,7 +14,6 @@ import { getThemeClasses } from '../utils/theme';
 import { getThemeColors, COLORS } from '../constants/colors';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useToast } from '../contexts/ToastContext';
-import { TokenManager } from '../api/core/httpClient';
 import { logger } from '../utils/logger';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { AppIcon, StarIcon } from '../components/icons';
@@ -28,16 +27,12 @@ interface ShopBasicInfo {
 
 const CreateReviewPage: React.FC = () => {
   const { shopId: routeId, reviewId: routeReviewId } = useParams<{ shopId: string; reviewId?: string }>();
-  const shopId = usePublicResolution()?.id ?? routeId;
+  const resolution = usePublicResolution();
+  const shopId = resolution?.id ?? routeId ?? '';
   const navigate = useNavigate();
   const openPublic = usePublicNavigate();
   const location = useLocation();
   const reviewId = routeReviewId || (location.state as { reviewId?: string } | null)?.reviewId;
-  
-  if (!shopId) {
-    navigate('/shops');
-    return null;
-  }
   
   const isEditMode = !!reviewId;
   usePageTitle(isEditMode ? 'Редактирование отзыва' : 'Создание отзыва');
@@ -47,12 +42,20 @@ const CreateReviewPage: React.FC = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
 
-  // Получаем данные о кофейне из navigation state
-  const shopFromState = (location.state as { shop?: ShopBasicInfo })?.shop;
+  // The public route has already loaded shop details, including on direct edit links.
+  const shopFromState: ShopBasicInfo | undefined = (location.state as { shop?: ShopBasicInfo })?.shop
+    ?? (resolution?.data ? {
+      name: resolution.data.name,
+      address: resolution.data.address ?? '',
+      photo: resolution.data.photos?.[0] ? getPhotoUrl(resolution.data.photos[0], 'card') : '',
+      averageRating: resolution.data.averageRating,
+    } : undefined);
   
-  // Если данных нет в state (прямой переход по URL), редиректим на страницу кофейни
+  // Redirect only if neither the route nor navigation supplied shop details.
   useEffect(() => {
-    if (!shopFromState && !isEditMode) {
+    if (!shopId) {
+      navigate('/shops', { replace: true });
+    } else if (!shopFromState && !isEditMode) {
       openPublic('shops', shopId);
     }
   }, [shopFromState, isEditMode, shopId, navigate]);
@@ -66,13 +69,7 @@ const CreateReviewPage: React.FC = () => {
   const [ratingCoffee, setRatingCoffee] = useState(5);
   const [ratingService, setRatingService] = useState(5);
   const [ratingPlace, setRatingPlace] = useState(5);
-  const [visitedDate, setVisitedDate] = useState(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  });
+  const [moderationReviewId, setModerationReviewId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingExistingReview, setIsLoadingExistingReview] = useState(false);
   
@@ -80,7 +77,6 @@ const CreateReviewPage: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [reviewPhotos, setReviewPhotos] = useState<ShortPhotoMetadataDto[]>([]);
-  const [removedPhotoKeys, setRemovedPhotoKeys] = useState<string[]>([]);
 
   // Color values for inline styles (based on theme constants)
   const themeColors = getThemeColors(theme);
@@ -105,11 +101,18 @@ const CreateReviewPage: React.FC = () => {
 
       try {
         setIsLoadingExistingReview(true);
+        setModerationReviewId(null);
         const response = await getReviewById(reviewId);
         if (cancelled) return;
 
         if (response.success && response.data) {
           const r = response.data;
+          if (r.coffeeShopId && r.coffeeShopId !== shopId) {
+            showToast('Отзыв относится к другой кофейне', 'error');
+            return;
+          }
+          setModerationReviewId(r.moderationReviewId || null);
+          if (!r.moderationReviewId) showToast('Этот отзыв пока недоступен для редактирования', 'error');
           setDrinkSlug(r.drinkSlug || '');
           setCustomDrinkName(r.customDrinkName || '');
           setOriginalDrink({ slug: r.drinkSlug || '', name: r.customDrinkName || '', savedName: savedDrinkName(r) });
@@ -119,14 +122,6 @@ const CreateReviewPage: React.FC = () => {
           setRatingService(r.ratingService || 5);
           setRatingPlace(r.ratingPlace || 5);
           setReviewPhotos(r.photos || []);
-          // Загружаем дату посещения, если есть
-          if (r.visitedAt) {
-            const date = new Date(r.visitedAt);
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            setVisitedDate(`${year}-${month}-${day}`);
-          }
         } else {
           showToast('Не удалось загрузить отзыв для редактирования', 'error');
         }
@@ -147,7 +142,7 @@ const CreateReviewPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [reviewId, user?.id, showToast]);
+  }, [reviewId, shopId, user?.id, showToast]);
 
   const getAverageRating = () => {
     return ((ratingCoffee + ratingService + ratingPlace) / 3).toFixed(1);
@@ -175,7 +170,6 @@ const CreateReviewPage: React.FC = () => {
 
   const removeReviewPhoto = (storageKey: string) => {
     setReviewPhotos(prev => prev.filter(photo => photo.storageKey !== storageKey));
-    setRemovedPhotoKeys(prev => [...prev, storageKey]);
   };
 
   const uploadPhotos = async (): Promise<Array<{ fileName: string; contentType: string; storageKey: string; size: number }>> => {
@@ -213,7 +207,7 @@ const CreateReviewPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!requireAuth()) return;
+    if (!shopId || !requireAuth()) return;
 
     if (!description.trim()) {
       showToast('Заполните описание', 'error');
@@ -230,8 +224,10 @@ const CreateReviewPage: React.FC = () => {
       return;
     }
 
-    const token = TokenManager.getAccessToken();
-    if (!token) return;
+    if (isEditMode && !moderationReviewId) {
+      showToast('Не удалось определить заявку для редактирования отзыва', 'error');
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -243,7 +239,6 @@ const CreateReviewPage: React.FC = () => {
       
       // Формируем список фотографий: существующие (не удаленные) + новые
       const existingPhotos = reviewPhotos
-        .filter(photo => !removedPhotoKeys.includes(photo.storageKey))
         .map(photo => {
           // Определяем contentType по расширению файла
           const extension = photo.fileName.split('.').pop()?.toLowerCase();
@@ -266,10 +261,6 @@ const CreateReviewPage: React.FC = () => {
       
       const allPhotos = [...existingPhotos, ...uploadedPhotos];
       
-      // Преобразуем дату в ISO строку (используем начало дня 00:00:00)
-      const dateTimeString = `${visitedDate}T00:00:00`;
-      const visitedAtISO = new Date(dateTimeString).toISOString();
-      
       const request: CreateReviewRequest = {
         ...selection,
         shop: shopId,
@@ -278,31 +269,36 @@ const CreateReviewPage: React.FC = () => {
         ratingCoffee,
         ratingService,
         ratingPlace,
-        visitedAt: visitedAtISO,
-        photos: allPhotos.length > 0 ? allPhotos : undefined,
+        photos: allPhotos,
       };
 
       const response = reviewId
-        ? await updateReview({ ...request, id: reviewId }, token)
-        : await createReview(request, token);
+        ? await updateReview(moderationReviewId!, {
+            ...selection,
+            header: request.header,
+            comment: request.comment,
+            rating: { coffee: ratingCoffee, service: ratingService, place: ratingPlace },
+            photos: allPhotos,
+          })
+        : await createReview(request);
       if (response.success) {
         void queryClient.invalidateQueries({ queryKey: reviewKeys.all });
         void queryClient.invalidateQueries({ queryKey: coffeeShopKeys.all });
-        showToast(reviewId ? 'Отзыв успешно обновлён!' : 'Отзыв успешно опубликован!', 'success');
+        showToast(reviewId ? 'Изменения отзыва отправлены на модерацию' : 'Отзыв отправлен на модерацию', 'success');
         openPublic('shops', shopId);
       } else {
-        showToast(response.message || (reviewId ? 'Не удалось обновить отзыв' : 'Не удалось опубликовать отзыв'), 'error');
+        showToast(response.message || (reviewId ? 'Не удалось обновить отзыв' : 'Не удалось отправить отзыв'), 'error');
       }
     } catch (err) {
       logger.error('Error submitting review:', err);
       setUploadingPhotos(false);
-      showToast(reviewId ? 'Не удалось обновить отзыв' : 'Не удалось опубликовать отзыв', 'error');
+      showToast(reviewId ? 'Не удалось обновить отзыв' : 'Не удалось отправить отзыв', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (isLoadingExistingReview) {
+  if (!shopId || isLoadingExistingReview) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: colors.surface }}>
         <WobbleRing size={48} />
@@ -398,30 +394,6 @@ const CreateReviewPage: React.FC = () => {
                   {getAverageRating()} {getRatingText()}
                 </p>
 
-                {/* Date picker */}
-                <div className="pt-6 border-t" style={{ borderColor: `${colors.borderSubtle}80` }}>
-                  <label className={`block text-xs ${themeClasses.text.secondary} mb-2 text-left`} htmlFor="visitedDate">
-                    Дата посещения
-                  </label>
-                  <div className="relative">
-                    <AppIcon name="calendar_today" size={18} color={colors.textMuted} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="date"
-                      id="visitedDate"
-                      value={visitedDate}
-                      onChange={(e) => setVisitedDate(e.target.value)}
-                      className={`
-                        w-full ${themeClasses.bg.input} ${themeClasses.border.default} rounded-2xl py-3 pl-12 pr-4 
-                        ${themeClasses.text.primary} 
-                        focus:outline-none ${themeClasses.primary.ring.replace('focus:', 'focus:ring-2 focus:')} ${themeClasses.border.focus}
-                        transition-all duration-200 text-sm
-                      `}
-                      style={{
-                        colorScheme: theme === 'dark' ? 'dark' : 'light',
-                      }}
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </aside>
@@ -663,10 +635,10 @@ const CreateReviewPage: React.FC = () => {
             <div className="pt-6 flex justify-end">
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || (isEditMode && !moderationReviewId)}
                 className={`px-10 py-5 ${themeClasses.primary.bg} ${themeClasses.primary.bgHover} text-white rounded-2xl font-bold text-lg flex items-center gap-3 shadow-lg ${themeClasses.primary.shadow} transition-all active:scale-95 group disabled:opacity-50`}
               >
-                {isSubmitting ? (reviewId ? 'Сохранение...' : 'Публикация...') : (reviewId ? 'Сохранить изменения' : 'Опубликовать отзыв')}
+                {isSubmitting ? (reviewId ? 'Сохранение...' : 'Отправка...') : (reviewId ? 'Сохранить изменения' : 'Отправить отзыв')}
                 <AppIcon name="send" size={24} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </button>
             </div>
@@ -680,4 +652,3 @@ const CreateReviewPage: React.FC = () => {
 };
 
 export default CreateReviewPage;
-

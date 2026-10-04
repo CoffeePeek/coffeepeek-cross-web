@@ -6,40 +6,34 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL;
 export const API_ENDPOINTS = {
   TOKEN: {
     BASE: "/api/tokens",
-    GOOGLE_LOGIN: "/api/tokens/google/login",
   },
 
   AUTH: {
     LOGIN: "/api/tokens",
     GOOGLE_LOGIN: "/api/tokens/google/login",
-    REFRESH: "/api/tokens",
     REGISTER: "/api/users",
   },
 
   USER: {
-    BASE: "/api/users",
-    BY_ID: (id: string) => `/api/users/${encodeURIComponent(id)}`,
     PROFILE: "/api/users/me",
     EMAIL_EXISTS: "/api/users/exists",
     UPDATE_ABOUT: "/api/users/me/about",
     UPDATE_EMAIL: "/api/users/me/email",
-    UPDATE_PHONE_NUMBER: "/api/users/me/phone-number",
     UPDATE_AVATAR: "/api/users/me/avatar",
     UPDATE_USERNAME: "/api/users/me/username",
-    UPDATE_PASSWORD: "/api/users/me/password",
     PASSWORD_FORGOT: "/api/users/password/forgot",
     PASSWORD_RESET: "/api/users/password/reset",
     DELETE: "/api/users/me",
     DELETION_CONFIRMATION: "/api/users/me/deletion-confirmation",
     DELETION_REQUEST: "/api/users/me/deletion-request",
     EMAIL_CONFIRMATION: "/api/users/me/email-confirmation",
-    REVIEWS: (userId: string) => `/api/users/${encodeURIComponent(userId)}/reviews`,
     EMAIL_CONFIRMATION_RESEND: "/api/users/email-confirmation/resend",
+    REVIEWS: (userId: string) => `/api/users/${encodeURIComponent(userId)}/reviews`,
   },
 
   COFFEE_SHOP: {
     BASE: "/api/CoffeeShops",
-    BY_ID: (id: string) => `/api/CoffeeShops/${encodeURIComponent(id)}`,
+    BY_SLUG: (slug: string) => `/api/CoffeeShops/${encodeURIComponent(slug)}`,
   },
 
   MENU: {
@@ -60,7 +54,7 @@ export const API_ENDPOINTS = {
   },
 
   ROASTERS: {
-    BY_ID: (id: string) => `/api/roasters/${encodeURIComponent(id)}`,
+    BY_SLUG: (slug: string) => `/api/roasters/${encodeURIComponent(slug)}`,
   },
 
   REVIEW: {
@@ -81,7 +75,6 @@ export const API_ENDPOINTS = {
 
   MODERATION: {
     SHOP: "/api/ModerationShops",
-    UPLOAD_URLS: "/api/Moderation/upload-urls",
     REVIEWS: "/api/ModerationReviews",
     REVIEW_UPDATE: (reviewId: string) => `/api/ModerationReviews/${encodeURIComponent(reviewId)}`,
     ROASTER: "/api/ModerationRoasters",
@@ -129,8 +122,4 @@ export function buildUrlWithParams(
 
   const queryString = searchParams.toString();
   return queryString ? `${url}?${queryString}` : url;
-}
-
-export function getFullUrl(endpoint: string): string {
-  return `${API_BASE_URL}${endpoint}`;
 }

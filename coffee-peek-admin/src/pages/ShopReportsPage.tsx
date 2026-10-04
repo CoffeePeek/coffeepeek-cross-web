@@ -1,7 +1,8 @@
+import { PublishedShopLink } from '../components/PublishedShopLink';
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable } from '../components/ui/DataTable';
 import {
   getShopIssueReports,
@@ -96,7 +97,7 @@ export const ShopReportsPage: React.FC = () => {
   };
   const columns: ColumnDef<AdminShopIssueReport>[] = [
     { accessorKey: 'category', header: 'Категория', cell: ({ row }) => CATEGORY_LABELS[row.original.category] },
-    { accessorKey: 'shopId', header: 'Кофейня', cell: ({ row }) => <Link to={`/coffee-shops/${row.original.shopId}`} className="font-mono text-primary hover:underline">{row.original.shopId}</Link> },
+    { accessorKey: 'shopId', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="font-mono text-primary hover:underline">{row.original.shopId}</PublishedShopLink> },
     { accessorKey: 'description', header: 'Описание', cell: ({ row }) => <span className="line-clamp-3 max-w-[420px]">{row.original.description || '—'}</span> },
     { accessorKey: 'status', header: 'Статус', cell: ({ row }) => <Badge variant={STATUS_BADGE[row.original.status]}>{STATUS_LABELS[row.original.status]}</Badge> },
     { accessorKey: 'createdAtUtc', header: 'Дата', cell: ({ row }) => new Date(row.original.createdAtUtc).toLocaleDateString('ru') },

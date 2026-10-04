@@ -12,6 +12,7 @@ import { ScrollToTop } from './components/ScrollToTop';
 import SessionRealtime from './components/SessionRealtime';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Analytics } from '@vercel/analytics/react';
+import { getLandingRedirect } from './utils/landingRedirect';
 
 // Component to initialize global error handler
 const GlobalErrorHandler: React.FC = () => {
@@ -35,11 +36,9 @@ const AuthRedirect: React.FC = () => {
   const location = useLocation();
   
   useEffect(() => {
-    // If user is logged in and on landing page, redirect to shops
-    if (user && location.pathname === '/') {
-      navigate('/shops', { replace: true });
-    }
-  }, [user, location.pathname, navigate]);
+    const target = getLandingRedirect(location.pathname, location.search, Boolean(user));
+    if (target) navigate(target, { replace: true });
+  }, [user, location.pathname, location.search, navigate]);
   
   return null;
 };

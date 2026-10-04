@@ -4,7 +4,7 @@ import * as maplibregl from 'maplibre-gl';
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import {
   getCoffeeShopsByMapBounds,
-  getBrowseCoffeeShopById,
+  getBrowseCoffeeShopBySlug,
   MapShop,
   BrowseCoffeeShopDetails,
 } from '../api/coffeeShops';
@@ -54,7 +54,7 @@ export const BrowseMapPage: React.FC = () => {
     setSelectedDetails(null);
     setIsLoadingDetails(true);
     try {
-      const response = await getBrowseCoffeeShopById(shopId);
+      const response = await getBrowseCoffeeShopBySlug(shopId);
       if (requestId === detailsRequestIdRef.current && response.data) setSelectedDetails(response.data);
     } catch {
       // Details are optional; the panel falls back to the map summary.
@@ -80,7 +80,7 @@ export const BrowseMapPage: React.FC = () => {
       if (!map) return;
       clearMarkers();
       shopsList.forEach((shop) => {
-        if (!shop.latitude || !shop.longitude) return;
+        if (!Number.isFinite(shop.latitude) || !Number.isFinite(shop.longitude)) return;
         const selected = selectedIdRef.current === shop.id;
         const element = coffeeCircleIcon(selected);
         element.title = shop.title;
@@ -190,7 +190,7 @@ export const BrowseMapPage: React.FC = () => {
                     </p>
                   )}
                 </div>
-                <Link to={`/coffee-shops/${selectedShop.id}`}>
+                <Link to={selectedShop.canonicalPath}>
                   <Button variant="primary" size="sm">
                     Открыть
                   </Button>
