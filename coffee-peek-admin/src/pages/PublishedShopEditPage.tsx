@@ -79,7 +79,7 @@ export const PublishedShopEditPage: React.FC = () => {
   const qc = useQueryClient();
   const [ownerInput, setOwnerInput] = useState('');
   const [focus, setFocus] = useState<CoffeeFocus | undefined>();
-  const [selectedTagSlugs, setSelectedTagSlugs] = useState<string[]>([]);
+  const [tagSelection, setTagSelection] = useState<{ shopId: string; slugs: string[] } | null>(null);
   const [schedules, setSchedules] = useState<AdminShopSchedule[]>(getDefaultSchedules());
   const [equipmentIds, setEquipmentIds] = useState<string[]>([]);
   const [beanIds, setBeanIds] = useState<string[]>([]);
@@ -106,11 +106,29 @@ export const PublishedShopEditPage: React.FC = () => {
     },
   });
 
-  const { data: catalogTags = [], isError: catalogTagsError } = useQuery({
+  const { data: catalogTags = [], isPending: catalogTagsLoading, isError: catalogTagsError } = useQuery({
     queryKey: ['catalogs', 'shop-tags'],
     queryFn: () => getShopTags().then((r) => r.data ?? []),
     staleTime: 5 * 60 * 1000,
   });
+
+  const shopTagsAvailable = shop?.tags !== undefined || shop?.tagSlugs !== undefined || shop?.tagIds !== undefined;
+  const selectedTagSlugs = tagSelection && tagSelection.shopId === id ? tagSelection.slugs : [];
+  const tagsReady = Boolean(tagSelection && tagSelection.shopId === id) && !catalogTagsLoading && !catalogTagsError;
+
+  // The tag catalog can arrive after the shop. Initialize separately from the form,
+  // and preserve unsaved selections when photos, owners or other shop data refetch.
+  useEffect(() => {
+    if (!shop || !shopTagsAvailable || catalogTagsLoading || catalogTagsError || tagSelection?.shopId === shop.id) return;
+    const idToSlug = new Map(catalogTags.map((tag) => [tag.id, tag.slug]));
+    const slugs = [
+      ...(shop.tags ?? []).map((tag) => tag.slug).filter(Boolean),
+      ...(shop.tagSlugs ?? []),
+      // Keep unresolved IDs so full-set replacement cannot silently drop a tag.
+      ...(shop.tagIds ?? []).map((tagId) => idToSlug.get(tagId) ?? tagId),
+    ];
+    setTagSelection({ shopId: shop.id, slugs: [...new Set(slugs)] });
+  }, [shop, shopTagsAvailable, catalogTags, catalogTagsLoading, catalogTagsError, tagSelection?.shopId]);
 
   const { data: catalogs, isLoading: catalogsLoading } = useCatalogs();
 
@@ -160,8 +178,6 @@ export const PublishedShopEditPage: React.FC = () => {
     setRoasterIds(shop.roasterIds ?? []);
     setBrewMethodIds(shop.brewMethodIds ?? []);
     setFocus(shop.coffeeFocus);
-    const fromTags = (shop.tags ?? []).map((tag) => tag.slug).filter(Boolean);
-    setSelectedTagSlugs(fromTags.length ? fromTags : shop.tagSlugs ?? []);
   }, [shop, reset]);
 
   const sendSchedules = schedulesTouched || hadSchedules;
@@ -258,7 +274,7 @@ export const PublishedShopEditPage: React.FC = () => {
   const tagsMutation = useMutation({
     mutationFn: async (slugs: string[]) => {
       // PUT replaces the full set: never send a partial list (that would silently drop tags).
-      if (catalogTagsError || catalogTags.length === 0) {
+      if (!tagsReady || catalogTags.length === 0) {
         throw new Error('Каталог тегов не загружен — теги не сохранены');
       }
       const slugToId = new Map(catalogTags.map((tag) => [tag.slug, tag.id]));
@@ -311,7 +327,7 @@ export const PublishedShopEditPage: React.FC = () => {
       showToast(`Максимум ${MAX_SHOP_TAGS} тегов`, 'error');
       return;
     }
-    setSelectedTagSlugs(slugs);
+    if (id) setTagSelection({ shopId: id, slugs });
   };
 
   const tagOptions = useMemo(() => {
@@ -596,15 +612,24 @@ export const PublishedShopEditPage: React.FC = () => {
             <p className="text-xs text-text-muted dark:text-stone-400 font-body mb-3">
               Полная замена набора. Не более {MAX_SHOP_TAGS} штук.
             </p>
+            {catalogTagsLoading ? (
+              <p className="text-xs text-text-muted dark:text-stone-400 font-body mb-3">Загрузка тегов…</p>
+            ) : catalogTagsError || !shopTagsAvailable ? (
+              <p role="alert" className="text-xs text-red-600 dark:text-red-400 font-body mb-3">
+                Не удалось загрузить назначенные теги. Сохранение недоступно.
+              </p>
+            ) : null}
             <CatalogTagChips
               value={selectedTagSlugs}
               onChange={handleTagChange}
               options={tagOptions}
+              disabled={!tagsReady || tagsMutation.isPending}
             />
             <Button
               variant="secondary"
               size="sm"
               loading={tagsMutation.isPending}
+              disabled={!tagsReady || catalogTags.length === 0}
               onClick={() => tagsMutation.mutate(selectedTagSlugs)}
               className="mt-4 w-full sm:w-auto min-h-[44px] sm:min-h-0"
             >

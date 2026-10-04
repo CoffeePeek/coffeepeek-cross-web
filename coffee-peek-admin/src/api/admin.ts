@@ -397,7 +397,8 @@ export interface PublishedShop {
   priceRange?: 1 | 2 | 3 | 4;
   description?: string;
   coffeeFocus?: CoffeeFocus;
-  tagSlugs: string[];
+  tagSlugs?: string[];
+  tagIds?: string[];
   photos: PublishedShopPhoto[];
   tags?: ShopTagDto[];
   /** Admin-only: set when shop came from file ingest. */
@@ -1094,7 +1095,12 @@ export function mapPublishedShop(shop: Record<string, unknown>): PublishedShop {
       ? (shop.tagSlugs as unknown[]).map(String)
       : Array.isArray(shop.TagSlugs)
         ? (shop.TagSlugs as unknown[]).map(String)
-        : [],
+        : undefined,
+    tagIds: Array.isArray(shop.tagIds)
+      ? (shop.tagIds as unknown[]).map(String)
+      : Array.isArray(shop.TagIds)
+        ? (shop.TagIds as unknown[]).map(String)
+        : undefined,
     importedFromFileAt: pickString(shop.importedFromFileAt, shop.ImportedFromFileAt),
     location,
     contacts,
