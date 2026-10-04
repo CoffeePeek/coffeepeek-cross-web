@@ -135,13 +135,7 @@ export const SourceBadge: React.FC<{
   source?: string;
   importedFromFile?: boolean;
 }> = ({ source, importedFromFile }) => {
-  const parsed = parseImportSource(source);
-  const fromFile = importedFromFile || parsed === 'File';
-  if (!fromFile && !parsed && !source) return null;
-  const label = fromFile
-    ? IMPORT_SOURCE_LABELS.File
-    : parsed
-      ? IMPORT_SOURCE_LABELS[parsed]
-      : String(source);
-  return <Badge variant={fromFile ? 'info' : parsed === 'CoffeeMap' ? 'info' : 'default'}>{label}</Badge>;
+  const parsed = importedFromFile ? 'File' : parseImportSource(source);
+  if (!parsed) return null;
+  return <Badge variant={parsed === 'File' ? 'info' : 'default'}>{IMPORT_SOURCE_LABELS[parsed]}</Badge>;
 };

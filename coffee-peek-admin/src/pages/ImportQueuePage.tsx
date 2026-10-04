@@ -26,6 +26,7 @@ import {
   CATALOG_TAG_OPTIONS,
   COFFEE_FOCUS_OPTIONS,
   CoffeeFocus,
+  IMPORT_SOURCE_LABELS,
   IMPORT_QUEUE_PAGE_SIZE,
   QUEUE_STATUS_LABELS,
   REJECT_REASON_LABELS,
@@ -37,26 +38,18 @@ import {
   isClosedPermanently,
   isUsableShopName,
   normalizeInstagramUrl,
+  parseImportSource,
 } from '../constants/catalogIngest';
 import {
-  YANDEX_TO_OURS,
-  clientSuggestedTags,
   displayFacts,
   dossierSoftWarning,
   parseWorkspacePanel,
-  recheckReason,
   safeHttpUrl,
   suggestedFocusFromSignals,
-  yandexChipApplies,
 } from '../utils/importDossier';
+import { formatImportOpeningHours } from '../utils/importOpeningHours';
 import { ImportInboxPage } from './ImportInboxPage';
 import { ImportStatsPage } from './ImportStatsPage';
-
-function openBlank(url?: string) {
-  const safe = safeHttpUrl(url);
-  if (!safe) return;
-  window.open(safe, '_blank', 'noopener,noreferrer');
-}
 
 type DecideStatus = 'Published' | 'Rejected' | 'Skipped';
 interface DecideVars {
@@ -88,10 +81,7 @@ export const ImportQueuePage: React.FC = () => {
   const { showToast } = useToast();
   const qc = useQueryClient();
   const isDesktop = useMediaQuery('(min-width: 1024px)');
-  const igInputRef = useRef<HTMLInputElement>(null);
-
   const panel = parseWorkspacePanel(searchParams.get('panel'));
-  const verification = searchParams.get('verification') === 'needs-recheck' ? 'needs-recheck' : undefined;
   const queuePage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const [queueOpen, setQueueOpen] = useState(false);
   const [focus, setFocus] = useState<CoffeeFocus | undefined>();
@@ -109,13 +99,12 @@ export const ImportQueuePage: React.FC = () => {
   idRef.current = id;
 
   const queueQuery = useQuery({
-    queryKey: ['admin', 'import', 'queue', verification, queuePage],
+    queryKey: ['admin', 'import', 'queue', queuePage],
     queryFn: () =>
       getImportCandidates({
         status: 'Pending',
         page: queuePage,
         pageSize: IMPORT_QUEUE_PAGE_SIZE,
-        verification,
       }).then((r) => r.data),
   });
 
@@ -141,8 +130,6 @@ export const ImportQueuePage: React.FC = () => {
       .map((tag) => ({ slug: tag.slug, label: catalogTagLabel(tag.slug, tag.name) }));
     return fromApi.length > 0 ? fromApi : CATALOG_TAG_OPTIONS;
   }, [tagsQuery.data]);
-  const catalogSlugs = useMemo(() => new Set(tagOptions.map((t) => t.slug)), [tagOptions]);
-
   const queueItems = queueQuery.data?.items ?? [];
   const candidateFromQueue = queueItems.find((item) => item.id === id);
   const candidate = candidateQuery.data ?? candidateFromQueue;
@@ -221,7 +208,6 @@ export const ImportQueuePage: React.FC = () => {
           status: 'Pending',
           page: page + 1,
           pageSize: IMPORT_QUEUE_PAGE_SIZE,
-          verification,
         });
       } catch (err) {
         showToast(
@@ -254,7 +240,7 @@ export const ImportQueuePage: React.FC = () => {
       }),
     onMutate: async ({ candidateId, page }) => {
       await qc.cancelQueries({ queryKey: ['admin', 'import', 'queue'] });
-      const key = ['admin', 'import', 'queue', verification, page] as const;
+      const key = ['admin', 'import', 'queue', page] as const;
       const previous = qc.getQueryData<ImportCandidatesPage>(key);
       const index = previous?.items.findIndex((item) => item.id === candidateId) ?? -1;
       const remaining = previous?.items.filter((item) => item.id !== candidateId) ?? [];
@@ -290,7 +276,7 @@ export const ImportQueuePage: React.FC = () => {
     },
     onError: (err: { message?: string }, { page }, ctx) => {
       if (ctx?.previous) {
-        qc.setQueryData(['admin', 'import', 'queue', verification, page], ctx.previous);
+        qc.setQueryData(['admin', 'import', 'queue', page], ctx.previous);
       }
       showToast(err?.message ?? 'Ошибка решения', 'error');
     },
@@ -315,11 +301,15 @@ export const ImportQueuePage: React.FC = () => {
     website?: string;
   }): Promise<'saved' | 'missing' | 'error'> => {
     if (!id) return 'error';
-    if (patchAvailable === false) return 'missing';
+    if (patchAvailable === false) {
+      showToast('Сохранение контактов недоступно', 'error');
+      return 'missing';
+    }
     try {
       const result = await patchImportCandidate(id, fields);
       if (result.patchMissing) {
         setPatchAvailable(false);
+        showToast('Сохранение контактов недоступно', 'error');
         return 'missing';
       }
       setPatchAvailable(true);
@@ -337,11 +327,12 @@ export const ImportQueuePage: React.FC = () => {
       showToast('Вставь instagram.com/… или @handle', 'error');
       return;
     }
-    setInstagramDraft(normalized);
-    setIgPaste('');
     const result = await tryPatchContacts({ instagram: normalized });
-    if (result === 'saved') showToast('Instagram сохранён', 'success');
-    else if (result === 'missing') showToast('Instagram только локально — PATCH контактов ещё нет на бэке', 'info');
+    if (result === 'saved') {
+      setInstagramDraft(normalized);
+      setIgPaste('');
+      showToast('Instagram сохранён', 'success');
+    }
   };
 
   useEffect(() => {
@@ -390,91 +381,10 @@ export const ImportQueuePage: React.FC = () => {
   });
 
   const title = candidate ? displayShopName(candidate.name, candidate.brand) : '';
+  const source = parseImportSource(candidate?.source);
   const facts = candidate ? displayFacts(candidate) : [];
-  const verificationNote = candidate ? recheckReason(candidate.signals) : undefined;
   const softWarning = candidate ? dossierSoftWarning(candidate) : undefined;
-  const suggested = candidate
-    ? clientSuggestedTags(candidate).filter(
-        (tag) => catalogSlugs.has(tag.slug) && !tagSlugs.includes(tag.slug)
-      )
-    : [];
   const queuePosition = currentIndex >= 0 ? (queuePage - 1) * IMPORT_QUEUE_PAGE_SIZE + currentIndex + 1 : '—';
-
-  const addTag = (slug: string) => {
-    if (!catalogSlugs.has(slug) || tagSlugs.includes(slug)) return;
-    setTagSlugs((current) => [...current, slug]);
-  };
-
-  const applyYandexChip = (chip: (typeof YANDEX_TO_OURS)[number]) => {
-    const check = yandexChipApplies(chip, catalogSlugs);
-    if (!check.enabled) return;
-    if (chip.focus) {
-      setFocus(chip.focus);
-    }
-    if (chip.slug) addTag(chip.slug);
-  };
-
-  const runGap = (gap: 'ig' | 'phone' | 'site' | 'photo' | 'hours' | 'here') => {
-    if (!candidate) return;
-    if (gap === 'ig' && !igHandle) {
-      igInputRef.current?.focus();
-      openBlank(candidate.research.yandexMaps);
-      showToast('Яндекс «что здесь» — копируй Instagram с карточки org', 'info');
-      return;
-    }
-    if (gap === 'phone' || gap === 'site') {
-      openBlank(candidate.research.yandexMaps);
-      showToast('Скопируй с карточки org, впиши у нас', 'info');
-      return;
-    }
-    if (gap === 'photo') {
-      if (igHandle) openBlank(instagram);
-      else showToast('Google Photos нет, брать из Instagram', 'info');
-      return;
-    }
-    if (gap === 'hours') {
-      openBlank(candidate.research.yandexMaps);
-      return;
-    }
-    if (gap === 'here') {
-      setPanel('map');
-      showToast('Карта — сверь вывеску', 'info');
-    }
-  };
-
-  const gaps: { id: 'ig' | 'phone' | 'site' | 'photo' | 'hours' | 'here'; title: string; ok: boolean; val: string }[] = [
-    {
-      id: 'ig',
-      title: 'Instagram',
-      ok: Boolean(igHandle),
-      val: igHandle ? `@${igHandle}` : 'нет URL — часто в карточке Яндекса',
-    },
-    {
-      id: 'phone',
-      title: 'Телефон',
-      ok: Boolean(phone.trim()),
-      val: phone.trim() || 'скопируй с карточки org, впиши у нас',
-    },
-    {
-      id: 'site',
-      title: 'Сайт',
-      ok: Boolean(website.trim()),
-      val: website.trim() || 'скопируй с карточки org, впиши у нас',
-    },
-    {
-      id: 'photo',
-      title: 'Фото в каталог',
-      ok: false,
-      val: igHandle ? 'взять из Instagram' : 'Google Photos нет, брать из IG',
-    },
-    {
-      id: 'hours',
-      title: 'Часы',
-      ok: Boolean(candidate?.openingHours),
-      val: candidate?.openingHours || 'нет',
-    },
-    { id: 'here', title: 'Это это здание?', ok: true, val: 'смотри карту' },
-  ];
 
   const PANEL_TABS = [
     { id: 'map' as const, label: 'Карта' },
@@ -540,9 +450,11 @@ export const ImportQueuePage: React.FC = () => {
             <span className="text-sm text-text-muted tabular-nums sm:hidden">
               {queuePosition}/{totalCount}
             </span>
-            <span className="text-[11px] px-2.5 py-1 rounded-full bg-background-light dark:bg-white/10 text-text-muted font-medium">
-              {String(candidate.source)}
-            </span>
+            {source && (
+              <span className="text-[11px] px-2.5 py-1 rounded-full bg-background-light dark:bg-white/10 text-text-muted font-medium">
+                {IMPORT_SOURCE_LABELS[source]}
+              </span>
+            )}
             <span className="text-[11px] px-2.5 py-1 rounded-full bg-primary text-black font-semibold">
               {QUEUE_STATUS_LABELS[candidate.queueStatus]}
             </span>
@@ -572,7 +484,7 @@ export const ImportQueuePage: React.FC = () => {
           <div className="flex-1 overflow-y-auto px-[18px] pt-[18px] pb-3 space-y-4 font-body">
             <div>
               <p className="text-[11px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">
-                кандидат · {String(candidate.source)}
+                кандидат{source ? ` · ${IMPORT_SOURCE_LABELS[source]}` : ''}
               </p>
               <h1 className="text-[24px] font-bold font-display text-text-main dark:text-white leading-[1.15] tracking-tight">
                 {title}
@@ -580,15 +492,9 @@ export const ImportQueuePage: React.FC = () => {
               {candidate.address && (
                 <p className="text-sm text-text-muted mt-1.5">{candidate.address}</p>
               )}
-              {verificationNote && (
-                <p className="mt-2 rounded-[10px] border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-                  Нужно перепроверить: {verificationNote}
-                </p>
-              )}
               {candidate.openingHours && (
-                <p className="text-sm mt-2.5 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-700 dark:bg-emerald-400" />
-                  {candidate.openingHours}
+                <p className="text-sm mt-2.5 whitespace-pre-line">
+                  {formatImportOpeningHours(candidate.openingHours)}
                 </p>
               )}
               <div className="flex flex-wrap gap-1.5 mt-3">
@@ -625,7 +531,6 @@ export const ImportQueuePage: React.FC = () => {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold truncate">@{igHandle}</p>
-                      <p className="text-[11px] text-text-muted">карточка Instagram · не поиск по имени</p>
                     </div>
                     <a
                       href={normalizeInstagramUrl(instagram)}
@@ -639,12 +544,9 @@ export const ImportQueuePage: React.FC = () => {
                 </div>
               ) : (
                 <div className="rounded-[10px] border border-dashed border-border-light dark:border-border-dark bg-background-light dark:bg-white/5 p-3 space-y-2">
-                  <p className="text-sm text-text-muted">
-                    В импорте нет Instagram. Не ищем «{title} Минск». Вставь URL с карточки Яндекса или с сайта.
-                  </p>
                   <div className="flex gap-1.5">
                     <Input
-                      ref={igInputRef}
+                      aria-label="Instagram"
                       value={igPaste}
                       onChange={(e) => setIgPaste(e.target.value)}
                       onKeyDown={(e) => {
@@ -657,7 +559,7 @@ export const ImportQueuePage: React.FC = () => {
                       className="flex-1"
                     />
                     <Button variant="secondary" size="sm" onClick={() => void applyInstagram()}>
-                      Вставить
+                      Сохранить
                     </Button>
                   </div>
                 </div>
@@ -665,121 +567,37 @@ export const ImportQueuePage: React.FC = () => {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold mb-1">Ещё найти</h2>
-              <p className="text-[11px] text-text-muted font-medium mb-2">
-                Кликни строку — откроется, где это обычно лежит
-              </p>
-              <div className="flex flex-col gap-1">
-                {gaps.map((gap) => (
-                  <button
-                    key={gap.id}
-                    type="button"
-                    onClick={() => runGap(gap.id)}
-                    className={[
-                      'flex items-center gap-2 w-full rounded-md px-2.5 py-2 text-left transition-colors',
-                      'border border-border-light dark:border-border-dark hover:bg-background-light dark:hover:bg-white/5',
-                      gap.ok ? '' : 'border-dashed',
-                    ].join(' ')}
-                  >
-                    <span
-                      className={[
-                        'w-4 h-4 rounded-[4px] border-[1.5px] shrink-0',
-                        gap.ok
-                          ? 'bg-emerald-700 border-emerald-700 dark:bg-emerald-500 dark:border-emerald-500'
-                          : 'border-border-light dark:border-stone-500 bg-transparent',
-                      ].join(' ')}
-                    />
-                    <span className="text-sm font-semibold shrink-0">{gap.title}</span>
-                    <span className="text-[11px] text-text-muted ml-auto text-right min-w-0 truncate">
-                      {gap.val}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              {(!candidate.phone || !candidate.website) && (
-                <div className="mt-2 grid gap-1.5">
-                  {!candidate.phone && (
-                    <Input
-                      value={phoneDraft}
-                      onChange={(e) => setPhoneDraft(e.target.value)}
-                      onBlur={() => phoneDraft.trim() && void tryPatchContacts({ phone: phoneDraft.trim() })}
-                      placeholder="Вписать телефон с карточки Яндекса"
-
-                    />
-                  )}
-                  {!candidate.website && (
-                    <Input
-                      value={websiteDraft}
-                      onChange={(e) => setWebsiteDraft(e.target.value)}
-                      onBlur={() =>
-                        websiteDraft.trim() && void tryPatchContacts({ website: websiteDraft.trim() })
-                      }
-                      placeholder="Вписать сайт"
-
-                    />
-                  )}
-                </div>
-              )}
-              <p className="text-[11px] text-text-muted mt-2">
-                На decide уходят фокус и теги. Контакты без PATCH в каталог не попадут.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-sm font-semibold mb-1">Теги с Яндекса</h2>
-              <p className="text-[11px] text-text-muted font-medium mb-2">
-                Категории с карточки org. Не пишем в БД сами — ты подтверждаешь наши slug.
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {YANDEX_TO_OURS.map((chip) => {
-                  const check = yandexChipApplies(chip, catalogSlugs);
-                  const taken =
-                    (chip.slug && tagSlugs.includes(chip.slug)) ||
-                    (chip.focus && !chip.slug && focus === chip.focus);
-                  if (taken) return null;
-                  return (
-                    <button
-                      key={chip.label}
-                      type="button"
-                      disabled={!check.enabled || Boolean(decided)}
-                      onClick={() => applyYandexChip(chip)}
-                      className="inline-flex items-center rounded-full px-2.5 py-1.5 text-[13px] font-medium bg-primary/80 hover:bg-primary text-black disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {chip.label}
-                      <span className="text-[10px] opacity-70 ml-1">
-                        {chip.slug
-                          ? `→ ${catalogTagLabel(chip.slug)}`
-                          : chip.focus
-                            ? `→ ${chip.focus === 'specialty' ? 'Specialty' : chip.focus === 'coffee_bar' ? 'Coffee bar' : 'Cafe'}`
-                            : check.reason}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
-              <h2 className="text-sm font-semibold mb-1">Предлагаемые теги</h2>
-              <p className="text-[11px] text-text-muted font-medium mb-2">
-                Из OSM / CoffeeMap / имени. Кликни — попадёт в набор.
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {suggested.length === 0 && (
-                  <span className="text-[11px] text-text-muted">Нечего предлагать</span>
+              <h2 className="text-sm font-semibold mb-2">Контакты</h2>
+              <div className="grid gap-1.5">
+                {candidate.phone ? (
+                  <p className="text-sm">{phone}</p>
+                ) : (
+                  <Input
+                    aria-label="Телефон"
+                    value={phoneDraft}
+                    onChange={(e) => setPhoneDraft(e.target.value)}
+                    onBlur={() => phoneDraft.trim() && void tryPatchContacts({ phone: phoneDraft.trim() })}
+                    placeholder="Телефон"
+                  />
                 )}
-                {suggested.map((tag) => (
-                  <button
-                    key={tag.slug}
-                    type="button"
-                    disabled={Boolean(decided)}
-                    onClick={() => addTag(tag.slug)}
-                    className="inline-flex items-center rounded-full px-2.5 py-1.5 text-[13px] font-medium bg-sky-50 dark:bg-sky-500/10 text-sky-800 dark:text-sky-200 hover:bg-sky-100 dark:hover:bg-sky-500/20"
+                {candidate.website ? (
+                  <a
+                    href={safeHttpUrl(website)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-primary break-all"
                   >
-                    {catalogTagLabel(tag.slug)}
-                    {tag.why && <span className="text-[10px] opacity-70 ml-1">{tag.why}</span>}
-                  </button>
-                ))}
+                    {website}
+                  </a>
+                ) : (
+                  <Input
+                    aria-label="Сайт"
+                    value={websiteDraft}
+                    onChange={(e) => setWebsiteDraft(e.target.value)}
+                    onBlur={() => websiteDraft.trim() && void tryPatchContacts({ website: websiteDraft.trim() })}
+                    placeholder="Сайт"
+                  />
+                )}
               </div>
             </div>
 
@@ -848,36 +666,6 @@ export const ImportQueuePage: React.FC = () => {
               />
             )}
 
-            <div>
-              <h2 className="text-sm font-semibold mb-2">Исследовать точку</h2>
-              <div className="flex flex-wrap gap-1.5">
-                {candidate.research.yandexMaps && (
-                  <a
-                    href={safeHttpUrl(candidate.research.yandexMaps)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={pillOff}
-                  >
-                    Яндекс · что здесь
-                  </a>
-                )}
-                {candidate.research.googleMaps && (
-                  <a href={safeHttpUrl(candidate.research.googleMaps)} target="_blank" rel="noopener noreferrer" className={pillOff}>
-                    Google · пин
-                  </a>
-                )}
-                {candidate.research.osmHistory && (
-                  <a
-                    href={safeHttpUrl(candidate.research.osmHistory)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={pillOff}
-                  >
-                    OSM history
-                  </a>
-                )}
-              </div>
-            </div>
           </div>
 
           <div className="shrink-0 p-3 pb-4 border-t border-border-light dark:border-border-dark bg-white dark:bg-surface-dark grid grid-cols-2 gap-2">

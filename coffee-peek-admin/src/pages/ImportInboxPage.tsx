@@ -18,7 +18,6 @@ import {
   SourceBadge,
 } from '../components/import/catalogControls';
 import { useToast } from '../contexts/ToastContext';
-import { COFFEEMAP_RECHECK_SIGNAL, recheckReason } from '../utils/importDossier';
 import { useLoadMoreOnScroll } from '../hooks/useLoadMoreOnScroll';
 import {
   BUCKET_LABELS,
@@ -145,7 +144,6 @@ export const ImportInboxPage: React.FC<{
   const [searchParams, setSearchParams] = useSearchParams();
   const { status, bucket, focus, search, hasAddress, rejectReason, source } =
     parseImportListSearch(searchParams);
-  const verification = searchParams.get('verification') === 'needs-recheck' ? 'needs-recheck' : 'all';
   const sortKey = (searchParams.get('sort') ?? '') as SortKey | '';
   const sortDir = (searchParams.get('dir') === 'desc' ? 'desc' : 'asc') as SortDir;
   const [localSearch, setLocalSearch] = useState(search);
@@ -169,7 +167,7 @@ export const ImportInboxPage: React.FC<{
         'admin',
         'import',
         'inbox',
-        { status, bucket, focus, search, hasAddress, rejectReason, source, verification },
+        { status, bucket, focus, search, hasAddress, rejectReason, source },
       ],
       initialPageParam: 1,
       staleTime: 0,
@@ -182,7 +180,6 @@ export const ImportInboxPage: React.FC<{
           hasAddress: hasAddress || undefined,
           rejectReason: rejectReason || undefined,
           source: (source as ImportSource) || undefined,
-          verification: verification === 'needs-recheck' ? verification : undefined,
           page: pageParam,
           pageSize: PAGE_SIZE,
         }).then((r) => r.data),
@@ -287,7 +284,7 @@ export const ImportInboxPage: React.FC<{
     setBatchModal(null);
     setBatchFocus(undefined);
     setConfirmPublishClosed(false);
-  }, [status, bucket, focus, search, hasAddress, rejectReason, source, verification]);
+  }, [status, bucket, focus, search, hasAddress, rejectReason, source]);
 
   const onSort = (column: SortKey) => {
     if (sortKey === column) {
@@ -424,10 +421,9 @@ export const ImportInboxPage: React.FC<{
     },
     {
       accessorKey: 'name',
-      header: () => <div className="flex min-w-52 flex-col gap-1.5"><SortButton label="Название" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><Input value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Название, адрес..." className="h-8 text-xs" /><NativeSelect value={source} onChange={(event) => patchParams({ source: event.target.value })} className={headerControl} aria-label="Источник"><option value="">Все источники</option><option value="File">Из файла</option><option value="Osm">OSM</option><option value="CoffeeMap">CoffeeMap</option></NativeSelect></div>,
+      header: () => <div className="flex min-w-52 flex-col gap-1.5"><SortButton label="Название" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><Input value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Название, адрес..." className="h-8 text-xs" /><NativeSelect value={source} onChange={(event) => patchParams({ source: event.target.value })} className={headerControl} aria-label="Источник"><option value="">Все источники</option><option value="File">Из файла</option><option value="Osm">OSM</option></NativeSelect></div>,
       cell: ({ row }) => {
         const candidate = row.original;
-        const reason = recheckReason(candidate.signals);
         const candidateSearch = new URLSearchParams(searchParams);
         candidateSearch.set('panel', 'list');
         return (
@@ -441,14 +437,8 @@ export const ImportInboxPage: React.FC<{
                 {displayShopName(candidate.name, candidate.brand)}
               </Link>
               <SourceBadge source={String(candidate.source)} importedFromFile={candidate.importedFromFile} />
-              {candidate.signals.includes(COFFEEMAP_RECHECK_SIGNAL) && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-200">
-                  Нужно перепроверить
-                </span>
-              )}
             </div>
             {candidate.address && <p className="max-w-xs truncate text-xs text-text-muted dark:text-stone-500">{candidate.address}</p>}
-            {reason && <p className="max-w-xs text-xs text-amber-800 dark:text-amber-200">{reason}</p>}
           </div>
         );
       },
@@ -488,21 +478,12 @@ export const ImportInboxPage: React.FC<{
     <div className="h-full min-h-0 flex flex-col overflow-hidden">
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm font-body text-text-main dark:text-white">
         <p className="tabular-nums">В выборке: <span className="font-semibold">{totalInFilter != null ? totalInFilter : loadedCount}</span></p>
-        <NativeSelect
-          value={verification}
-          onChange={(event) => patchParams({ verification: event.target.value === 'all' ? '' : event.target.value, bucket: 'all', status: 'Pending', source: event.target.value === 'all' ? source : 'CoffeeMap' })}
-          className="h-8 min-w-[11rem] text-xs"
-          aria-label="Интернет-проверка"
-        >
-          <option value="all">Все кандидаты</option>
-          <option value="needs-recheck">Нужно перепроверить</option>
-        </NativeSelect>
       </div>
 
       <Card className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {isError && !isFetchNextPageError && (
           <p className="p-6 text-sm text-red-600 dark:text-red-400">
-            Не удалось загрузить список. Проверьте, что backend import API уже выкатили.
+            Не удалось загрузить список.
           </p>
         )}
         <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto">

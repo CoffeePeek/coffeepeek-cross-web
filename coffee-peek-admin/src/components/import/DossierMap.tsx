@@ -26,12 +26,6 @@ export const DossierMap: React.FC<DossierMapProps> = ({ candidate }) => {
           {candidate ? 'Нет координат для карты' : 'Выберите точку из списка'}
         </div>
       )}
-      {candidate && (
-        <p className="absolute bottom-3 left-3 z-10 max-w-[420px] rounded-[10px] bg-[rgba(28,24,20,0.88)] text-[#fffdf8] text-xs px-3 py-2 leading-snug font-body">
-          Это <strong className="text-primary font-semibold">точка на карте</strong>. На виджете видны
-          организации в доме — сверь с названием справа.
-        </p>
-      )}
     </section>
   );
 };

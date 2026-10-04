@@ -3,7 +3,7 @@ import {
   coordPair,
   looksLikeNameSearch,
 } from '../constants/catalogIngest';
-import type { ImportCandidate, SuggestedTag } from '../api/import';
+import type { ImportCandidate } from '../api/import';
 
 export type WorkspacePanel = 'map' | 'list' | 'stats';
 
@@ -12,37 +12,8 @@ export function parseWorkspacePanel(raw: string | null): WorkspacePanel {
   return 'map';
 }
 
-export const YANDEX_TO_OURS: { label: string; slug?: string; focus?: CoffeeFocus }[] = [
-  { label: 'кофейня', focus: 'cafe' },
-  { label: 'кафе', focus: 'cafe' },
-  { label: 'Wi-Fi', slug: 'laptop_friendly' },
-  { label: 'можно с ноутбуком', slug: 'laptop_friendly' },
-  { label: 'завтраки', slug: 'breakfast' },
-  { label: 'кондитерская', slug: 'bakery' },
-  { label: 'с собой', slug: 'to_go' },
-  { label: 'обжарка', slug: 'roastery' },
-  { label: 'спешелти', focus: 'specialty' },
-];
-
 export function hasSignal(signals: string[], ...needles: string[]): boolean {
   return needles.some((needle) => signals.includes(needle));
-}
-
-export const COFFEEMAP_RECHECK_SIGNAL = 'coffeemap:verification=needs-recheck';
-
-const RECHECK_REASON_LABELS: Record<string, string> = {
-  'missing-address': 'Уточнить улицу, дом и вход',
-  'verify-address': 'Сверить адрес и корпус',
-  'verify-name-type': 'Сверить название и формат заведения',
-  'listing-without-address': 'Найти карточку с точным адресом',
-  'insufficient-evidence': 'Найти актуальное независимое подтверждение',
-};
-
-export function recheckReason(signals: string[]): string | undefined {
-  if (!signals.includes(COFFEEMAP_RECHECK_SIGNAL)) return undefined;
-  const code = signals.find((s) => s.startsWith('coffeemap:recheck-reason='))
-    ?.slice('coffeemap:recheck-reason='.length);
-  return RECHECK_REASON_LABELS[code ?? ''] ?? 'Перепроверить данные кофейни';
 }
 
 export function displayFacts(candidate: ImportCandidate): string[] {
@@ -50,10 +21,6 @@ export function displayFacts(candidate: ImportCandidate): string[] {
 
   const facts: string[] = [];
   for (const signal of candidate.signals) {
-    if (signal.startsWith('coffeemap:google-rating=')) {
-      facts.push(`Рейтинг Google ${signal.slice('coffeemap:google-rating='.length)}`);
-      continue;
-    }
     if (signal === 'name:to-go-chain' || signal === 'name:chain') facts.push('Похоже на сеть');
     else if (signal === 'osm:vending_machine' || signal === 'name:vending-like') {
       facts.push('Похоже на автомат');
@@ -61,25 +28,6 @@ export function displayFacts(candidate: ImportCandidate): string[] {
     else if (signal === 'name:specialty-signal') facts.push('Похоже на specialty');
   }
   return facts;
-}
-
-export function clientSuggestedTags(candidate: ImportCandidate): SuggestedTag[] {
-  if (candidate.suggestedTags && candidate.suggestedTags.length > 0) {
-    return candidate.suggestedTags;
-  }
-
-  const out: SuggestedTag[] = [];
-  const seen = new Set<string>();
-  const add = (slug: string, why: string) => {
-    if (seen.has(slug)) return;
-    seen.add(slug);
-    out.push({ slug, why });
-  };
-
-  if (hasSignal(candidate.signals, 'name:specialty-signal')) add('specialty', 'из имени');
-  if (hasSignal(candidate.signals, 'name:to-go-chain')) add('to_go', 'сеть с собой');
-  if (/bakery|pastry|dessert/i.test(candidate.cuisine ?? '')) add('bakery', 'кухня');
-  return out;
 }
 
 export function suggestedFocusFromSignals(candidate: ImportCandidate): CoffeeFocus | undefined {
@@ -90,13 +38,6 @@ export function suggestedFocusFromSignals(candidate: ImportCandidate): CoffeeFoc
 }
 
 export function dossierSoftWarning(candidate: ImportCandidate): string | undefined {
-  const ratingRaw = candidate.signals.find((s) => s.startsWith('coffeemap:google-rating='));
-  if (ratingRaw) {
-    const rating = Number(ratingRaw.slice('coffeemap:google-rating='.length));
-    if (Number.isFinite(rating) && rating > 0 && rating <= 3.2) {
-      return 'Низкий рейтинг — сверь, что это кофейня, а не столовая';
-    }
-  }
   if (hasSignal(candidate.signals, 'name:canteen')) {
     return 'Похоже на столовую — сверь вывеску с названием';
   }
@@ -136,35 +77,8 @@ export function mapTabSrc(candidate: ImportCandidate): { embed: string; openUrl:
   };
 }
 
-export function parseSuggestedTags(value: unknown): SuggestedTag[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const tags = value
-    .map((item) => {
-      if (!item || typeof item !== 'object') return null;
-      const row = item as Record<string, unknown>;
-      const slug = String(row.slug ?? row.Slug ?? '').trim();
-      if (!slug) return null;
-      return { slug, why: String(row.why ?? row.Why ?? row.reason ?? '') };
-    })
-    .filter((item): item is SuggestedTag => Boolean(item));
-  return tags.length > 0 ? tags : undefined;
-}
-
 export function parseFacts(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const facts = value.map((item) => String(item)).filter(Boolean);
   return facts.length > 0 ? facts : undefined;
-}
-
-export function yandexChipApplies(
-  chip: (typeof YANDEX_TO_OURS)[number],
-  catalogSlugs: Set<string>
-): { enabled: boolean; reason?: string } {
-  if (chip.slug && !catalogSlugs.has(chip.slug)) {
-    return { enabled: false, reason: 'нет в каталоге' };
-  }
-  if (!chip.slug && !chip.focus) {
-    return { enabled: false, reason: 'нет в каталоге' };
-  }
-  return { enabled: true };
 }

@@ -162,7 +162,7 @@ export const ImportDuplicatesPage: React.FC = () => {
         </p>
       )}
 
-      <Card><DataTable columns={columns} data={items} loading={isLoading} emptyText="Похожих пар нет. После загрузки JSON нажмите «Найти похожие»." getRowId={(item) => item.id} /></Card>
+      <Card><DataTable columns={columns} data={items} loading={isLoading} emptyText="Похожих пар нет." getRowId={(item) => item.id} /></Card>
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );

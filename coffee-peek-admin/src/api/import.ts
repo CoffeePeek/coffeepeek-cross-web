@@ -25,7 +25,7 @@ import {
   parseImportSource,
   parseRejectReason,
 } from '../constants/catalogIngest';
-import { parseFacts, parseSuggestedTags, safeHttpUrl } from '../utils/importDossier';
+import { parseFacts, safeHttpUrl } from '../utils/importDossier';
 import {
   AttachMenuPhotosRequest,
   ShopMenuDto,
@@ -44,14 +44,9 @@ export interface ResearchLinks {
   streetView?: string;
 }
 
-export interface SuggestedTag {
-  slug: string;
-  why: string;
-}
-
 export interface ImportCandidate {
   id: string;
-  source: ImportSource | string;
+  source: ImportSource | 'Unknown';
   externalId: string;
   name?: string;
   brand?: string;
@@ -83,7 +78,6 @@ export interface ImportCandidate {
   resultingShopId?: string;
   research: ResearchLinks;
   facts?: string[];
-  suggestedTags?: SuggestedTag[];
   menu?: ShopMenuDto | null;
 }
 
@@ -96,7 +90,6 @@ export interface ImportCandidatesQuery {
   hasAddress?: boolean;
   rejectReason?: RejectReason;
   source?: ImportSource;
-  verification?: 'needs-recheck';
   page?: number;
   pageSize?: number;
 }
@@ -130,7 +123,7 @@ export interface DecideCandidateRequest {
 
 export interface DuplicateCandidateSide {
   id: string;
-  source: ImportSource | string;
+  source: ImportSource | 'Unknown';
   name?: string;
   address?: string;
   latitude?: number;
@@ -231,8 +224,7 @@ export function mapImportCandidate(rawInput: Record<string, unknown>): ImportCan
   const googleMapsUri = safeHttpUrl(asString(pick(raw, 'googleMapsUri', 'GoogleMapsUri')));
   const source =
     parseImportSource(pick(raw, 'source', 'Source')) ??
-    asString(pick(raw, 'source', 'Source')) ??
-    'Osm';
+    'Unknown';
   const apiLinks = asRecord(pick(raw, 'research', 'researchLinks', 'ResearchLinks'));
   const fallback = fallbackResearchLinks({
     name,
@@ -300,7 +292,6 @@ export function mapImportCandidate(rawInput: Record<string, unknown>): ImportCan
       streetView: pickLink('streetView', 'StreetView') ?? fallback.streetView,
     },
     facts: parseFacts(pick(raw, 'facts', 'Facts')),
-    suggestedTags: parseSuggestedTags(pick(raw, 'suggestedTags', 'SuggestedTags')),
     menu: mapShopMenu(pick(raw, 'menu', 'Menu') ?? (pick(raw, 'parseStatus', 'ParseStatus', 'items', 'Items') ? raw : undefined)),
   };
 }
@@ -351,10 +342,7 @@ export async function getImportCandidates(
 ): Promise<ApiResponse<ImportCandidatesPage>> {
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;
-  const endpoint = params.verification === 'needs-recheck'
-    ? API_ENDPOINTS.ADMIN.IMPORT_RECHECK_CANDIDATES
-    : API_ENDPOINTS.ADMIN.IMPORT_CANDIDATES;
-  const response = await httpClient.get<unknown>(endpoint, {
+  const response = await httpClient.get<unknown>(API_ENDPOINTS.ADMIN.IMPORT_CANDIDATES, {
     params: {
       status: params.status !== undefined ? QUEUE_STATUS_TO_API[params.status] : undefined,
       bucket: params.bucket !== undefined ? BUCKET_TO_API[params.bucket] : undefined,
@@ -491,44 +479,11 @@ export async function refreshOsmImport(): Promise<ApiResponse<unknown>> {
   return httpClient.post(API_ENDPOINTS.ADMIN.IMPORT_OSM_REFRESH);
 }
 
-export async function applyImportDecisions(json: unknown): Promise<ApiResponse<unknown>> {
-  return httpClient.post(API_ENDPOINTS.ADMIN.IMPORT_DECISIONS, json);
-}
-
-export interface IngestImportFileResult {
-  parsed: number;
-  inserted: number;
-  enriched: number;
-  unchanged: number;
-  invalid: number;
-  suggestedDuplicates: number;
-}
-
-export async function ingestImportFile(json: unknown): Promise<ApiResponse<IngestImportFileResult>> {
-  const response = await httpClient.post<Record<string, unknown>>(API_ENDPOINTS.ADMIN.IMPORT_FILE, json);
-  const raw = asRecord(response.data);
-
-  return {
-    ...response,
-    data: {
-      parsed: Number(pick(raw, 'parsed', 'Parsed') ?? 0),
-      inserted: Number(pick(raw, 'inserted', 'Inserted') ?? 0),
-      enriched: Number(pick(raw, 'enriched', 'Enriched') ?? 0),
-      unchanged: Number(pick(raw, 'unchanged', 'Unchanged') ?? 0),
-      invalid: Number(pick(raw, 'invalid', 'Invalid') ?? 0),
-      suggestedDuplicates: Number(
-        pick(raw, 'suggestedDuplicates', 'SuggestedDuplicates') ?? 0
-      ),
-    },
-  };
-}
-
 function mapDuplicateSide(rawInput: unknown): DuplicateCandidateSide {
   const raw = asRecord(rawInput);
   const source =
     parseImportSource(pick(raw, 'source', 'Source')) ??
-    asString(pick(raw, 'source', 'Source')) ??
-    'Osm';
+    'Unknown';
   return {
     id: String(pick(raw, 'id', 'Id') ?? ''),
     source,

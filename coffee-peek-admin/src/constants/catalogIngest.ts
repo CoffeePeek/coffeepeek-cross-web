@@ -5,7 +5,7 @@ export type CoffeeFocus = 'specialty' | 'coffee_bar' | 'cafe';
 export type CollectorBucket = 'priority' | 'review' | 'noise' | 'vending';
 /** Why an OSM candidate was rejected (not published). */
 export type RejectReason = 'closed' | 'invalid' | 'not_coffee' | 'duplicate';
-export type ImportSource = 'Osm' | 'File' | 'CoffeeMap';
+export type ImportSource = 'Osm' | 'File';
 export type DuplicateSuggestionStatus = 'Pending' | 'Confirmed' | 'Rejected' | 'Unknown';
 export type GoogleBusinessStatus =
   | 'Unknown'
@@ -52,14 +52,12 @@ export const REJECT_REASON_TO_API: Record<RejectReason, number> = {
 export const IMPORT_SOURCE_LABELS: Record<ImportSource, string> = {
   Osm: 'OSM',
   File: 'файл',
-  CoffeeMap: 'CoffeeMap',
 };
 
-/** Backend: Osm=1, File=2, CoffeeMap=3. */
+/** Backend: Osm=1, File=2. */
 export const IMPORT_SOURCE_TO_API: Record<ImportSource, number> = {
   Osm: 1,
   File: 2,
-  CoffeeMap: 3,
 };
 
 /** Backend: Pending=1, Confirmed=2, Rejected=3. */
@@ -154,13 +152,12 @@ export const IMPORT_QUEUE_PAGE_SIZE = 50;
 
 export function parseImportListSearch(searchParams: URLSearchParams) {
   const status = (searchParams.get('status') ?? 'Pending') as KnownQueueStatus | 'all';
-  const defaultBucket = searchParams.get('verification') === 'needs-recheck' ? 'all' : 'priority';
-  const bucket = (searchParams.get('bucket') ?? defaultBucket) as CollectorBucket | 'all';
+  const bucket = (searchParams.get('bucket') ?? 'priority') as CollectorBucket | 'all';
   const focus = (searchParams.get('focus') ?? '') as CoffeeFocus | '';
   const search = searchParams.get('search') ?? '';
   const hasAddress = searchParams.get('hasAddress') === '1';
   const rejectReason = (searchParams.get('rejectReason') ?? '') as RejectReason | '';
-  const source = (searchParams.get('source') ?? '') as ImportSource | '';
+  const source = parseImportSource(searchParams.get('source')) ?? '';
   const page = parseInt(searchParams.get('page') ?? '1', 10) || 1;
   return { status, bucket, focus, search, hasAddress, rejectReason, source, page };
 }
@@ -226,10 +223,6 @@ const SOURCE_ALIASES: Record<string, ImportSource> = {
   File: 'File',
   file: 'File',
   '2': 'File',
-  CoffeeMap: 'CoffeeMap',
-  coffeemap: 'CoffeeMap',
-  coffeeMap: 'CoffeeMap',
-  '3': 'CoffeeMap',
 };
 
 const DUPLICATE_STATUS_ALIASES: Record<string, DuplicateSuggestionStatus> = {

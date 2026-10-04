@@ -3,7 +3,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { ImportCandidate } from '../../api/import';
 import { Pagination } from '../ui/Pagination';
 import { DataTable } from '../ui/DataTable';
-import { displayShopName, instagramHandleFrom } from '../../constants/catalogIngest';
+import { displayShopName } from '../../constants/catalogIngest';
+import { SourceBadge } from './catalogControls';
 
 interface DossierQueueProps {
   items: ImportCandidate[];
@@ -27,7 +28,7 @@ export const DossierQueue: React.FC<DossierQueueProps> = ({
   onPageChange,
 }) => {
   const columns: ColumnDef<ImportCandidate>[] = [
-    { id: 'name', header: 'Кофейня', cell: ({ row }) => <div className="max-w-[200px]"><p className="truncate font-semibold text-text-main dark:text-white">{displayShopName(row.original.name, row.original.brand)}</p><p className="text-xs text-text-muted">{String(row.original.source)}{!instagramHandleFrom(row.original.instagram) ? ' · нет IG · нет фото' : ''}</p></div> },
+    { id: 'name', header: 'Кофейня', cell: ({ row }) => <div className="max-w-[200px]"><p className="truncate font-semibold text-text-main dark:text-white">{displayShopName(row.original.name, row.original.brand)}</p><SourceBadge source={row.original.source} importedFromFile={row.original.importedFromFile} /></div> },
   ];
   return <aside className="flex flex-col min-h-0 h-full w-full bg-white dark:bg-surface-dark border-r border-border-light dark:border-border-dark">
     <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted px-3.5 pt-3.5 pb-2">
