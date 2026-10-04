@@ -1,5 +1,5 @@
 import { DataTable } from '@/src/components/ui/DataTable';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import type { PublishedShop } from '../../api/admin';
@@ -83,6 +83,24 @@ function formatBytes(size: number): string {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function PhotoPreview({ url, label }: { url?: string | null; label: string }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+
+  if (!url || url === failedUrl) {
+    return (
+      <div className="flex aspect-[3/4] items-center justify-center bg-[#1A1412] px-3 text-center text-xs text-stone-300">
+        {url ? 'Не удалось загрузить фото' : 'Предпросмотр недоступен'}
+      </div>
+    );
+  }
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+      <img src={url} alt={label} className="aspect-[3/4] w-full object-cover" onError={() => setFailedUrl(url)} />
+    </a>
+  );
+}
+
 function PhotoThumbGrid({
   title,
   photos,
@@ -105,17 +123,7 @@ function PhotoThumbGrid({
               key={photo.id ?? `${photo.label}-${index}`}
               className="overflow-hidden rounded-xl border border-border-light dark:border-border-dark bg-stone-50 dark:bg-black/20"
             >
-              {photo.url ? (
-                <a href={photo.url} target="_blank" rel="noopener noreferrer" className="block">
-                  <img src={photo.url} alt={photo.label} className="aspect-[3/4] w-full object-cover" />
-                </a>
-              ) : (
-                <div className="flex aspect-[3/4] items-center justify-center bg-[#1A1412] px-3 text-center text-xs text-stone-300">
-                  Новое фото
-                  <br />
-                  (ожидает применения)
-                </div>
-              )}
+              <PhotoPreview url={photo.url} label={photo.label} />
               <div className="space-y-0.5 p-2">
                 <p className="truncate text-xs font-medium text-text-main dark:text-stone-100">{photo.label}</p>
                 {photo.meta && <p className="truncate text-[11px] text-text-muted">{photo.meta}</p>}
@@ -133,6 +141,8 @@ function NewPhotosList({ photos }: { photos: UploadedPhotoDto[] }) {
     <PhotoThumbGrid
       title="Новые фото"
       photos={photos.map((photo) => ({
+        id: photo.storageKey,
+        url: photo.fullUrl,
         label: photo.fileName || photo.storageKey,
         meta: `${photo.contentType || 'image'} · ${formatBytes(photo.size)}`,
       }))}

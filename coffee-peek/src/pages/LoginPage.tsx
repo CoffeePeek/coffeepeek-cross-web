@@ -187,7 +187,7 @@ const LoginPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-[100dvh] flex items-start justify-center overflow-x-hidden overflow-y-auto py-3 sm:items-center sm:py-6" style={{ background: bg, position: 'relative', transition: 'background .3s' }}>
+    <div className="min-h-[100dvh] flex items-start justify-center overflow-clip py-3 sm:items-center sm:py-6" style={{ background: bg, position: 'relative', transition: 'background .3s' }}>
       {/* Dotted pattern (dark only) */}
       {dark && <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(#2D241F 1px, transparent 1px)', backgroundSize: '40px 40px', opacity: 0.6, pointerEvents: 'none' }} />}
       {/* Gold glows */}

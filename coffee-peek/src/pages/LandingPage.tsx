@@ -181,7 +181,7 @@ const LandingPage: React.FC = () => {
     const c = getThemeColors(theme);
 
     return (
-      <div className="min-h-screen relative overflow-x-clip" style={{ background: c.background, color: c.textPrimary }}>
+      <div className="min-h-screen relative overflow-clip" style={{ background: c.background, color: c.textPrimary }}>
         {/* Dotted background */}
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `radial-gradient(${c.surface} 1px, transparent 1px)`, backgroundSize: '40px 40px', opacity: isDark ? 0.55 : 0.9 }} />
         {/* Gold glows — kept inside the box so overflow clip doesn't leave a 1px edge in Firefox */}
@@ -559,4 +559,3 @@ const LandingPage: React.FC = () => {
 };
 
 export default LandingPage;
-

@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 import { createOsmMap, coffeeDetailIcon, MINSK_CENTER } from '../map/osmMap';
 import { MapPin, Compass, MapTrifold, NavigationArrow } from '@/components/Icon';
+import { getDeviceLocation } from '../utils/geolocation';
 
 export type LatLng = { lat: number; lng: number };
 
@@ -47,18 +48,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<string | null> 
   }
 }
 
-function readDevicePosition(): Promise<LatLng> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Геолокация недоступна'));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60_000 },
-    );
-  });
+async function readDevicePosition(): Promise<LatLng> {
+  const position = await getDeviceLocation({ requestPermission: true, enableHighAccuracy: true, timeout: 12000, maximumAge: 60_000 });
+  if (!position) throw new Error('Геолокация недоступна');
+  return { lat: position.coords.latitude, lng: position.coords.longitude };
 }
 
 export const AddressMapField: React.FC<AddressMapFieldProps> = ({

@@ -27,7 +27,7 @@ import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useShopData } from '../hooks/useShopData';
 import { useUsersCache } from '../hooks/useUsersCache';
 import { distanceKm, formatDistance } from '../utils/distance';
-import { getLocationLifetime } from '../utils/geolocation';
+import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { getPriceRangeTier } from '../utils/priceRange';
 import { formatDayOfWeekShort, getCurrentDayOfWeek, getCurrentStatus, toLocalSchedules } from '../utils/shopUtils';
 import { getThemeClasses } from '../utils/theme';
@@ -75,19 +75,16 @@ const CoffeeShopPage: React.FC = () => {
   usePageTitle(shop?.name || 'Кофейня');
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    let cancelled = false;
     let expiry: ReturnType<typeof setTimeout> | undefined;
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const lifetime = getLocationLifetime(position.timestamp);
-        if (lifetime === 0) return setUserLocation(null);
-        setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-        expiry = setTimeout(() => setUserLocation(null), lifetime);
-      },
-      () => setUserLocation(null),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
-    );
-    return () => clearTimeout(expiry);
+    void getDeviceLocation().then(position => {
+      if (cancelled || !position) return;
+      const lifetime = getLocationLifetime(position.timestamp);
+      if (lifetime === 0) return setUserLocation(null);
+      setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      expiry = setTimeout(() => setUserLocation(null), lifetime);
+    });
+    return () => { cancelled = true; clearTimeout(expiry); };
   }, []);
 
   if (!shopId) {

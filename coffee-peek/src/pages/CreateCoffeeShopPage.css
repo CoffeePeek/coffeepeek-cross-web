@@ -1,5 +1,5 @@
 .shop-wizard {
-  min-height: calc(100dvh - 64px);
+  min-height: var(--app-content-height, 100dvh);
   padding: 30px 16px 48px;
   background: var(--wizard-bg);
   color: var(--wizard-text);

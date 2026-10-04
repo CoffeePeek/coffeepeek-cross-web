@@ -100,10 +100,10 @@ const DownloadPage: React.FC = () => {
 
   return (
     <main
-      className="min-h-screen px-4 py-8 sm:px-6 sm:py-12"
+      className="flex min-h-[100dvh] flex-col justify-center px-4 py-8 sm:px-6 sm:py-12"
       style={{ background: colors.background, color: colors.textPrimary }}
     >
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-3xl flex-col justify-center">
+      <div className="mx-auto w-full max-w-3xl">
         <div className="mb-8 flex items-center gap-3">
           <img src="/logo/logo.png" alt="" className="h-10 w-10 rounded-xl" />
           <span className="font-extended text-xl font-extrabold">

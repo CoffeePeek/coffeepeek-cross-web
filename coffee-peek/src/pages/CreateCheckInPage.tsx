@@ -123,8 +123,8 @@ const CreateCheckInPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-[calc(100dvh-64px)]" style={{ backgroundColor: colors.background }}>
-      <main className="sm:max-w-[420px] sm:mx-auto sm:px-4 sm:py-6 h-[calc(100dvh-64px)] sm:h-auto flex flex-col">
+    <div className="min-h-[var(--app-content-height,100dvh)]" style={{ backgroundColor: colors.background }}>
+      <main className="sm:max-w-[420px] sm:mx-auto sm:px-4 sm:py-6 h-[var(--app-content-height,100dvh)] sm:h-auto flex flex-col">
         <button
           type="button"
           onClick={() => openPublic('shops', shopId!)}

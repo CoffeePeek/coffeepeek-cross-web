@@ -1,0 +1,28 @@
+.app-layout {
+  --app-header-height: 0px;
+  --app-navigation-height: calc(65px + env(safe-area-inset-bottom));
+  --app-content-height: max(0px, calc(100dvh - var(--app-header-height) - var(--app-navigation-height)));
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.app-layout-content {
+  display: flow-root;
+  flex: 1;
+  min-width: 0;
+  min-height: max(0px, calc(100dvh - var(--app-header-height)));
+  padding-bottom: var(--app-navigation-height);
+}
+
+/* Page and loading shells share the space left by the layout's navigation. */
+.app-layout-content .min-h-screen {
+  min-height: var(--app-content-height);
+}
+
+@media (min-width: 1024px) {
+  .app-layout {
+    --app-header-height: 65px;
+    --app-navigation-height: 0px;
+  }
+}

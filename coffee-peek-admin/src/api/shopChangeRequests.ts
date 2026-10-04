@@ -12,6 +12,7 @@ export interface UploadedPhotoDto {
   contentType: string;
   storageKey: string;
   size: number;
+  fullUrl?: string | null;
 }
 
 export interface ShopChangePayloadDto {

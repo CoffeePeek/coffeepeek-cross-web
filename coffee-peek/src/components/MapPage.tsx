@@ -23,7 +23,7 @@ import {
   renderMapZones,
 } from '../map/osmMap';
 import { getCurrentDayOfWeek, toLocalSchedules } from '../utils/shopUtils';
-import { getLocationLifetime } from '../utils/geolocation';
+import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { useSearchCoffeeShops } from '../hooks/queries/useCoffeeShops';
 
 const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean }> = ({ embedded = false, autoPreview = false, reduceMotion = false }) => {
@@ -154,48 +154,33 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
 
   useEffect(() => () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); }, []);
 
-  const handleLocate = () => {
-    if (!navigator.geolocation) {
-      return;
-    }
+  const handleLocate = async (requestPermission = true) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (!mapInstanceRef.current) return;
-        const lifetime = getLocationLifetime(pos.timestamp);
-        if (lifetime === 0) {
-          setIsLocating(false);
-          return;
-        }
-        const { latitude, longitude } = pos.coords;
-        userPosRef.current = { lat: latitude, lon: longitude };
-        setUserPosition({ lat: latitude, lon: longitude });
-        const map = mapInstanceRef.current;
-        if (map) {
-          map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 15), duration: 700 });
-          if (userMarkerRef.current) {
-            userMarkerRef.current.setLngLat([longitude, latitude]);
-          } else {
-            const el = document.createElement('div');
-            el.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#2F80ED;border:3px solid #fff;box-shadow:0 0 0 4px rgba(47,128,237,0.25);';
-            userMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([longitude, latitude]).addTo(map);
-          }
-        }
-        if (locationExpiryRef.current) clearTimeout(locationExpiryRef.current);
-        locationExpiryRef.current = setTimeout(() => {
-          userPosRef.current = null;
-          setUserPosition(null);
-          userMarkerRef.current?.remove();
-          userMarkerRef.current = null;
-        }, lifetime);
-        setIsLocating(false);
-      },
-      () => {
-        if (!mapInstanceRef.current) return;
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
-    );
+    const pos = await getDeviceLocation({ requestPermission, enableHighAccuracy: true, timeout: 10000, ...(requestPermission ? { maximumAge: 0 } : {}) });
+    if (map !== mapInstanceRef.current) return;
+    if (pos && getLocationLifetime(pos.timestamp) > 0) {
+      const { latitude, longitude } = pos.coords;
+      userPosRef.current = { lat: latitude, lon: longitude };
+      setUserPosition({ lat: latitude, lon: longitude });
+      map.flyTo({ center: [longitude, latitude], zoom: Math.max(map.getZoom(), 15), duration: 700 });
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLngLat([longitude, latitude]);
+      } else {
+        const el = document.createElement('div');
+        el.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#2F80ED;border:3px solid #fff;box-shadow:0 0 0 4px rgba(47,128,237,0.25);';
+        userMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([longitude, latitude]).addTo(map);
+      }
+      if (locationExpiryRef.current) clearTimeout(locationExpiryRef.current);
+      locationExpiryRef.current = setTimeout(() => {
+        userPosRef.current = null;
+        setUserPosition(null);
+        userMarkerRef.current?.remove();
+        userMarkerRef.current = null;
+      }, getLocationLifetime(pos.timestamp));
+    }
+    setIsLocating(false);
   };
 
   useEffect(() => {
@@ -271,7 +256,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
     });
     mapInstanceRef.current = map;
     setIsLoading(false);
-    if (!hasCenter && !embedded) handleLocate();
+    if (!hasCenter && !embedded) void handleLocate(false);
     const resizeObserver = new ResizeObserver(() => map.resize());
     resizeObserver.observe(container);
     map.on('style.load', () => paintMap(mapDataRef.current));
@@ -353,8 +338,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
   return (
     <div
       className={`relative z-0 isolate overflow-hidden ${themeClasses.bg.primary}`}
-      // ponytail: 64px = sticky header height; if the email-unconfirmed banner shows, the map runs that much taller than the viewport
-      style={{ height: embedded ? 480 : 'calc(100dvh - 64px)', clipPath: embedded ? 'inset(0 round 28px 28px 0 0)' : undefined }}
+      style={{ height: embedded ? 480 : 'var(--app-content-height, 100dvh)', clipPath: embedded ? 'inset(0 round 28px 28px 0 0)' : undefined }}
       onMouseEnter={() => autoPreview && setPreviewPaused(true)}
       onMouseLeave={() => autoPreview && setPreviewPaused(false)}
       onFocusCapture={() => autoPreview && setPreviewPaused(true)}
@@ -458,7 +442,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
           <button type="button" onClick={() => mapInstanceRef.current?.zoomOut()} aria-label="Отдалить карту" className={`flex h-14 w-14 items-center justify-center border-t ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={28} className="h-7 w-7 shrink-0" /></button>
         </div>
         <button type="button" onClick={() => setShowZones(value => !value)} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={28} className="h-7 w-7 shrink-0" weight="regular" /></button>
-        <button type="button" onClick={handleLocate} disabled={isLocating} aria-label="Моё местоположение" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 disabled:opacity-60 ${themeClasses.bg.card} ${themeClasses.border.default} ${themeClasses.text.primary}`}>
+        <button type="button" onClick={() => void handleLocate()} disabled={isLocating} aria-label="Моё местоположение" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 disabled:opacity-60 ${themeClasses.bg.card} ${themeClasses.border.default} ${themeClasses.text.primary}`}>
           {isLocating ? <span className="h-7 w-7 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <NavigationArrow size={30} className="h-8 w-8 shrink-0" />}
         </button>
       </div>

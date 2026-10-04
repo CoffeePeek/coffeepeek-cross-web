@@ -16,7 +16,7 @@ import { useLocalFavorites } from '../hooks/useLocalFavorites';
 import { useLocalCity } from '../hooks/useLocalCity';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { distanceKm } from '../utils/distance';
-import { getLocationLifetime } from '../utils/geolocation';
+import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 
 const PAGE_SIZE = 12;
 
@@ -118,6 +118,7 @@ const CoffeeShopList: React.FC<CoffeeShopListProps> = ({ onShopSelect }) => {
   const [activeQuick, setActiveQuick] = useState<string[]>(() => searchParams.get('filter') === 'favorite' ? ['favorite'] : ['all']);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const locationExpiryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const locationRequestRef = useRef(0);
 
   const clearUserLocation = useCallback(() => {
     if (locationExpiryRef.current) clearTimeout(locationExpiryRef.current);
@@ -130,37 +131,34 @@ const CoffeeShopList: React.FC<CoffeeShopListProps> = ({ onShopSelect }) => {
     });
   }, []);
 
-  const requestLocation = useCallback((activateNearby = true) => {
-    if (!navigator.geolocation) return;
+  const requestLocation = useCallback(async (activateNearby = true) => {
+    const request = ++locationRequestRef.current;
     clearUserLocation();
-    navigator.geolocation.getCurrentPosition(
-      ({ coords, timestamp }) => {
-        const lifetime = getLocationLifetime(timestamp);
-        if (lifetime === 0) return;
-        setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
-        if (activateNearby) setActiveQuick(prev => [...prev.filter(id => id !== 'all' && id !== 'nearby'), 'nearby']);
-        locationExpiryRef.current = setTimeout(clearUserLocation, lifetime);
-      },
-      clearUserLocation,
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 0 },
-    );
+    const position = await getDeviceLocation({ requestPermission: activateNearby, ...(activateNearby ? { maximumAge: 0 } : {}) });
+    if (request !== locationRequestRef.current) return;
+    if (position) {
+      const { coords, timestamp } = position;
+      const lifetime = getLocationLifetime(timestamp);
+      if (lifetime === 0) return;
+      setUserLocation({ latitude: coords.latitude, longitude: coords.longitude });
+      if (activateNearby) setActiveQuick(prev => [...prev.filter(id => id !== 'all' && id !== 'nearby'), 'nearby']);
+      locationExpiryRef.current = setTimeout(clearUserLocation, lifetime);
+    }
   }, [clearUserLocation]);
 
   useEffect(() => () => {
+    ++locationRequestRef.current;
     if (locationExpiryRef.current) clearTimeout(locationExpiryRef.current);
   }, []);
 
   useEffect(() => {
-    if (!navigator.permissions) return;
-    void navigator.permissions.query({ name: 'geolocation' }).then(permission => {
-      if (permission.state === 'granted') requestLocation(false);
-    }).catch(() => undefined);
+    void requestLocation(false);
   }, [requestLocation]);
 
   const handleQuickChange = (id: string) => {
     if (id === 'visited' && !requireAuth()) return;
     if (id === 'nearby' && !userLocation) {
-      requestLocation();
+      void requestLocation();
       return;
     }
     setActiveQuick(prev => {
@@ -447,7 +445,7 @@ const CoffeeShopList: React.FC<CoffeeShopListProps> = ({ onShopSelect }) => {
     dark: isDark,
     onApplyFilters: handleApplyFilters,
     resultCount: totalItems || shops.length,
-    hasLocation: userLocation !== null,
+    canLocate: userLocation !== null || (typeof navigator !== 'undefined' && !!navigator.geolocation),
   };
 
   if (resolvingFilter) return <div className="p-8">Загрузка…</div>;

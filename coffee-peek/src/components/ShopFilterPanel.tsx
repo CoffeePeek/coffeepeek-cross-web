@@ -104,7 +104,7 @@ interface ShopFilterPanelProps {
   onApplyFilters: (applied: AppliedFilters) => void;
   resultCount?: number;
   onClose?: () => void;
-  hasLocation?: boolean;
+  canLocate?: boolean;
 }
 
 function toggle(arr: string[], id: string): string[] {
@@ -235,7 +235,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
   onApplyFilters,
   resultCount,
   onClose,
-  hasLocation = false,
+  canLocate = false,
 }) => {
   const gold = COLORS.primary;
   const goldWarm = '#D4A84B';
@@ -287,7 +287,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
   const statusAndFocusChips = (
     <>
       {FIXED_QUICK_FILTERS.map(({ id, label, Icon }) => {
-        if (id === 'nearby' && !hasLocation) return null;
+        if (id === 'nearby' && !canLocate) return null;
         const active = id === 'all'
           ? activeQuick.includes('all') && !filters.coffeeFocus
           : activeQuick.includes(id);
