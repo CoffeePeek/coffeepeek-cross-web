@@ -47,6 +47,8 @@
     "typescript": "~5.8.2",
     "vite": "^6.4.2",
     "playwright": "^1.63.0",
-    "esbuild": "^0.25.12"
+    "esbuild": "^0.25.12",
+    "jsdom": "^26.1.0",
+    "@types/jsdom": "^30.0.0"
   }
 }

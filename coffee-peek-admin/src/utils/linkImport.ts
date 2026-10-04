@@ -1,5 +1,8 @@
+import { validateEnrichment, type LinkImportEnrichment } from './linkImportEnrichment';
+export { mergeEnrichment, safeMenuImageUrl } from './linkImportEnrichment';
+
 export const LINK_IMPORT_CHANNEL = 'coffeepeek-link-import-v1';
-export const LINK_IMPORT_VERSION = 1;
+export const LINK_IMPORT_VERSION = 2;
 export const YANDEX_HOSTS = ['yandex.ru', 'yandex.by', 'yandex.com', 'yandex.kz', 'yandex.uz'];
 export type LinkImportSource = 'yandex' | 'instagram';
 export type LinkImportFields = Partial<{
@@ -23,6 +26,7 @@ export interface LinkImportDraft extends LinkImportTarget {
   extractedAt: string;
   fields: LinkImportFields;
   evidence: Partial<Record<LinkImportField, string>>;
+  enrichment?: LinkImportEnrichment;
 }
 export const CONTACT_FIELDS = ['phone', 'website', 'instagram', 'openingHours'] as const;
 export const LINK_IMPORT_LABELS: Record<LinkImportField, string> = {
@@ -102,8 +106,9 @@ export function validateLinkImportDraft(raw: unknown, requested: LinkImportTarge
     fields.latitude = latitude;
     fields.longitude = longitude;
   }
-  if (!fields.name && !CONTACT_FIELDS.some((key) => fields[key])) throw new Error('Данные карточки не найдены');
-  return { ...target, extractedAt: new Date().toISOString(), fields, evidence };
+  const enrichment = validateEnrichment(input.enrichment);
+  if (!fields.name && !CONTACT_FIELDS.some((key) => fields[key]) && !enrichment.menuItems.length && !enrichment.photos.length && !enrichment.tags.length) throw new Error('Данные карточки не найдены');
+  return { ...target, extractedAt: new Date().toISOString(), fields, evidence, enrichment };
 }
 
 export function selectedContactPatch(fields: LinkImportFields, selected: ReadonlySet<LinkImportField>) {

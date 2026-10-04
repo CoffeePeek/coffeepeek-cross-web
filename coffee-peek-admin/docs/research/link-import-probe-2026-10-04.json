@@ -1,0 +1,692 @@
+{
+  "checkedOn": "2026-10-04",
+  "reportCreatedAt": "2026-10-04T20:52:06Z",
+  "locale": "ru-BY",
+  "method": "Ручная проверка живых карточек в браузере: раскрытие недельных часов, переход в Instagram и официальный сайт, проверка маршрутов, меню и выборочных фотографий. Это исследовательская выборка, а не результат текущей версии расширения.",
+  "caveats": [
+    "Значения подтверждены как опубликованные в источнике, а не как независимо проверенные сведения о заведении.",
+    "null означает, что значение не найдено в проверенных разделах; это не доказательство отсутствия данных в интернете.",
+    "Часы в отчёте по умолчанию взяты из Яндекса, но конфликтные значения не выбраны для импорта.",
+    "Координаты назначения маршрута сохранены отдельно от геометрии организации; ll из ссылки не использован как координаты точки.",
+    "Счётчики фото не означают, что все файлы скачаны или распознаны; осмотрены отдельные фотографии.",
+    "Меню и сведения из Instagram не сохранялись в CoffeePeek."
+  ],
+  "coverage": {
+    "shops": 6,
+    "names": 6,
+    "addresses": 6,
+    "fullYandexWeeklySchedules": 6,
+    "routeDestinations": 6,
+    "phones": 5,
+    "instagramProfiles": 4,
+    "officialWebsites": 1,
+    "companyEmails": 1,
+    "textMenus": 1,
+    "menuItems": 28,
+    "yandexListedPhotos": 194,
+    "scheduleConflicts": 2
+  },
+  "shops": [
+    {
+      "id": "144870583726",
+      "slug": "bar_cups",
+      "name": "Bar cups",
+      "address": "Минск, проспект Дзержинского, 57",
+      "addressDetail": "этаж 1",
+      "phone": "+375296686209",
+      "website": null,
+      "instagram": null,
+      "schedule": [
+        {
+          "days": [
+            "Пн",
+            "Вт",
+            "Ср",
+            "Чт",
+            "Пт"
+          ],
+          "open": "07:30",
+          "close": "19:30"
+        },
+        {
+          "days": [
+            "Сб",
+            "Вс"
+          ],
+          "closed": true
+        }
+      ],
+      "route": {
+        "latitude": 53.875522,
+        "longitude": 27.49725,
+        "url": "https://yandex.by/maps/157/minsk/?ll=27.497250%2C53.875522&mode=routes&rtext=~53.875522%2C27.497250&rtt=auto&ruri=~ymapsbm1%3A%2F%2Forg%3Foid%3D144870583726&z=15",
+        "coordinateMeaning": "Координаты назначения маршрута к выбранной организации, связанные с её ID через ruri. Могут обозначать вход; геометрия организации из API не проверялась.",
+        "readyForAutomaticSave": false
+      },
+      "rating": 4.3,
+      "ratingCount": 12,
+      "photoCount": 12,
+      "reviewCount": 6,
+      "priceObservation": {
+        "kind": "averageBill",
+        "currency": "BYN",
+        "min": 4,
+        "max": 8
+      },
+      "notes": [
+        "В разделе контактов и ссылках карточки Instagram и сайт не найдены.",
+        "На осмотренной фотографии июля 2022 года виден стенд с напитками; надёжно прочитать позиции и цены не удалось."
+      ],
+      "yandexUrl": "https://yandex.by/maps/org/bar_cups/144870583726/",
+      "defaultFieldSource": "https://yandex.by/maps/org/bar_cups/144870583726/",
+      "provenance": {
+        "name": "yandex_card",
+        "address": "yandex_card",
+        "phone": "yandex_card",
+        "schedule": "yandex_expanded_weekly_table",
+        "instagram": "not_found_in_yandex_card",
+        "routeCoordinates": "yandex_route_destination"
+      }
+    },
+    {
+      "id": "86729516416",
+      "slug": "blasercafe",
+      "name": "Blasercafe",
+      "address": "Минск, улица Немига, 5",
+      "addressDetail": "ТЦ Метрополь, этаж 2",
+      "phone": "+375296840010",
+      "website": "https://www.blasercafe.by/",
+      "instagram": "https://www.instagram.com/blasercafe.by/",
+      "schedule": [
+        {
+          "days": [
+            "Пн",
+            "Вт",
+            "Ср",
+            "Чт",
+            "Пт",
+            "Сб",
+            "Вс"
+          ],
+          "open": "10:00",
+          "close": "20:00"
+        }
+      ],
+      "route": {
+        "latitude": 53.901993,
+        "longitude": 27.549524,
+        "url": "https://yandex.by/maps/157/minsk/?ll=27.549524%2C53.901993&mode=routes&rtext=~53.901993%2C27.549524&rtt=auto&ruri=~ymapsbm1%3A%2F%2Forg%3Foid%3D86729516416&z=14",
+        "coordinateMeaning": "Координаты назначения маршрута к выбранной организации, связанные с её ID через ruri. Могут обозначать вход; геометрия организации из API не проверялась.",
+        "readyForAutomaticSave": false
+      },
+      "rating": 4.2,
+      "ratingCount": 12,
+      "photoCount": 39,
+      "reviewCount": 6,
+      "instagramObservation": {
+        "summary": "Продажа зерна, сотрудничество и кофейня; ссылка на официальный сайт.",
+        "schedule": [
+          {
+            "days": [
+              "Пн",
+              "Вт",
+              "Ср",
+              "Чт",
+              "Пт",
+              "Сб"
+            ],
+            "open": "11:00",
+            "close": "20:00"
+          }
+        ],
+        "sunday": "not_stated",
+        "visiblePostDates": [
+          "2022-01-25",
+          "2021-03-08",
+          "2021-01-29"
+        ]
+      },
+      "websiteObservation": {
+        "source": "https://www.blasercafe.by/contact",
+        "shopAddress": "Минск, Немига, 5, этаж 2",
+        "companyEmail": "coffee@coffee.by",
+        "companyFax": "+375173361303",
+        "companyOffice": "Минск, улица Прушинских, 31А, офис 39",
+        "facebook": "https://www.facebook.com/Blasercafe.bel/",
+        "vk": "https://vk.com/blasercafeby",
+        "catalogPurpose": "Продажа кофейного зерна; каталог не является меню напитков этой кофейни."
+      },
+      "conflicts": [
+        {
+          "field": "schedule",
+          "yandex": "Ежедневно 10:00–20:00",
+          "instagram": "Пн–Сб 11:00–20:00; воскресенье не указано",
+          "resolution": "requires_review"
+        }
+      ],
+      "notes": [
+        "Сайт прямо разделяет кофейню на Немиге и офис компании. Адрес офиса нельзя подставлять в карточку кофейни.",
+        "ТЦ указан на официальном сайте; в адресе Яндекса указан этаж 2."
+      ],
+      "yandexUrl": "https://yandex.by/maps/org/blasercafe/86729516416/",
+      "defaultFieldSource": "https://yandex.by/maps/org/blasercafe/86729516416/",
+      "provenance": {
+        "name": "yandex_card",
+        "address": "yandex_card",
+        "phone": "yandex_card",
+        "schedule": "yandex_expanded_weekly_table",
+        "instagram": "yandex_contact_link_and_public_instagram_profile",
+        "routeCoordinates": "yandex_route_destination"
+      }
+    },
+    {
+      "id": "124993472449",
+      "slug": "caffisso",
+      "name": "Caffisso",
+      "address": "Минск, улица Селицкого, 65",
+      "addressDetail": "Главный вход",
+      "phone": "+375257131693",
+      "website": null,
+      "instagram": "https://www.instagram.com/caffisso/",
+      "schedule": [
+        {
+          "days": [
+            "Пн",
+            "Вт",
+            "Ср",
+            "Чт",
+            "Пт",
+            "Сб",
+            "Вс"
+          ],
+          "open": "08:00",
+          "close": "22:00"
+        }
+      ],
+      "route": {
+        "latitude": 53.836797,
+        "longitude": 27.701648,
+        "url": "https://yandex.by/maps/157/minsk/?ll=27.701465%2C53.837131&mode=routes&rtext=~53.836797%2C27.701648&rtt=auto&ruri=~ymapsbm1%3A%2F%2Forg%3Foid%3D124993472449&z=16",
+        "coordinateMeaning": "Координаты назначения маршрута к выбранной организации, связанные с её ID через ruri. Могут обозначать вход; геометрия организации из API не проверялась.",
+        "readyForAutomaticSave": false
+      },
+      "rating": 5,
+      "ratingCount": 72,
+      "photoCount": 8,
+      "reviewCount": 29,
+      "priceObservation": {
+        "kind": "cappuccinoRange",
+        "currency": "BYN",
+        "min": 2,
+        "max": 5
+      },
+      "instagramObservation": {
+        "summary": "В биографии только рекламное описание; телефон, адрес и часы не указаны.",
+        "imageSchedule": {
+          "source": "https://www.instagram.com/caffisso/p/Chp7_Kqox6s/",
+          "publishedAt": "2022-08-24",
+          "extraction": "manual_visual_read",
+          "schedule": [
+            {
+              "days": [
+                "Пн",
+                "Вт",
+                "Ср",
+                "Чт",
+                "Пт",
+                "Сб"
+              ],
+              "open": "08:00",
+              "close": "22:00"
+            },
+            {
+              "days": [
+                "Вс"
+              ],
+              "open": "09:00",
+              "close": "22:00"
+            }
+          ]
+        },
+        "latestVisiblePhoto": {
+          "source": "https://www.instagram.com/caffisso/p/DTQH4TOjWHm/",
+          "publishedAt": "2026-01-08",
+          "observation": "Фотография напитка возле кофейного киоска; структурированного меню в осмотренной публикации нет."
+        }
+      },
+      "conflicts": [
+        {
+          "field": "schedule",
+          "yandex": "Ежедневно 08:00–22:00",
+          "instagramImage": "Пн–Сб 08:00–22:00; Вс 09:00–22:00",
+          "resolution": "requires_review",
+          "note": "Изображение опубликовано в 2022 году. Не заменять им текущие часы без проверки."
+        }
+      ],
+      "notes": [
+        "Цена капучино — диапазон из карточки Яндекса, не извлечённое полное меню."
+      ],
+      "yandexUrl": "https://yandex.by/maps/org/caffisso/124993472449/",
+      "defaultFieldSource": "https://yandex.by/maps/org/caffisso/124993472449/",
+      "provenance": {
+        "name": "yandex_card",
+        "address": "yandex_card",
+        "phone": "yandex_card",
+        "schedule": "yandex_expanded_weekly_table",
+        "instagram": "yandex_contact_link_and_public_instagram_profile",
+        "routeCoordinates": "yandex_route_destination"
+      }
+    },
+    {
+      "id": "41070949812",
+      "slug": "coffelion",
+      "name": "Coffelion",
+      "address": "Минск, Игуменский тракт, 14",
+      "addressDetail": null,
+      "phone": null,
+      "website": null,
+      "instagram": "https://www.instagram.com/coffelion_minsk/",
+      "schedule": [
+        {
+          "days": [
+            "Пн",
+            "Вт",
+            "Ср",
+            "Чт",
+            "Пт"
+          ],
+          "open": "08:00",
+          "close": "22:00"
+        },
+        {
+          "days": [
+            "Сб",
+            "Вс"
+          ],
+          "open": "09:00",
+          "close": "22:00"
+        }
+      ],
+      "route": {
+        "latitude": 53.847459,
+        "longitude": 27.567342,
+        "url": "https://yandex.by/maps/157/minsk/?ll=27.567544%2C53.847294&mode=routes&rtext=~53.847459%2C27.567342&rtt=auto&ruri=~ymapsbm1%3A%2F%2Forg%3Foid%3D41070949812&z=16",
+        "coordinateMeaning": "Координаты назначения маршрута к выбранной организации, связанные с её ID через ruri. Могут обозначать вход; геометрия организации из API не проверялась.",
+        "readyForAutomaticSave": false
+      },
+      "rating": 4.9,
+      "ratingCount": 175,
+      "photoCount": 57,
+      "reviewCount": 83,
+      "instagramObservation": {
+        "summary": "Кофе, чай, десерты, сангрия, глинтвейн и вино; разрешены собаки.",
+        "address": "Игуменский тракт, 14",
+        "schedule": [
+          {
+            "days": [
+              "Пн",
+              "Вт",
+              "Ср",
+              "Чт",
+              "Пт"
+            ],
+            "open": "08:00",
+            "close": "22:00"
+          },
+          {
+            "days": [
+              "Сб",
+              "Вс"
+            ],
+            "open": "09:00",
+            "close": "22:00"
+          }
+        ],
+        "postObservation": {
+          "source": "https://www.instagram.com/coffelion_minsk/p/CSjGV9YI2eC/",
+          "publishedAt": "2021-08-14",
+          "summary": "Публикация подтверждает адрес и описывает раскраски для детей и аквариум. Это историческое описание, актуальность удобств не подтверждена."
+        },
+        "assortmentHighlight": {
+          "source": "https://www.instagram.com/stories/highlights/18026166761607633/",
+          "status": "login_required",
+          "menuItemsExtracted": 0
+        }
+      },
+      "notes": [
+        "Яндекс прямо пишет «Телефон не указан». В прочитанной биографии и осмотренной публикации телефон также не найден.",
+        "Полная биография после раскрытия подтверждает расписание всех семи дней."
+      ],
+      "yandexUrl": "https://yandex.by/maps/org/coffelion/41070949812/",
+      "defaultFieldSource": "https://yandex.by/maps/org/coffelion/41070949812/",
+      "provenance": {
+        "name": "yandex_card",
+        "address": "yandex_card",
+        "phone": "not_found",
+        "schedule": "yandex_expanded_weekly_table",
+        "instagram": "yandex_contact_link_and_public_instagram_profile",
+        "routeCoordinates": "yandex_route_destination"
+      }
+    },
+    {
+      "id": "1148465931",
+      "slug": "don_coffe_on",
+      "name": "Don Coffe'On",
+      "address": "Минск, Игуменский тракт, 26",
+      "addressDetail": "помещение 14Н; индекс 220067",
+      "phone": "+375296313170",
+      "website": null,
+      "instagram": "https://www.instagram.com/doncoffeonmenu/",
+      "schedule": [
+        {
+          "days": [
+            "Пн",
+            "Вт",
+            "Ср",
+            "Чт",
+            "Пт",
+            "Сб",
+            "Вс"
+          ],
+          "open": "11:00",
+          "close": "23:00"
+        }
+      ],
+      "route": {
+        "latitude": 53.843235,
+        "longitude": 27.570703,
+        "url": "https://yandex.by/maps/157/minsk/?ll=27.571147%2C53.842863&mode=routes&rtext=~53.843235%2C27.570703&rtt=auto&ruri=~ymapsbm1%3A%2F%2Forg%3Foid%3D1148465931&z=16",
+        "coordinateMeaning": "Координаты назначения маршрута к выбранной организации, связанные с её ID через ruri. Могут обозначать вход; геометрия организации из API не проверялась.",
+        "readyForAutomaticSave": false
+      },
+      "rating": 4.6,
+      "ratingCount": 613,
+      "photoCount": 34,
+      "reviewCount": 215,
+      "priceObservation": {
+        "kind": "averageBill",
+        "currency": "BYN",
+        "min": 30,
+        "max": 40
+      },
+      "instagramObservation": {
+        "summary": "Ланч-меню и БЖУ-меню; телефон для бронирования.",
+        "phone": "+375296313170",
+        "hoursText": "11:00–23:00",
+        "days": "not_stated",
+        "deliveryLinks": [
+          {
+            "url": "https://eda.yandex.by/r/don_coffeon?placeSlug=don_coffeon",
+            "status": "linked_from_instagram_not_opened"
+          },
+          {
+            "url": "https://delivio.by/minsk/restaurant/doncoffeonn",
+            "status": "404_page_not_found"
+          }
+        ]
+      },
+      "notes": [
+        "Часы начала и конца дня совпадают с Яндексом; биография не перечисляет дни недели.",
+        "Яндекс помечает меню как меню доставки из Яндекс Еды; на месте блюда и цены могут отличаться.",
+        "Отрицательную отметку «Доставка еды: нет по умолчанию» нельзя переносить автоматически: в Instagram есть ссылки доставки, а меню Яндекса получено из Яндекс Еды."
+      ],
+      "yandexUrl": "https://yandex.by/maps/org/don_coffe_on/1148465931/",
+      "defaultFieldSource": "https://yandex.by/maps/org/don_coffe_on/1148465931/",
+      "provenance": {
+        "name": "yandex_card",
+        "address": "yandex_card",
+        "phone": "yandex_card",
+        "schedule": "yandex_expanded_weekly_table",
+        "instagram": "yandex_contact_link_and_public_instagram_profile",
+        "routeCoordinates": "yandex_route_destination"
+      },
+      "menu": {
+        "source": "https://yandex.by/maps/org/don_coffe_on/1148465931/menu/",
+        "provider": "Яндекс Еда",
+        "kind": "delivery",
+        "updateLabel": "Обновлено вчера",
+        "currency": "BYN",
+        "items": [
+          {
+            "category": "Пицца",
+            "name": "А ля - Russa",
+            "price": 35,
+            "weightGrams": 620
+          },
+          {
+            "category": "Пицца",
+            "name": "Анти-Веганская",
+            "price": 35,
+            "weightGrams": 530
+          },
+          {
+            "category": "Пицца",
+            "name": "Баварская",
+            "price": 35,
+            "weightGrams": 550
+          },
+          {
+            "category": "Пицца",
+            "name": "Кальцоне",
+            "price": 30,
+            "weightGrams": 510
+          },
+          {
+            "category": "Пицца",
+            "name": "Капричиоза",
+            "price": 35,
+            "weightGrams": 515
+          },
+          {
+            "category": "Пицца",
+            "name": "Королева Маргарита",
+            "price": 31,
+            "weightGrams": 430
+          },
+          {
+            "category": "Пицца",
+            "name": "Пеперони",
+            "price": 31,
+            "weightGrams": 430
+          },
+          {
+            "category": "Пицца",
+            "name": "Провинциальная",
+            "price": 35,
+            "weightGrams": 610
+          },
+          {
+            "category": "Пицца",
+            "name": "Филадельфия",
+            "price": 60,
+            "weightGrams": 600
+          },
+          {
+            "category": "Пицца",
+            "name": "Цезарио",
+            "price": 45,
+            "weightGrams": 650
+          },
+          {
+            "category": "Салаты",
+            "name": "Лёгкий салат с говядиной и томатами черри",
+            "price": 31,
+            "weightGrams": 180
+          },
+          {
+            "category": "Салаты",
+            "name": "Микс-салат с лососем, огурцом и сыром филадельфия",
+            "price": 29,
+            "weightGrams": 220
+          },
+          {
+            "category": "Салаты",
+            "name": "Микс-салат с тигровыми креветками и кунжутной заправкой",
+            "price": 35,
+            "weightGrams": 300
+          },
+          {
+            "category": "Салаты",
+            "name": "Микс-салат с цыпленком, яблоком, сельдереем и йогуртовой заправкой",
+            "price": 20,
+            "weightGrams": 160
+          },
+          {
+            "category": "Салаты",
+            "name": "Салат Цезарь с цыплёнком",
+            "price": 29,
+            "weightGrams": 320
+          },
+          {
+            "category": "Драники",
+            "name": "Драники с грибами и трюфельной пастой",
+            "price": 30,
+            "weightGrams": 300
+          },
+          {
+            "category": "Драники",
+            "name": "Драники с лососем и мягким сыром",
+            "price": 35,
+            "weightGrams": 290
+          },
+          {
+            "category": "Драники",
+            "name": "Драники с цыпленком в сливочно-грибном соусе",
+            "price": 25,
+            "weightGrams": 280
+          },
+          {
+            "category": "Супы",
+            "name": "Борщ",
+            "price": 25,
+            "weightGrams": 450
+          },
+          {
+            "category": "Супы",
+            "name": "Куриный бульон на деревенской птице",
+            "price": 20,
+            "weightGrams": 350
+          },
+          {
+            "category": "Супы",
+            "name": "Том ям",
+            "price": 30,
+            "weightGrams": 450
+          },
+          {
+            "category": "Горячие закуски",
+            "name": "Драники со свининой и шампиньонами",
+            "price": 25,
+            "weightGrams": 300
+          },
+          {
+            "category": "Горячие закуски",
+            "name": "Спьедини с лососем и тигровыми креветками",
+            "price": 45,
+            "weightGrams": 320
+          },
+          {
+            "category": "Десерты",
+            "name": "Львовский сырник с маком",
+            "price": 15,
+            "weightGrams": 150
+          },
+          {
+            "category": "Десерты",
+            "name": "Слойка с маком",
+            "price": 10,
+            "weightGrams": 150
+          },
+          {
+            "category": "Завтраки",
+            "name": "Сырники",
+            "price": 18,
+            "weightGrams": 300
+          },
+          {
+            "category": "Завтраки",
+            "name": "Блин с сёмгой и сыром филадельфия",
+            "price": 25,
+            "weightGrams": 210
+          },
+          {
+            "category": "Рыба и морепродукты",
+            "name": "Филе скумбрии с картофельным пюре",
+            "price": 25,
+            "weightGrams": 300
+          }
+        ],
+        "readyForAutomaticSave": false
+      }
+    },
+    {
+      "id": "110103332293",
+      "slug": "lavazza",
+      "name": "Lavazza",
+      "address": "Минск, улица Немига, 5",
+      "addressDetail": "ТЦ Метрополь, этаж 1",
+      "phone": "+375293103676",
+      "website": null,
+      "instagram": null,
+      "schedule": [
+        {
+          "days": [
+            "Пн",
+            "Вт",
+            "Ср",
+            "Чт",
+            "Пт",
+            "Сб",
+            "Вс"
+          ],
+          "open": "09:00",
+          "close": "21:00"
+        }
+      ],
+      "route": {
+        "latitude": 53.902417,
+        "longitude": 27.549989,
+        "url": "https://yandex.by/maps/157/minsk/?ll=27.549955%2C53.902321&mode=routes&rtext=~53.902417%2C27.549989&rtt=auto&ruri=~ymapsbm1%3A%2F%2Forg%3Foid%3D110103332293&z=16",
+        "coordinateMeaning": "Координаты назначения маршрута к выбранной организации, связанные с её ID через ruri. Могут обозначать вход; геометрия организации из API не проверялась.",
+        "readyForAutomaticSave": false
+      },
+      "rating": 4.2,
+      "ratingCount": 9,
+      "photoCount": 44,
+      "reviewCount": 8,
+      "notes": [
+        "В контактах и ссылках карточки Instagram и сайт не найдены.",
+        "Адрес совпадает с Blasercafe, но этаж и ID организации отличаются: это отдельные точки.",
+        "В галерее есть фотографии напитков и десертов; полное читаемое меню не извлечено."
+      ],
+      "yandexUrl": "https://yandex.by/maps/org/lavazza/110103332293/",
+      "defaultFieldSource": "https://yandex.by/maps/org/lavazza/110103332293/",
+      "provenance": {
+        "name": "yandex_card",
+        "address": "yandex_card",
+        "phone": "yandex_card",
+        "schedule": "yandex_expanded_weekly_table",
+        "instagram": "not_found_in_yandex_card",
+        "routeCoordinates": "yandex_route_destination"
+      }
+    }
+  ],
+  "implementationFindings": [
+    {
+      "file": "coffee-peek-admin/src/utils/extractLinkImport.ts",
+      "problem": "Instagram ищется в .business-social-links-view, а на живой карточке Blasercafe ссылки находятся в .business-contacts-view__social-button и помечены a[itemprop=\"sameAs\"]."
+    },
+    {
+      "file": "coffee-peek-admin/src/utils/extractLinkImport.ts",
+      "problem": "Телефон ищется через tel: или .business-phones-view__phone-number. На Blasercafe доступны .orgpage-phones-view__phone-number и [itemprop=\"telephone\"]."
+    },
+    {
+      "file": "coffee-peek-admin/src/utils/extractLinkImport.ts",
+      "problem": "После раскрытия часы находятся в .business-working-intervals-view и .business-working-intervals-view__item, а парсер ищет .business-working-hours-view и __day."
+    },
+    {
+      "file": "coffee-peek-admin/src/components/import/LinkImportDialog.tsx",
+      "problem": "Существующую запись можно обогатить только контактами и openingHours. Меню, фото и описание из этой проверки потребуют отдельного пути сохранения."
+    }
+  ]
+}

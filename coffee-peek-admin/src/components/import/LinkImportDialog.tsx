@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ImportCandidate, patchImportCandidate, saveNewLinkImport } from '../../api/import';
+import { ImportCandidate, patchImportCandidate, saveNewLinkImport, updateImportCandidateMenu, attachImportCandidateMenuPhotos, parseImportCandidateMenu } from '../../api/import';
+import { getShopTags } from '../../api/catalogs';
+import { getMenuDrinks, isMenuParsing } from '../../api/menu';
+import { uploadMenuPhotoFiles } from '../../api/photos';
 import { useToast } from '../../contexts/ToastContext';
 import { LINK_IMPORT_LABELS, CONTACT_FIELDS, LinkImportDraft, LinkImportField, selectedContactPatch, newCandidateFromLink, normalizeLinkImportUrl } from '../../utils/linkImport';
-import { checkLinkImportExtension, readLinkImport } from '../../utils/linkImportBridge';
+import { checkLinkImportExtension, readLinkImport, readLinkImportImage } from '../../utils/linkImportBridge';
+import { emptyEnrichment, importDrinkUpdates, loadImportEnrichment, matchImportDrinks, saveImportEnrichment } from '../../utils/linkImportEnrichment';
+import { CATALOG_TAG_OPTIONS, catalogTagLabel } from '../../constants/catalogIngest';
+import { LinkImportEnrichmentPanel, emptySelection, type EnrichmentSelection } from './LinkImportEnrichmentPanel';
 import { formatImportOpeningHours } from '../../utils/importOpeningHours';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -20,16 +26,33 @@ const linkSchema = z.object({ url: z.string().trim().superRefine((value, context
   catch (error) { context.addIssue({ code: z.ZodIssueCode.custom, message: (error as Error).message }); }
 }) });
 
-export function LinkImportDialog({ candidate, onClose, onUpdated }: {
+function savedDraft(candidate?: ImportCandidate): LinkImportDraft | undefined {
+  if (!candidate) return;
+  const saved = loadImportEnrichment(candidate.id, candidate.externalId);
+  if (!saved) return;
+  try {
+    const source = normalizeLinkImportUrl(saved.sourceUrl || candidate.research.yandexMaps || candidate.instagram || '');
+    return { ...source, fields: {}, evidence: {}, enrichment: saved.enrichment, extractedAt: '' };
+  } catch { return; }
+}
+
+export function LinkImportDialog({ candidate, selectedTagSlugs, onTagsSelected, onClose, onUpdated }: {
   candidate?: ImportCandidate;
+  selectedTagSlugs?: string[];
+  onTagsSelected?: (id: string, tags: string[]) => void;
   onClose: () => void;
   onUpdated: (candidate: ImportCandidate) => void;
 }) {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<{ url: string }>({ resolver: zodResolver(linkSchema), defaultValues: { url: '' } });
+  const [initialDraft] = useState(() => savedDraft(candidate));
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<{ url: string }>({ resolver: zodResolver(linkSchema), defaultValues: { url: initialDraft?.url || '' } });
   const url = watch('url');
   const [mode, setMode] = useState<'existing' | 'new'>(candidate ? 'existing' : 'new');
   const [extension, setExtension] = useState<'checking' | 'ready' | 'missing'>('checking');
-  const [draft, setDraft] = useState<LinkImportDraft>();
+  const [draft, setDraft] = useState<LinkImportDraft | undefined>(initialDraft);
+  const [enrichmentSelection, setEnrichmentSelection] = useState<EnrichmentSelection>(() => ({ ...emptySelection(),
+    tags: selectedTagSlugs ?? (candidate ? loadImportEnrichment(candidate.id, candidate.externalId)?.tagSlugs ?? candidate.tagSlugs : []) }));
+  const [stage, setStage] = useState('');
+  const [parseRetry, setParseRetry] = useState(false);
   const [coordinates, setCoordinates] = useState({ latitude: '', longitude: '' });
   const [selected, setSelected] = useState<Set<LinkImportField>>(new Set());
   const [reading, setReading] = useState(false);
@@ -38,6 +61,11 @@ export function LinkImportDialog({ candidate, onClose, onUpdated }: {
   const abortRef = useRef<AbortController | null>(null);
   const qc = useQueryClient();
   const { showToast } = useToast();
+  const tagsQuery = useQuery({ queryKey: ['catalogs', 'shop-tags'], queryFn: () => getShopTags().then((r) => r.data ?? []) });
+  const drinksQuery = useQuery({ queryKey: ['menu', 'drinks'], queryFn: () => getMenuDrinks().then((r) => r.data ?? []) });
+  const tagOptions = tagsQuery.data ? tagsQuery.data.map((tag) => ({ slug: tag.slug, label: catalogTagLabel(tag.slug, tag.name) })) : CATALOG_TAG_OPTIONS;
+  const enrichment = draft?.enrichment ?? emptyEnrichment();
+  const matches = matchImportDrinks(enrichment.menuItems, drinksQuery.data ?? []);
   useEffect(() => {
     const controller = new AbortController();
     checkLinkImportExtension(controller.signal).then(() => setExtension('ready'), () => { if (!controller.signal.aborted) setExtension('missing'); });
@@ -58,6 +86,11 @@ export function LinkImportDialog({ candidate, onClose, onUpdated }: {
       const next = await readLinkImport(url, controller.signal);
       if (controller.signal.aborted) return;
       setExtension('ready'); setDraft(next); selectDefaults(next, mode);
+      setParseRetry(false);
+      setEnrichmentSelection({ ...emptySelection(), tags: [...new Set([
+        ...(mode === 'existing' ? selectedTagSlugs ?? candidate?.tagSlugs ?? [] : []),
+        ...(next.enrichment?.tags ?? []).filter((tag) => tagOptions.some((option) => option.slug === tag.slug)).map((tag) => tag.slug),
+      ])] });
       setCoordinates({ latitude: next.fields.latitude === undefined ? '' : String(next.fields.latitude), longitude: next.fields.longitude === undefined ? '' : String(next.fields.longitude) });
     } catch (err) {
       if (!controller.signal.aborted) setError((err as Error).message);
@@ -69,28 +102,76 @@ export function LinkImportDialog({ candidate, onClose, onUpdated }: {
     try {
       if (mode === 'existing' && candidate) {
         const patch = selectedContactPatch(draft.fields, selected);
-        if (!Object.keys(patch).length) throw new Error('Выберите поля для сохранения');
-        const response = await patchImportCandidate(candidate.id, patch);
-        if (response.patchMissing) throw new Error('Сохранение контактов недоступно');
-        if (response.isSuccess === false || response.data?.id !== candidate.id) throw new Error('API не подтвердил сохранение');
-        const notSaved = Object.entries(patch).filter(([key, value]) => {
-          const actual = response.data[key as typeof CONTACT_FIELDS[number]];
-          const normalize = (text: string) => key === 'phone' ? text.replace(/\D/g, '') : text.trim().replace(/\/$/, '');
-          return !actual || normalize(actual) !== normalize(value);
-        });
-        if (notSaved.length) throw new Error(`Не сохранено: ${notSaved.map(([key]) => LINK_IMPORT_LABELS[key as LinkImportField]).join(', ')}`);
-        onUpdated(response.data);
-        showToast('Данные сохранены', 'success');
+        try { saveImportEnrichment(candidate.id, enrichment, enrichmentSelection.tags, draft.url); }
+        catch { showToast('Черновик меню и тегов недоступен после перезагрузки', 'warning'); }
+        onTagsSelected?.(candidate.id, enrichmentSelection.tags);
+        let updated = candidate;
+        const accept = (response: { isSuccess?: boolean; data: ImportCandidate }) => {
+          if (response.isSuccess === false || response.data?.id !== candidate.id) throw new Error('API не подтвердил сохранение');
+          updated = response.data;
+          onUpdated(updated);
+        };
+        if (Object.keys(patch).length) {
+          setStage('Сохранение контактов…');
+          const response = await patchImportCandidate(candidate.id, patch);
+          if (response.patchMissing) throw new Error('Сохранение контактов недоступно');
+          if (response.isSuccess === false || response.data?.id !== candidate.id) throw new Error('API не подтвердил сохранение');
+          const notSaved = Object.entries(patch).filter(([key, value]) => {
+            const actual = response.data[key as typeof CONTACT_FIELDS[number]];
+            const normalize = (text: string) => key === 'phone' ? text.replace(/\D/g, '') : text.trim().replace(/\/$/, '');
+            return !actual || normalize(actual) !== normalize(value);
+          });
+          if (notSaved.length) throw new Error(`Не сохранено: ${notSaved.map(([key]) => LINK_IMPORT_LABELS[key as LinkImportField]).join(', ')}`);
+          accept(response);
+          setSelected(new Set());
+        }
+        const chosenDrinks = matches.filter((match) => enrichmentSelection.drinks.includes(match.index));
+        if (chosenDrinks.length !== enrichmentSelection.drinks.length) throw new Error('Справочник напитков изменился. Выберите позиции заново');
+        if (chosenDrinks.length) {
+          if (isMenuParsing(updated.menu?.parseStatus)) throw new Error('Дождитесь распознавания текущего меню');
+          setStage('Сохранение напитков…');
+          const items = importDrinkUpdates(chosenDrinks, updated.menu);
+          const response = await updateImportCandidateMenu(candidate.id, { items });
+          accept(response);
+          if (items.some((requested) => {
+            const actual = updated.menu?.items.find((item) => item.slug === requested.slug);
+            return actual?.availability !== requested.availability || (actual.price ?? null) !== (requested.price ?? null) || (actual.volumeMl ?? null) !== (requested.volumeMl ?? null);
+          })) throw new Error('API не подтвердил позиции меню');
+          setEnrichmentSelection((value) => ({ ...value, drinks: [] }));
+        }
+        if (enrichmentSelection.photos.length) {
+          if (isMenuParsing(updated.menu?.parseStatus)) throw new Error('Дождитесь распознавания текущего меню');
+          if (enrichmentSelection.photos.length > 4) throw new Error('Выберите до 4 фото');
+          setStage('Загрузка фотографий…');
+          const files: File[] = [];
+          for (const photoUrl of enrichmentSelection.photos) files.push(await readLinkImportImage(photoUrl));
+          const photos = await uploadMenuPhotoFiles(files);
+          const response = await attachImportCandidateMenuPhotos(candidate.id, { photos });
+          accept(response);
+          if (photos.some((photo) => !updated.menu?.photos.some((saved) => saved.storageKey === photo.storageKey))) throw new Error('API не подтвердил фотографии меню');
+          setEnrichmentSelection((value) => ({ ...value, photos: [] }));
+          setParseRetry(true);
+        }
+        if (enrichmentSelection.photos.length || parseRetry) {
+          setStage('Запуск распознавания…');
+          const response = await parseImportCandidateMenu(candidate.id);
+          accept(response);
+          if (!isMenuParsing(updated.menu?.parseStatus) && updated.menu?.parseStatus !== 'Ready') throw new Error(updated.menu?.parseError || 'API не подтвердил запуск распознавания');
+          setParseRetry(false);
+        }
+        showToast('Данные сохранены. Теги подготовлены к публикации', 'success');
       } else {
         const result = await saveNewLinkImport(draft, selected);
+        try { saveImportEnrichment(draft.externalId!, enrichment, enrichmentSelection.tags, draft.url); }
+        catch { showToast('Кофейня сохранена, но браузер не сохранил найденное меню и теги', 'warning'); }
         showToast(result.inserted ? 'Кофейня добавлена в очередь' : result.enriched ? 'Данные существующей кофейни дополнены' : 'Кофейня уже есть в импорте', 'success');
       }
       await qc.invalidateQueries({ queryKey: ['admin', 'import'] });
       onClose();
     } catch (err) { setError((err as Error).message || 'Не удалось сохранить'); }
-    finally { setSaving(false); }
+    finally { setSaving(false); setStage(''); }
   };
-  let canSave = Boolean(draft && selected.size);
+  let canSave = Boolean(draft && (selected.size || enrichmentSelection.drinks.length || enrichmentSelection.photos.length || enrichment.tags.length || parseRetry));
   if (draft && mode === 'new') {
     try { newCandidateFromLink(draft, selected); } catch { canSave = false; }
   }
@@ -99,7 +180,7 @@ export function LinkImportDialog({ candidate, onClose, onUpdated }: {
     <Dialog open onOpenChange={(open) => { if (!open && !saving) onClose(); }}>
       <DialogContent className="max-w-2xl">
         <DialogTitle>Импорт по ссылке</DialogTitle>
-        <DialogDescription className="sr-only">Чтение карточки и выбор полей для сохранения</DialogDescription>
+        <DialogDescription className="sr-only">Контакты, меню и теги из карточки организации</DialogDescription>
         <form onSubmit={handleSubmit(() => read())} className="flex flex-col gap-2 sm:flex-row">
           <Input aria-label="Ссылка для импорта" placeholder="Яндекс или Instagram" {...register('url', { onChange: () => setDraft(undefined) })} disabled={reading || saving} autoFocus />
           <Button type="submit" loading={reading} disabled={!url.trim() || saving}>Получить данные</Button>
@@ -115,11 +196,17 @@ export function LinkImportDialog({ candidate, onClose, onUpdated }: {
             <Button size="sm" variant="secondary" className="mt-3" onClick={() => { void checkLinkImportExtension().then(() => setExtension('ready'), () => setExtension('missing')); }}>Проверить подключение</Button>
           </details>
         )}
-        {reading && <div className="flex items-center justify-between gap-2 text-sm" role="status"><span>Чтение страницы…</span><Button variant="ghost" size="sm" onClick={() => { abortRef.current?.abort(); setReading(false); }}>Отменить</Button></div>}
+        {reading && <div className="flex items-center justify-between gap-2 text-sm" role="status"><span>Поиск контактов, меню и тегов…</span><Button variant="ghost" size="sm" onClick={() => { abortRef.current?.abort(); setReading(false); }}>Отменить</Button></div>}
         {draft && <>
           {candidate && <fieldset className="flex flex-wrap gap-4 text-sm" disabled={saving}>
             <legend className="sr-only">Куда сохранить</legend>
-            {(['existing', 'new'] as const).map((value) => <label key={value} className="flex items-center gap-2"><input type="radio" name="link-import-mode" checked={mode === value} onChange={() => { setMode(value); selectDefaults(draft, value); }} />{value === 'existing' ? 'Текущая карточка' : 'Новая кофейня'}</label>)}
+            {(['existing', 'new'] as const).map((value) => <label key={value} className="flex items-center gap-2"><input type="radio" name="link-import-mode" checked={mode === value} onChange={() => {
+              setMode(value); selectDefaults(draft, value);
+              setEnrichmentSelection({ ...emptySelection(), tags: [...new Set([
+                ...(value === 'existing' ? selectedTagSlugs ?? candidate?.tagSlugs ?? [] : []),
+                ...enrichment.tags.filter((tag) => tagOptions.some((option) => option.slug === tag.slug)).map((tag) => tag.slug),
+              ])] });
+            }} />{value === 'existing' ? 'Текущая карточка' : 'Новая кофейня'}</label>)}
           </fieldset>}
           <a href={draft.url} target="_blank" rel="noopener noreferrer" className="text-xs text-text-muted underline truncate">{draft.url}</a>
           <div className="space-y-3">
@@ -141,6 +228,11 @@ export function LinkImportDialog({ candidate, onClose, onUpdated }: {
               </div>;
             })}
           </div>
+          <LinkImportEnrichmentPanel enrichment={enrichment} matches={matches} tagOptions={tagOptions} selection={enrichmentSelection}
+            onChange={setEnrichmentSelection} menu={mode === 'existing' ? candidate?.menu : undefined} disabled={saving}
+            canImportMenu={mode === 'existing' && Boolean(candidate) && !isMenuParsing(candidate?.menu?.parseStatus)} />
+          {drinksQuery.isError && enrichment.menuItems.length > 0 && <p className="text-xs text-red-600">Не загружен справочник напитков. <button type="button" className="underline" onClick={() => void drinksQuery.refetch()}>Повторить</button></p>}
+          {stage && <p role="status" className="text-sm text-text-muted">{stage}</p>}
           {mode === 'new' && !canSave && <p className="text-xs text-text-muted">Заполните название, адрес и координаты.</p>}
           <Button onClick={() => void save()} loading={saving} disabled={!canSave || reading}>{mode === 'new' ? 'Добавить в очередь' : 'Сохранить выбранное'}</Button>
         </>}

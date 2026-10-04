@@ -49,6 +49,7 @@ import {
   suggestedFocusFromSignals,
 } from '../utils/importDossier';
 import { formatImportOpeningHours } from '../utils/importOpeningHours';
+import { emptyEnrichment, loadImportEnrichment, saveImportEnrichment } from '../utils/linkImportEnrichment';
 import { ImportInboxPage } from './ImportInboxPage';
 import { ImportStatsPage } from './ImportStatsPage';
 
@@ -148,7 +149,8 @@ export const ImportQueuePage: React.FC = () => {
   useEffect(() => {
     if (!candidate) return;
     setFocus(candidate.coffeeFocus ?? suggestedFocusFromSignals(candidate));
-    setTagSlugs(candidate.tagSlugs);
+    const local = loadImportEnrichment(candidate.id, candidate.externalId);
+    setTagSlugs(local && (candidate.queueStatus === 'Pending' || candidate.queueStatus === 'Skipped') ? local.tagSlugs : candidate.tagSlugs);
     setInstagramDraft('');
     setPhoneDraft('');
     setWebsiteDraft('');
@@ -466,7 +468,9 @@ export const ImportQueuePage: React.FC = () => {
         )}
       </header>
 
-      {linkImportOpen && <LinkImportDialog candidate={candidate} onClose={() => setLinkImportOpen(false)} onUpdated={(updated) => {
+      {linkImportOpen && <LinkImportDialog candidate={candidate} selectedTagSlugs={tagSlugs} onTagsSelected={(candidateId, tags) => {
+        if (idRef.current === candidateId) setTagSlugs(tags);
+      }} onClose={() => setLinkImportOpen(false)} onUpdated={(updated) => {
         qc.setQueryData(['admin', 'import', 'candidate', updated.id], updated);
         if (idRef.current === updated.id) {
           setInstagramDraft(''); setPhoneDraft(''); setWebsiteDraft(''); setIgPaste('');
@@ -635,7 +639,7 @@ export const ImportQueuePage: React.FC = () => {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold mb-2">Теги в каталог</h2>
+              <h2 className="text-sm font-semibold mb-2">Теги для публикации</h2>
               <div className="flex flex-wrap gap-1.5">
                 {tagOptions.map((tag) => {
                   const active = tagSlugs.includes(tag.slug);
@@ -643,12 +647,15 @@ export const ImportQueuePage: React.FC = () => {
                     <button
                       key={tag.slug}
                       type="button"
+                      aria-pressed={active}
                       disabled={Boolean(decided)}
-                      onClick={() =>
-                        setTagSlugs((current) =>
-                          active ? current.filter((slug) => slug !== tag.slug) : [...current, tag.slug]
-                        )
-                      }
+                      onClick={() => {
+                        const next = active ? tagSlugs.filter((slug) => slug !== tag.slug) : [...tagSlugs, tag.slug];
+                        setTagSlugs(next);
+                        try {
+                          saveImportEnrichment(candidate.id, loadImportEnrichment(candidate.id, candidate.externalId)?.enrichment ?? emptyEnrichment(), next);
+                        } catch { showToast('Не удалось сохранить черновик тегов в браузере', 'warning'); }
+                      }}
                       className={active ? pillOn : pillOff}
                     >
                       {tag.label}
