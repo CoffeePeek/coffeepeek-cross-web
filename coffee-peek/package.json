@@ -12,6 +12,7 @@
     "test:ssr": "node --test tests/publicPageFunction.test.mjs"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
     "@microsoft/signalr": "^10.0.11",
     "@phosphor-icons/react": "^2.1.10",
     "@tanstack/react-query": "^5.90.17",
@@ -21,7 +22,9 @@
     "qrcode.react": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-router-dom": "^6.30.3"
+    "react-hook-form": "^7.89.0",
+    "react-router-dom": "^6.30.3",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

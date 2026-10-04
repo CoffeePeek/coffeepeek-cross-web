@@ -38,6 +38,7 @@ const Header: React.FC = () => {
 
   const currentPath = location.pathname + location.search;
   const isShopDetails = /^\/shops\/[^/]+$/.test(location.pathname);
+  const isShopCreation = location.pathname === '/coffee-shops/new';
   const currentId = (user ? AUTH_NAV : PUBLIC_NAV).find(n => n.match(currentPath))?.id ?? '';
 
   const bg = isDark ? 'rgba(26,20,18,0.78)' : 'rgba(250,250,249,0.78)';
@@ -198,7 +199,7 @@ const Header: React.FC = () => {
       </div>
     </header>
       <nav
-        className={`${isShopDetails ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-4 border-t lg:hidden`}
+        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-4 border-t lg:hidden`}
         aria-label="Основная навигация"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: bg, borderColor, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
       >

@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 import { createOsmMap, coffeeDetailIcon, MINSK_CENTER } from '../map/osmMap';
-import { MapPin, Compass, MapTrifold } from '@/components/Icon';
+import { MapPin, Compass, MapTrifold, NavigationArrow } from '@/components/Icon';
 
 export type LatLng = { lat: number; lng: number };
 
@@ -14,6 +14,7 @@ interface AddressMapFieldProps {
   onCoordsChange?: (coords: LatLng | null) => void;
   error?: string;
   inputClassName?: string;
+  compact?: boolean;
 }
 
 async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
@@ -66,7 +67,9 @@ export const AddressMapField: React.FC<AddressMapFieldProps> = ({
   onCoordsChange,
   error,
   inputClassName = '',
+  compact = false,
 }) => {
+  const inputId = useId();
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
   const isDark = theme === 'dark';
@@ -80,6 +83,7 @@ export const AddressMapField: React.FC<AddressMapFieldProps> = ({
   const [geoHint, setGeoHint] = useState<string | null>(null);
 
   const geocodeSeqRef = useRef(0);
+  useEffect(() => () => { ++geocodeSeqRef.current; }, []);
   const applyCoords = useCallback(
     async (next: LatLng, fillAddress: boolean) => {
       setCoords(next);
@@ -94,17 +98,17 @@ export const AddressMapField: React.FC<AddressMapFieldProps> = ({
   );
 
   const locateMe = useCallback(
-    async (opts?: { openMap?: boolean; silent?: boolean }) => {
+    async () => {
       setLocating(true);
-      if (!opts?.silent) setGeoHint(null);
+      setGeoHint(null);
+      const seq = ++geocodeSeqRef.current;
       try {
         const pos = await readDevicePosition();
+        if (seq !== geocodeSeqRef.current) return;
         await applyCoords(pos, true);
-        if (opts?.openMap) setMapOpen(true);
       } catch {
-        if (!opts?.silent) {
-          setGeoHint('Не удалось определить местоположение — укажите адрес или выберите на карте');
-        }
+        if (seq !== geocodeSeqRef.current) return;
+        setGeoHint('Не удалось определить местоположение — укажите адрес или выберите на карте');
         setCoords((prev) => prev ?? { lat: MINSK_CENTER[1], lng: MINSK_CENTER[0] });
       } finally {
         setLocating(false);
@@ -112,30 +116,6 @@ export const AddressMapField: React.FC<AddressMapFieldProps> = ({
     },
     [applyCoords],
   );
-
-  // Try geolocation once on mount (fill address when empty).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (value.trim()) return;
-      setLocating(true);
-      try {
-        const pos = await readDevicePosition();
-        if (cancelled) return;
-        await applyCoords(pos, true);
-      } catch {
-        if (!cancelled) {
-          setGeoHint(null);
-        }
-      } finally {
-        if (!cancelled) setLocating(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on mount
-  }, []);
 
   useEffect(() => {
     if (!mapOpen || !mapRef.current) return;
@@ -204,46 +184,51 @@ export const AddressMapField: React.FC<AddressMapFieldProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className={`${muted} text-sm mb-2 block font-medium`}>Адрес *</label>
-      <input
-        type="text"
-        required
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputClassName}
-        placeholder="Улица и дом"
-      />
+      <label htmlFor={inputId} className={compact ? 'shop-wizard-label' : `${muted} text-sm mb-2 block font-medium`}>Адрес *</label>
+      <div className={compact ? 'shop-wizard-address-row' : ''}>
+        <div className={compact ? 'shop-wizard-address-input' : ''}>
+          {compact && <button type="button" className="shop-wizard-locate" aria-label="Моё местоположение" title="Моё местоположение" disabled={locating} onClick={() => void locateMe()}><NavigationArrow size={24} weight="light" /></button>}
+          <input
+            id={inputId}
+            type="text"
+            required
+            value={value}
+            onChange={(e) => { ++geocodeSeqRef.current; onChange(e.target.value); }}
+            className={inputClassName}
+            aria-invalid={!!error}
+            aria-describedby={error ? `${inputId}-error` : undefined}
+            placeholder="Улица и дом"
+          />
+        </div>
+        {compact && <button type="button" className="shop-wizard-map-button" aria-label={mapOpen ? 'Скрыть карту' : 'Выбрать на карте'} aria-expanded={mapOpen} onClick={() => setMapOpen((open) => !open)}><MapTrifold size={23} weight="light" /></button>}
+      </div>
       {error && (
-        <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
+        <p id={`${inputId}-error`} role="alert" className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={locating}
-          onClick={() => void locateMe({ openMap: false })}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border ${themeClasses.border.default} ${themeClasses.bg.input} ${primary} hover:border-[#EAB308] transition-colors disabled:opacity-50`}
-        >
-          <Compass size={16} className="text-[#EAB308]" />
-          {locating ? 'Определяем…' : 'Моё местоположение'}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMapOpen((open) => {
-              const next = !open;
-              if (next && !coords) void locateMe({ openMap: false, silent: true });
-              return next;
-            });
-          }}
-          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border ${
-            mapOpen ? 'border-[#EAB308] bg-[#EAB308]/10' : themeClasses.border.default
-          } ${themeClasses.bg.input} ${primary} hover:border-[#EAB308] transition-colors`}
-        >
-          <MapTrifold size={16} className="text-[#EAB308]" />
-          {mapOpen ? 'Скрыть карту' : 'Выбрать на карте'}
-        </button>
-      </div>
+      {!compact && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={locating}
+            onClick={() => void locateMe()}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border ${themeClasses.border.default} ${themeClasses.bg.input} ${primary} hover:border-[#EAB308] transition-colors disabled:opacity-50`}
+          >
+            <Compass size={16} className="text-[#EAB308]" />
+            {locating ? 'Определяем…' : 'Моё местоположение'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMapOpen((open) => !open)}
+            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border ${
+              mapOpen ? 'border-[#EAB308] bg-[#EAB308]/10' : themeClasses.border.default
+            } ${themeClasses.bg.input} ${primary} hover:border-[#EAB308] transition-colors`}
+          >
+            <MapTrifold size={16} className="text-[#EAB308]" />
+            {mapOpen ? 'Скрыть карту' : 'Выбрать на карте'}
+          </button>
+        </div>
+      )}
 
       {geoHint && <p className={`text-xs ${muted}`}>{geoHint}</p>}
 

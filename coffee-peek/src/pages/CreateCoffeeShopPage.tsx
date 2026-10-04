@@ -1,681 +1,230 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Controller, useForm, useWatch, type FieldErrors, type FieldPath } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { sendCoffeeShopToModeration } from '../api/moderation';
-import { getCities, getEquipments, getCoffeeBeans, getRoasters, getBrewMethods, type City, type Equipment, type CoffeeBean, type Roaster, type BrewMethod, formatEquipmentName, getEquipmentCategoryLabel } from '../api/coffeeshop';
-import Button from '../components/Button';
-import MaterialSelect from '../components/MaterialSelect';
-import { PriceRangeSlider } from '../components/PriceRangeSlider';
-import { RemovableChip } from '../components/RemovableChip';
-import { AddressMapField } from '../components/AddressMapField';
-import { ShopDetailSkeleton } from '../components/skeletons';
+import { formatEquipmentName, getEquipmentCategoryLabel, getPhotoUrl } from '../api/coffeeshop';
+import { useCities, useEquipments, useCoffeeBeans, useRoasters, useBrewMethods } from '../hooks/queries/useCatalogs';
+import { usePhotoUpload, useMenuPhotoUpload } from '../hooks/usePhotoUpload';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { getThemeClasses } from '../utils/theme';
-import { getDefaultSchedules } from '../utils/shopUtils';
-import { usePhotoUpload, useMenuPhotoUpload } from '../hooks/usePhotoUpload';
+import { AddressMapField } from '../components/AddressMapField';
+import { CatalogSelection } from '../components/shop-form/CatalogSelection';
+import { PhotoUploadField } from '../components/shop-form/PhotoUploadField';
+import { ShopScheduleStep } from '../components/shop-form/ShopScheduleStep';
+import { CaretLeft, Phone, InstagramLogo, Globe, Envelope, Coffee, Flame, Factory, Leaf } from '../components/Icon';
+import { BeanPriceMarks } from '../components/icons/CoffeeBeanSign';
+import { brand, dark, light } from '../design-system/tokens';
+import { buildShopSubmissionPayload } from '../utils/shopModerationForm';
+import { parseShopModerationError } from '../utils/shopModerationFormErrors';
+import { createShopDefaults, createShopSchema, type CreateShopFormValues } from '../utils/createShopWizard';
+import { PRICE_FILTER_OPTIONS } from '../utils/priceRange';
 import { logger } from '../utils/logger';
-import { usePageTitle } from '../hooks/usePageTitle';
-import { AppIcon } from '../components/icons';
-import { COLORS } from '../constants/colors';
-import {
-  MapPin, Images, Factory, Leaf, Flame, Drop, Lightbulb,
-} from '@/components/Icon';
-import {
-  buildShopSubmissionPayload,
-  INITIAL_SHOP_FORM_DATA,
-  type ShopFormData,
-  validateShopFormClient,
-} from '../utils/shopModerationForm';
-import {
-  getShopFieldErrorClass,
-  parseShopModerationError,
-  type ShopFormField,
-} from '../utils/shopModerationFormErrors';
+import './CreateCoffeeShopPage.css';
 
-interface CreateCoffeeShopPageProps {
-  onBack?: () => void;
+const STEPS = ['Основная информация', 'Контакты', 'Фотографии', 'Оборудование', 'Расписание'];
+const BASIC_FIELDS: FieldPath<CreateShopFormValues>[] = ['name', 'description', 'cityId', 'notValidatedAddress'];
+const CONTACT_FIELDS: FieldPath<CreateShopFormValues>[] = ['shopContact.phone', 'shopContact.instagram', 'shopContact.website', 'shopContact.email'];
+
+function catalogItems<T>(data: unknown, key: string): T[] {
+  if (Array.isArray(data)) return data as T[];
+  if (data && typeof data === 'object') {
+    const nested = (data as Record<string, unknown>)[key];
+    if (Array.isArray(nested)) return nested as T[];
+  }
+  return [];
 }
 
-const CreateCoffeeShopPage: React.FC<CreateCoffeeShopPageProps> = ({ onBack }) => {
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? <p id={id} className="shop-wizard-error" role="alert">{message}</p> : null;
+}
+
+function scheduleError(errors: FieldErrors<CreateShopFormValues>): string | undefined {
+  return errors.schedules?.message ?? errors.schedules?.root?.message ?? errors.schedules?.find?.((item) => item?.closeTime)?.closeTime?.message
+    ?? errors.schedules?.find?.((item) => item?.openTime)?.openTime?.message;
+}
+
+interface CreateCoffeeShopPageProps { onBack?: () => void }
+
+export default function CreateCoffeeShopPage({ onBack }: CreateCoffeeShopPageProps) {
   usePageTitle('Добавить кофейню');
   const navigate = useNavigate();
-  const handleBack = onBack ?? (() => navigate('/shops'));
   const { theme } = useTheme();
   const { showToast } = useToast();
-  const themeClasses = getThemeClasses(theme);
-  
-  // Состояние для справочных данных
-  const [cities, setCities] = useState<City[]>([]);
-  const [equipments, setEquipments] = useState<Equipment[]>([]);
-  const [coffeeBeans, setCoffeeBeans] = useState<CoffeeBean[]>([]);
-  const [roasters, setRoasters] = useState<Roaster[]>([]);
-  const [brewMethods, setBrewMethods] = useState<BrewMethod[]>([]);
-  const [isLoadingReferenceData, setIsLoadingReferenceData] = useState(true);
-
-  const [formData, setFormData] = useState<ShopFormData>(INITIAL_SHOP_FORM_DATA);
-
-  const { selectedFiles, uploadingPhotos, error: uploadError, handleFileSelect, removeFile, uploadPhotos, clearFiles } = usePhotoUpload();
-  const {
-    selectedFiles: menuFiles,
-    uploadingPhotos: uploadingMenu,
-    error: menuUploadError,
-    handleFileSelect: handleMenuFileSelect,
-    removeFile: removeMenuFile,
-    uploadPhotos: uploadMenuPhotos,
-    clearFiles: clearMenuFiles,
-  } = useMenuPhotoUpload();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const colors = theme === 'dark' ? dark : light;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<ShopFormField, string>>>({});
+  const form = useForm<CreateShopFormValues>({ resolver: zodResolver(createShopSchema), defaultValues: createShopDefaults(), mode: 'onTouched' });
+  const values = useWatch({ control: form.control }) as CreateShopFormValues;
+  const { errors, isSubmitting } = form.formState;
+  const photos = usePhotoUpload({ maxFiles: 10 });
+  const menuPhotos = useMenuPhotoUpload();
+  const citiesQuery = useCities();
+  const equipmentQuery = useEquipments();
+  const beansQuery = useCoffeeBeans();
+  const roastersQuery = useRoasters();
+  const methodsQuery = useBrewMethods();
+  const cities = catalogItems<NonNullable<typeof citiesQuery.data>[number]>(citiesQuery.data, 'cities');
+  const equipments = catalogItems<NonNullable<typeof equipmentQuery.data>[number]>(equipmentQuery.data, 'equipments');
+  const beans = catalogItems<NonNullable<typeof beansQuery.data>[number]>(beansQuery.data, 'beans');
+  const roasters = catalogItems<NonNullable<typeof roastersQuery.data>[number]>(roastersQuery.data, 'roasters');
+  const methods = catalogItems<NonNullable<typeof methodsQuery.data>[number]>(methodsQuery.data, 'methods');
+  const busy = isSubmitting || photos.uploadingPhotos || menuPhotos.uploadingPhotos;
+  const canContinue = !!values.name?.trim() && !!values.cityId && !!values.notValidatedAddress?.trim();
+  const handleExit = onBack ?? (() => navigate('/shops'));
 
-  // Загрузка справочных данных
   useEffect(() => {
-    const loadReferenceData = async () => {
-      try {
-        setIsLoadingReferenceData(true);
-        const [citiesRes, equipmentsRes, beansRes, roastersRes, methodsRes] = await Promise.all([
-          getCities(),
-          getEquipments(),
-          getCoffeeBeans(),
-          getRoasters(),
-          getBrewMethods(),
-        ]);
+    const list = catalogItems<NonNullable<typeof citiesQuery.data>[number]>(citiesQuery.data, 'cities');
+    const city = list.find((item) => /^мінск$|^минск$|^minsk$/i.test(item.name.trim())) ?? list[0];
+    if (city && !form.getValues('cityId')) form.setValue('cityId', city.id);
+  }, [citiesQuery.data, form]);
 
-        const unwrapList = <T,>(data: unknown, key: string): T[] => {
-          if (Array.isArray(data)) return data as T[];
-          if (data && typeof data === 'object' && key in data) {
-            const nested = (data as Record<string, unknown>)[key];
-            if (Array.isArray(nested)) return nested as T[];
-          }
-          return [];
-        };
+  useEffect(() => {
+    headingRef.current?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [step]);
 
-        const citiesData = unwrapList<City>(citiesRes.data, 'cities');
-        const equipmentsData = unwrapList<Equipment>(equipmentsRes.data, 'equipments');
-        const beansData = unwrapList<CoffeeBean>(beansRes.data, 'beans');
-        const roastersData = unwrapList<Roaster>(roastersRes.data, 'roasters');
-        const methodsData = unwrapList<BrewMethod>(methodsRes.data, 'methods');
-
-        setCities(citiesData);
-        setEquipments(equipmentsData);
-        setCoffeeBeans(beansData);
-        setRoasters(roastersData);
-        setBrewMethods(methodsData);
-
-        const minsk =
-          citiesData.find((c) => /^мінск$|^минск$|^minsk$/i.test(c.name.trim())) ?? citiesData[0];
-        if (minsk?.id) {
-          setFormData((prev) => (prev.cityId ? prev : { ...prev, cityId: minsk.id }));
-        }
-
-      } catch (err) {
-        logger.error('Error loading reference data:', err);
-      } finally {
-        setIsLoadingReferenceData(false);
-      }
-    };
-
-    loadReferenceData();
-  }, []);
-
-  const handleInputChange = (field: keyof ShopFormData, value: unknown) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-    if (field in fieldErrors) {
-      setFieldErrors(prev => {
-        const next = { ...prev };
-        delete next[field as ShopFormField];
-        return next;
-      });
-    }
+  const updateSelection = (field: 'equipmentIds' | 'coffeeBeanIds' | 'roasterIds' | 'brewMethodIds', ids: string[]) => {
+    form.setValue(field, ids, { shouldDirty: true });
   };
 
-  const handleContactChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      shopContact: {
-        ...prev.shopContact,
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleScheduleChange = (dayOfWeek: number, field: 'openTime' | 'closeTime', value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      schedules: prev.schedules.map(schedule =>
-        schedule.dayOfWeek === dayOfWeek
-          ? { ...schedule, [field]: value }
-          : schedule
-      ),
-    }));
-  };
-
-  const toggleScheduleDay = (dayOfWeek: number) => {
-    setFormData(prev => {
-      const existingSchedule = prev.schedules.find(s => s.dayOfWeek === dayOfWeek);
-      if (existingSchedule) {
-        return {
-          ...prev,
-          schedules: prev.schedules.filter(s => s.dayOfWeek !== dayOfWeek),
-        };
-      } else {
-        const defaultTime = dayOfWeek >= 5 ? '10:00' : '08:00';
-        return {
-          ...prev,
-          schedules: [
-            ...prev.schedules,
-            { dayOfWeek, openTime: defaultTime, closeTime: '22:00' },
-          ].sort((a, b) => a.dayOfWeek - b.dayOfWeek),
-        };
-      }
-    });
-  };
-
-  const dayNames = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submit = form.handleSubmit(async (data) => {
     setError(null);
-    setFieldErrors({});
-
-    const clientErrors = validateShopFormClient(formData);
-    if (Object.keys(clientErrors).length > 0) {
-      setFieldErrors(clientErrors);
-      return;
-    }
-
     try {
-      setIsSubmitting(true);
-
-      const [uploadedPhotos, uploadedMenuPhotos] = await Promise.all([
-        uploadPhotos(),
-        uploadMenuPhotos(),
-      ]);
-      const shopData = buildShopSubmissionPayload(formData);
-      const response = await sendCoffeeShopToModeration(
-        shopData,
-        uploadedPhotos.length > 0 ? uploadedPhotos : undefined,
-        uploadedMenuPhotos.length > 0 ? uploadedMenuPhotos : undefined
-      );
-
-      if (response.data?.isAddressValidated) {
-        showToast('Заявка отправлена на модерацию', 'success');
-      } else {
-        showToast('Заявка принята, адрес проверит модератор', 'warning');
-      }
-
-      setFormData({ ...INITIAL_SHOP_FORM_DATA, schedules: getDefaultSchedules() });
-      clearFiles();
-      clearMenuFiles();
-      handleBack();
+      const [uploadedPhotos, uploadedMenuPhotos] = await Promise.all([photos.uploadPhotos(), menuPhotos.uploadPhotos()]);
+      const website = data.shopContact.website;
+      const payload = buildShopSubmissionPayload({ ...data, shopContact: { ...data.shopContact, website: website && !/^https?:\/\//i.test(website) ? `https://${website}` : website } });
+      const response = await sendCoffeeShopToModeration(payload, uploadedPhotos.length ? uploadedPhotos : undefined, uploadedMenuPhotos.length ? uploadedMenuPhotos : undefined);
+      showToast(response.data?.isAddressValidated ? 'Заявка отправлена на модерацию' : 'Заявка принята, адрес проверит модератор', response.data?.isAddressValidated ? 'success' : 'warning');
+      photos.clearFiles();
+      menuPhotos.clearFiles();
+      handleExit();
     } catch (err: unknown) {
       const parsed = parseShopModerationError(err);
-      setFieldErrors(parsed.fieldErrors);
+      for (const [field, message] of Object.entries(parsed.fieldErrors)) form.setError(field as FieldPath<CreateShopFormValues>, { type: 'server', message });
+      if (Object.keys(parsed.fieldErrors).length) setStep(0);
       setError(parsed.globalError);
       logger.error('Error submitting coffee shop:', err);
-    } finally {
-      setIsSubmitting(false);
     }
+  }, (invalid) => {
+    if (invalid.name || invalid.cityId || invalid.notValidatedAddress || invalid.description) setStep(0);
+    else if (invalid.shopContact) setStep(1);
+    else if (invalid.schedules) setStep(4);
+  });
+
+  const advance = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (busy) return;
+    if (step === 4) { await submit(event); return; }
+    const fields = step === 0 ? BASIC_FIELDS : step === 1 ? CONTACT_FIELDS : [];
+    if (!fields.length || await form.trigger(fields, { shouldFocus: true })) { setError(null); setStep((current) => current + 1); }
   };
 
-  const bgClass = theme === 'dark' ? 'bg-[#1A1412]' : 'bg-[#FCFBFA]';
-
-  if (isLoadingReferenceData) {
-    return <ShopDetailSkeleton />;
-  }
+  const style = {
+    '--wizard-bg': colors.background, '--wizard-surface': colors.surface,
+    '--wizard-text': colors.textPrimary, '--wizard-muted': colors.textSecondary,
+    '--wizard-border': colors.border, '--wizard-accent': brand.primary,
+    '--wizard-accent-hover': brand.primaryHover, colorScheme: theme,
+  } as CSSProperties;
+  const priceIndex = values.priceRange ? PRICE_FILTER_OPTIONS.findIndex((option) => option.value === values.priceRange) + 1 : 0;
 
   return (
-    <div className={`min-h-screen ${bgClass} pt-4 sm:pt-6 pb-8 sm:pb-12 px-4 sm:px-6 overflow-x-hidden`}>
-      <div className="max-w-4xl mx-auto min-w-0">
-        {/* Заголовок */}
-        <div className="mb-6 sm:mb-8">
-          <button
-            onClick={handleBack}
-            className={`mb-3 sm:mb-6 flex items-center gap-2 ${themeClasses.text.secondary} hover:${themeClasses.text.primary} transition-colors`}
-          >
-            <AppIcon name="arrow_back" size={24} />
-            <span>Назад</span>
+    <main className="shop-wizard" style={style}>
+      <div className="shop-wizard-content">
+        <header className="shop-wizard-header">
+          <button type="button" className="shop-wizard-back" disabled={busy} aria-label={step === 0 ? 'Вернуться к кофейням' : 'Предыдущий шаг'} onClick={() => { if (step === 0) handleExit(); else { setError(null); setStep(step - 1); } }}><CaretLeft size={24} weight="light" /></button>
+          <h1 ref={headingRef} tabIndex={-1}>{STEPS[step]}</h1>
+        </header>
+        <ol className="shop-wizard-progress" aria-label="Шаги добавления кофейни">
+          {STEPS.map((title, index) => <li key={title} className={index === step ? 'is-current' : ''} aria-current={index === step ? 'step' : undefined}><span className="sr-only">Шаг {index + 1} из 5: {title}</span></li>)}
+        </ol>
+        <form onSubmit={advance} noValidate aria-label="Добавление кофейни">
+          <fieldset disabled={busy} className="shop-wizard-fields">
+            <div className="shop-wizard-intro">
+              <p>{step === 0 ? 'Поля со * обязательны для заполнения' : 'Необязательно — можно пропустить'}</p>
+              {step === 1 && <p className="shop-wizard-muted">Заполните поля, которые актуальны для вашего заведения.</p>}
+              {step === 3 && <p className="shop-wizard-muted">Отметьте то, что есть в заведении.</p>}
+              {step === 4 && <p className="shop-wizard-muted">По умолчанию кофейня открыта каждый день.</p>}
+            </div>
+
+            {step === 0 && (
+              <div className="shop-wizard-basic shop-wizard-field-stack">
+                <div>
+                  <label className="shop-wizard-label" htmlFor="shop-name">Название кофейни *</label>
+                  <input id="shop-name" className="shop-wizard-input" placeholder="Например, Surf Coffee" maxLength={55} required aria-invalid={!!errors.name} aria-describedby={errors.name ? 'shop-name-error' : 'shop-name-count'} {...form.register('name')} />
+                  <p id="shop-name-count" className="shop-wizard-count">{values.name?.length ?? 0}/55</p>
+                  <FieldError id="shop-name-error" message={errors.name?.message} />
+                </div>
+                <div>
+                  <label className="shop-wizard-label" htmlFor="shop-description">Описание <span>необязательно</span></label>
+                  <textarea id="shop-description" className="shop-wizard-input shop-wizard-textarea" rows={3} placeholder="Расскажите о концепции, атмосфере и фишках кофейни…" aria-invalid={!!errors.description} aria-describedby={errors.description ? 'shop-description-error' : undefined} {...form.register('description')} />
+                  <FieldError id="shop-description-error" message={errors.description?.message} />
+                </div>
+                <div>
+                  <label className="shop-wizard-label" htmlFor="shop-city">Город *</label>
+                  <select id="shop-city" className="shop-wizard-input" required disabled={citiesQuery.isPending} aria-invalid={!!errors.cityId} aria-describedby={errors.cityId ? 'shop-city-error' : undefined} {...form.register('cityId')}>
+                    {!cities.length && <option value="">{citiesQuery.isPending ? 'Загрузка городов…' : 'Выберите город'}</option>}
+                    {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
+                  </select>
+                  <FieldError id="shop-city-error" message={errors.cityId?.message} />
+                  {(citiesQuery.isError || (!citiesQuery.isPending && !cities.length)) && <p className="shop-wizard-error" role="alert">Не удалось загрузить города. <button type="button" className="shop-wizard-text-button" onClick={() => void citiesQuery.refetch()}>Повторить</button></p>}
+                </div>
+                <Controller control={form.control} name="notValidatedAddress" render={({ field }) => <AddressMapField compact value={field.value} onChange={field.onChange} error={errors.notValidatedAddress?.message} inputClassName="shop-wizard-input" />} />
+                <div className="shop-wizard-price">
+                  <label className="shop-wizard-label shop-wizard-price-label" htmlFor="shop-price">Цена</label>
+                  <input id="shop-price" className="shop-wizard-price-range" type="range" min={0} max={3} step={1} value={priceIndex} aria-valuetext={priceIndex ? PRICE_FILTER_OPTIONS[priceIndex - 1].label : 'Не указана'} onChange={(event) => form.setValue('priceRange', PRICE_FILTER_OPTIONS[Number(event.target.value) - 1]?.value, { shouldDirty: true })} />
+                  <div className="shop-wizard-price-marks">
+                    <span aria-hidden="true" />
+                    {PRICE_FILTER_OPTIONS.map((option) => <button type="button" key={option.value} aria-label={option.label} aria-pressed={values.priceRange === option.value} className={values.priceRange === option.value ? 'is-selected' : ''} onClick={() => form.setValue('priceRange', values.priceRange === option.value ? undefined : option.value, { shouldDirty: true })}><BeanPriceMarks count={option.tiers} size={19} color="currentColor" /></button>)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="shop-wizard-field-stack shop-wizard-contacts">
+                {[
+                  { field: 'phone' as const, label: 'Номер телефона', placeholder: '+375', type: 'tel', icon: Phone },
+                  { field: 'instagram' as const, label: 'Instagram профиль', placeholder: '@', type: 'text', icon: InstagramLogo },
+                  { field: 'website' as const, label: 'Веб-сайт', placeholder: 'mycoffee.by', type: 'text', icon: Globe },
+                  { field: 'email' as const, label: 'Email', placeholder: 'info@coffee.by', type: 'email', icon: Envelope },
+                ].map(({ field, label, placeholder, type, icon: Icon }) => (
+                  <div key={field}>
+                    <label className="shop-wizard-label" htmlFor={`shop-${field}`}>{label} <span>необязательно</span></label>
+                    <div className="shop-wizard-icon-input"><Icon size={23} weight="light" aria-hidden="true" /><input id={`shop-${field}`} type={type} className="shop-wizard-input" placeholder={placeholder} aria-invalid={!!errors.shopContact?.[field]} aria-describedby={errors.shopContact?.[field] ? `shop-${field}-error` : undefined} {...form.register(`shopContact.${field}`)} /></div>
+                    <FieldError id={`shop-${field}-error`} message={errors.shopContact?.[field]?.message} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="shop-wizard-photos">
+                <PhotoUploadField id="shop-photo-upload" title="Фотографии кофейни" description="До 10 фотографий (необязательно). Можно выбрать несколько сразу." files={photos.selectedFiles} maxFiles={10} onSelect={photos.handleFileSelect} onRemove={photos.removeFile} />
+                <PhotoUploadField id="menu-photo-upload" title="Фото меню" description="До 4 фото меню (необязательно). Не попадут в галерею кофейни." files={menuPhotos.selectedFiles} maxFiles={4} onSelect={menuPhotos.handleFileSelect} onRemove={menuPhotos.removeFile} />
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="shop-wizard-catalogs">
+                <CatalogSelection title="Методы приготовления" items={methods} selectedIds={values.brewMethodIds} onChange={(ids) => updateSelection('brewMethodIds', ids)} icon={<Coffee size={25} weight="light" />} loading={methodsQuery.isPending} failed={methodsQuery.isError} onRetry={() => void methodsQuery.refetch()} />
+                <CatalogSelection title="Обжарщики" items={roasters.map((roaster) => ({ ...roaster, image: roaster.photoUrl ?? (roaster.coverPhoto ? getPhotoUrl(roaster.coverPhoto, 'thumbnail') : undefined) }))} selectedIds={values.roasterIds} onChange={(ids) => updateSelection('roasterIds', ids)} icon={<Flame size={25} weight="light" />} loading={roastersQuery.isPending} failed={roastersQuery.isError} onRetry={() => void roastersQuery.refetch()} />
+                <CatalogSelection title="Оборудование" items={equipments.map((item) => ({ id: item.id, name: formatEquipmentName(item), detail: getEquipmentCategoryLabel(item.category) }))} selectedIds={values.equipmentIds} onChange={(ids) => updateSelection('equipmentIds', ids)} icon={<Factory size={25} weight="light" />} loading={equipmentQuery.isPending} failed={equipmentQuery.isError} onRetry={() => void equipmentQuery.refetch()} />
+                <CatalogSelection title="Кофейные зёрна" items={beans} selectedIds={values.coffeeBeanIds} onChange={(ids) => updateSelection('coffeeBeanIds', ids)} icon={<Leaf size={25} weight="light" />} loading={beansQuery.isPending} failed={beansQuery.isError} onRetry={() => void beansQuery.refetch()} />
+              </div>
+            )}
+
+            <div hidden={step !== 4}><ShopScheduleStep schedules={values.schedules} onChange={(schedules) => form.setValue('schedules', schedules, { shouldDirty: true, shouldValidate: !!errors.schedules })} error={scheduleError(errors)} /></div>
+          </fieldset>
+
+          {(error || photos.error || menuPhotos.error) && <p className="shop-wizard-error shop-wizard-global-error" role="alert">{photos.error || menuPhotos.error || error}</p>}
+          <button type="submit" className="shop-wizard-next" disabled={busy || (step === 0 && !canContinue)}>
+            {photos.uploadingPhotos || menuPhotos.uploadingPhotos ? 'Загрузка фотографий…' : isSubmitting ? 'Отправка…' : step === 4 ? 'Отправить на модерацию' : 'Далее'}
           </button>
-          <h1 className={`text-2xl sm:text-4xl font-bold ${themeClasses.text.primary} mb-2 break-words`}>Добавить кофейню</h1>
-          <p className={`${themeClasses.text.secondary} text-sm sm:text-base`}>Заполните форму для отправки кофейни на модерацию</p>
-        </div>
-
-        {(error || uploadError || menuUploadError) && (
-          <div className={`mb-6 p-4 ${theme === 'dark' ? 'bg-red-500/10 border-red-500/20' : 'bg-red-50 border-red-200'} border rounded-2xl`}>
-            <p className={`text-sm ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{error || uploadError || menuUploadError}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-8 min-w-0">
-          {/* Основная информация */}
-          <div className={`${themeClasses.bg.card} border ${themeClasses.border.default} rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4`}>
-            <h3 className={`text-xl sm:text-2xl font-semibold ${themeClasses.text.primary} mb-4 sm:mb-6`}>Основная информация</h3>
-            
-            <div>
-              <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Название *</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all ${getShopFieldErrorClass(!!fieldErrors.name)}`}
-                placeholder="Введите название кофейни"
-              />
-              {fieldErrors.name && (
-                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{fieldErrors.name}</p>
-              )}
-            </div>
-
-            <AddressMapField
-              value={formData.notValidatedAddress}
-              onChange={(address) => handleInputChange('notValidatedAddress', address)}
-              error={fieldErrors.notValidatedAddress}
-              inputClassName={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all ${getShopFieldErrorClass(!!fieldErrors.notValidatedAddress)}`}
-            />
-
-            <div>
-              <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Описание</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all ${getShopFieldErrorClass(!!fieldErrors.description)}`}
-                rows={4}
-                placeholder="Описание кофейни"
-              />
-              {fieldErrors.description && (
-                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{fieldErrors.description}</p>
-              )}
-            </div>
-
-            <div>
-              <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Город</label>
-              <div
-                className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.secondary} opacity-80 flex items-center gap-2 cursor-not-allowed`}
-                aria-disabled
-              >
-                <MapPin size={20} className="text-[#EAB308] shrink-0" />
-                <span className={themeClasses.text.primary}>
-                  {cities.find((c) => c.id === formData.cityId)?.name || 'Минск'}
-                </span>
-              </div>
-              {fieldErrors.cityId && (
-                <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>{fieldErrors.cityId}</p>
-              )}
-            </div>
-
-            <div>
-              <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>
-                Ценовой диапазон
-              </label>
-              <PriceRangeSlider
-                value={formData.priceRange}
-                onChange={(priceRange) => handleInputChange('priceRange', priceRange)}
-                gold={COLORS.primary}
-                muted={theme === 'dark' ? '#A8A29E' : '#78716C'}
-                track={theme === 'dark' ? '#3D2F28' : '#E7E5E4'}
-                allowClear
-              />
-            </div>
-          </div>
-
-          {/* Контакты */}
-          <div className={`${themeClasses.bg.card} border ${themeClasses.border.default} rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4`}>
-            <h3 className={`text-xl sm:text-2xl font-semibold ${themeClasses.text.primary} mb-4 sm:mb-6`}>Контакты</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Телефон</label>
-                <input
-                  type="tel"
-                  value={formData.shopContact?.phone || ''}
-                  onChange={(e) => handleContactChange('phone', e.target.value)}
-                  className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all`}
-                  placeholder="+375..."
-                />
-              </div>
-
-              <div>
-                <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Email</label>
-                <input
-                  type="email"
-                  value={formData.shopContact?.email || ''}
-                  onChange={(e) => handleContactChange('email', e.target.value)}
-                  className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all`}
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <div>
-                <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Сайт</label>
-                <input
-                  type="url"
-                  value={formData.shopContact?.website || ''}
-                  onChange={(e) => handleContactChange('website', e.target.value)}
-                  className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all`}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div>
-                <label className={`${themeClasses.text.secondary} text-sm mb-2 block font-medium`}>Instagram</label>
-                <input
-                  type="text"
-                  value={formData.shopContact?.instagram || ''}
-                  onChange={(e) => handleContactChange('instagram', e.target.value)}
-                  className={`w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-2xl py-3 px-4 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all`}
-                  placeholder="@username"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Фотографии */}
-          <div className={`${themeClasses.bg.card} border ${themeClasses.border.default} rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4`}>
-            <h3 className={`text-xl sm:text-2xl font-semibold ${themeClasses.text.primary} mb-4 sm:mb-6`}>Фотографии</h3>
-            
-            <div>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileSelect}
-                className="hidden"
-                id="photo-upload"
-              />
-              <label
-                htmlFor="photo-upload"
-                className={`block w-full ${themeClasses.bg.input} border-2 border-dashed ${themeClasses.border.default} rounded-2xl py-8 px-4 text-center cursor-pointer hover:border-[#EAB308] transition-all`}
-              >
-                <Images size={48} className={`mx-auto mb-2 ${themeClasses.text.secondary}`} />
-                <span className={themeClasses.text.secondary}>Нажмите для выбора фотографий</span>
-              </label>
-            </div>
-
-            {selectedFiles.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {selectedFiles.map((file, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-xl"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeFile(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className={`${themeClasses.bg.card} border ${themeClasses.border.default} rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4`}>
-            <h3 className={`text-xl sm:text-2xl font-semibold ${themeClasses.text.primary} mb-2`}>Фото меню</h3>
-            <p className={`text-sm ${themeClasses.text.secondary}`}>До 4 фото меню напитков. Не галерея кофейни.</p>
-            <div>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleMenuFileSelect}
-                className="hidden"
-                id="menu-photo-upload"
-              />
-              <label
-                htmlFor="menu-photo-upload"
-                className={`block w-full ${themeClasses.bg.input} border-2 border-dashed ${themeClasses.border.default} rounded-2xl py-8 px-4 text-center cursor-pointer hover:border-[#EAB308] transition-all`}
-              >
-                <Images size={48} className={`mx-auto mb-2 ${themeClasses.text.secondary}`} />
-                <span className={themeClasses.text.secondary}>Нажмите для выбора фото меню</span>
-              </label>
-            </div>
-            {menuFiles.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {menuFiles.map((file, index) => (
-                  <div key={`${file.name}-${index}`} className="relative group">
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt={`Меню ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-xl"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeMenuFile(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Оборудование и ингредиенты */}
-          <div className={`${themeClasses.bg.card} border ${themeClasses.border.default} rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4`}>
-            <h3 className={`text-xl sm:text-2xl font-semibold ${themeClasses.text.primary} mb-4 sm:mb-6`}>Оборудование и ингредиенты</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MaterialSelect
-                label="Оборудование"
-                value=""
-                onChange={(value) => {
-                  if (value && !formData.equipmentIds?.includes(value)) {
-                    handleInputChange('equipmentIds', [...(formData.equipmentIds || []), value]);
-                  }
-                }}
-                options={[
-                  { value: '', label: 'Выберите оборудование' },
-                  ...equipments
-                    .filter(eq => !formData.equipmentIds?.includes(eq.id))
-                    .map(eq => ({ value: eq.id, label: `${formatEquipmentName(eq)} — ${getEquipmentCategoryLabel(eq.category)}` }))
-                ]}
-                icon={<Factory size={20} />}
-              />
-
-              <MaterialSelect
-                label="Кофейные зёрна"
-                value=""
-                onChange={(value) => {
-                  if (value && !formData.coffeeBeanIds?.includes(value)) {
-                    handleInputChange('coffeeBeanIds', [...(formData.coffeeBeanIds || []), value]);
-                  }
-                }}
-                options={[
-                  { value: '', label: 'Выберите зёрна' },
-                  ...coffeeBeans
-                    .filter(bean => !formData.coffeeBeanIds?.includes(bean.id))
-                    .map(bean => ({ value: bean.id, label: bean.name }))
-                ]}
-                icon={<Leaf size={20} />}
-              />
-
-              <MaterialSelect
-                label="Обжарщики"
-                value=""
-                onChange={(value) => {
-                  if (value && !formData.roasterIds?.includes(value)) {
-                    handleInputChange('roasterIds', [...(formData.roasterIds || []), value]);
-                  }
-                }}
-                options={[
-                  { value: '', label: 'Выберите обжарщика' },
-                  ...roasters
-                    .filter(roaster => !formData.roasterIds?.includes(roaster.id))
-                    .map(roaster => ({ value: roaster.id, label: roaster.name }))
-                ]}
-                icon={<Flame size={20} />}
-              />
-
-              <MaterialSelect
-                label="Методы заваривания"
-                value=""
-                onChange={(value) => {
-                  if (value && !formData.brewMethodIds?.includes(value)) {
-                    handleInputChange('brewMethodIds', [...(formData.brewMethodIds || []), value]);
-                  }
-                }}
-                options={[
-                  { value: '', label: 'Выберите метод' },
-                  ...brewMethods
-                    .filter(method => !formData.brewMethodIds?.includes(method.id))
-                    .map(method => ({ value: method.id, label: method.name }))
-                ]}
-                icon={<Drop size={20} />}
-              />
-            </div>
-
-            {/* Показать выбранные элементы */}
-            <div className="flex flex-wrap gap-2 mt-4">
-              {formData.equipmentIds?.map(id => {
-                const eq = equipments.find(e => e.id === id);
-                return eq ? (
-                  <RemovableChip
-                    key={id}
-                    label={formatEquipmentName(eq)}
-                    gold={COLORS.primary}
-                    onRemove={() => handleInputChange('equipmentIds', formData.equipmentIds?.filter(i => i !== id))}
-                  />
-                ) : null;
-              })}
-              {formData.coffeeBeanIds?.map(id => {
-                const bean = coffeeBeans.find(b => b.id === id);
-                return bean ? (
-                  <RemovableChip
-                    key={id}
-                    label={bean.name}
-                    gold={COLORS.primary}
-                    onRemove={() => handleInputChange('coffeeBeanIds', formData.coffeeBeanIds?.filter(i => i !== id))}
-                  />
-                ) : null;
-              })}
-              {formData.roasterIds?.map(id => {
-                const roaster = roasters.find(r => r.id === id);
-                return roaster ? (
-                  <RemovableChip
-                    key={id}
-                    label={roaster.name}
-                    gold={COLORS.primary}
-                    onRemove={() => handleInputChange('roasterIds', formData.roasterIds?.filter(i => i !== id))}
-                  />
-                ) : null;
-              })}
-              {formData.brewMethodIds?.map(id => {
-                const method = brewMethods.find(m => m.id === id);
-                return method ? (
-                  <RemovableChip
-                    key={id}
-                    label={method.name}
-                    gold={COLORS.primary}
-                    onRemove={() => handleInputChange('brewMethodIds', formData.brewMethodIds?.filter(i => i !== id))}
-                  />
-                ) : null;
-              })}
-            </div>
-          </div>
-
-          {/* Расписание работы */}
-          <div className={`${themeClasses.bg.card} border ${themeClasses.border.default} rounded-2xl sm:rounded-3xl p-4 sm:p-8 space-y-4`}>
-            <h3 className={`text-xl sm:text-2xl font-semibold ${themeClasses.text.primary} mb-4 sm:mb-6`}>Расписание работы</h3>
-            
-            <div className="space-y-3">
-              {dayNames.map((dayName, index) => {
-                const schedule = formData.schedules.find(s => s.dayOfWeek === index);
-                const isEnabled = !!schedule;
-                
-                return (
-                  <div
-                    key={index}
-                    className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4 rounded-2xl border-2 transition-all min-w-0 ${
-                      isEnabled
-                        ? `${themeClasses.bg.input} ${themeClasses.border.default}`
-                        : `${themeClasses.bg.tertiary} ${themeClasses.border.default} opacity-60`
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={isEnabled}
-                        onChange={() => toggleScheduleDay(index)}
-                        className="w-5 h-5 rounded border-2 border-[#EAB308] text-[#EAB308] focus:ring-[#EAB308] focus:ring-offset-0 cursor-pointer"
-                      />
-                      <label className={`${themeClasses.text.primary} font-medium cursor-pointer`}>
-                        {dayName}
-                      </label>
-                    </div>
-
-                    {isEnabled && schedule && (
-                      <div className="grid grid-cols-2 gap-2 w-full min-w-0 sm:flex sm:items-end sm:gap-3 sm:flex-1">
-                        <div className="min-w-0 sm:flex-1">
-                          <label className={`${themeClasses.text.secondary} text-xs mb-1 block`}>Открытие</label>
-                          <input
-                            type="time"
-                            value={schedule.openTime}
-                            onChange={(e) => handleScheduleChange(index, 'openTime', e.target.value)}
-                            className={`w-full min-w-0 max-w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-xl py-2 px-2 sm:px-3 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all`}
-                          />
-                        </div>
-                        <span className={`${themeClasses.text.secondary} hidden sm:block pb-2`}>—</span>
-                        <div className="min-w-0 sm:flex-1">
-                          <label className={`${themeClasses.text.secondary} text-xs mb-1 block`}>Закрытие</label>
-                          <input
-                            type="time"
-                            value={schedule.closeTime}
-                            onChange={(e) => handleScheduleChange(index, 'closeTime', e.target.value)}
-                            className={`w-full min-w-0 max-w-full ${themeClasses.bg.input} border-2 ${themeClasses.border.default} rounded-xl py-2 px-2 sm:px-3 ${themeClasses.text.primary} focus:outline-none focus:border-[#EAB308] transition-all`}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {!isEnabled && (
-                      <div className={`flex-1 ${themeClasses.text.secondary} text-sm italic`}>
-                        Выходной
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <p className={`${themeClasses.text.secondary} text-xs mt-2 flex items-start gap-1.5`}>
-              <Lightbulb size={14} className="shrink-0 mt-0.5" />
-              <span>По умолчанию: Пн-Пт 8:00-22:00, Сб-Вс 10:00-22:00</span>
-            </p>
-          </div>
-
-          {/* Кнопки */}
-          <div className={`flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4 border-t ${themeClasses.border.default}`}>
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full sm:flex-1 whitespace-nowrap"
-              isLoading={isSubmitting || uploadingPhotos || uploadingMenu}
-              disabled={isSubmitting || uploadingPhotos || uploadingMenu}
-            >
-              {uploadingPhotos || uploadingMenu ? 'Загрузка фотографий...' : isSubmitting ? 'Отправка...' : 'Отправить на модерацию'}
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleBack}
-              className="w-full sm:w-auto sm:min-w-32"
-              disabled={isSubmitting || uploadingPhotos || uploadingMenu}
-            >
-              Отмена
-            </Button>
-          </div>
         </form>
       </div>
-    </div>
+    </main>
   );
-};
-
-export default CreateCoffeeShopPage;
+}
