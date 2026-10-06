@@ -17,6 +17,7 @@ interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
   message: string;
+  error?: string;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'success' | 'primary';
@@ -30,6 +31,7 @@ export function ConfirmDialog({
   isOpen,
   title,
   message,
+  error,
   confirmLabel = 'Подтвердить',
   cancelLabel = 'Отмена',
   variant = 'primary',
@@ -55,11 +57,12 @@ export function ConfirmDialog({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && !loading && onCancel()}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-h-[90dvh] overflow-y-auto break-words text-text-main dark:text-white">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{message}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p role="alert" className="break-words text-sm text-red-700 dark:text-red-300">{error}</p>}
         {withComment && (
           <Textarea
             value={comment}

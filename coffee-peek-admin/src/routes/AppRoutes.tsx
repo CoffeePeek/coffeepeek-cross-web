@@ -86,9 +86,9 @@ export const AppRoutes: React.FC = () => (
         <Route path="/coffees" element={<ProtectedRoute requireModerator><CoffeesPage /></ProtectedRoute>} />
         <Route path="/coffees/:id" element={<ProtectedRoute requireModerator><CoffeeEditPage /></ProtectedRoute>} />
         <Route path="/coffee-import" element={<ProtectedRoute requireModerator><CoffeeImportPage /></ProtectedRoute>} />
-        <Route path="/roaster-tags" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage kind="tags" /></ProtectedRoute>} />
+        <Route path="/roaster-tags" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage key="tags" kind="tags" /></ProtectedRoute>} />
         <Route path="/roaster-tags/assignments/:id" element={<ProtectedRoute requireModerator><RoasterTagsPage /></ProtectedRoute>} />
-        <Route path="/coffee-filter-values" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage kind="values" /></ProtectedRoute>} />
+        <Route path="/coffee-filter-values" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage key="values" kind="values" /></ProtectedRoute>} />
         <Route path="/review-reports" element={<ProtectedRoute requireAdmin><ReviewReportsPage /></ProtectedRoute>} />
 
         <Route path="/coffee-shops" element={<BrowseShopsPage />} />
