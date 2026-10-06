@@ -9,7 +9,7 @@ import { parseJWT, isTokenExpired, getUserRoles } from '../utils/jwt';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import {
   Envelope, Lock, User, WarningCircle, Eye, EyeSlash,
-  SignIn, Sparkle, ArrowLeft, Check,
+  SignIn, Sparkle, CaretLeft, Check,
 } from '@/components/Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import Mascot from '../components/Mascot';
@@ -385,7 +385,7 @@ const RegisterPage: React.FC = () => {
                 <button type="button" onClick={() => step === 'registration' ? setStep('email') : navigate('/')}
                   className="whitespace-nowrap text-[11px] min-[360px]:text-xs sm:text-[13px]"
                   style={{ padding: 0, background: 'none', border: 'none', color: textMuted, fontFamily: '"Manrope"', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <ArrowLeft size={14} /> Назад
+                  <CaretLeft size={14} /> Назад
                 </button>
                 <button type="button" onClick={() => navigate('/login')}
                   className="whitespace-nowrap text-[11px] min-[360px]:text-xs sm:text-[13px]"

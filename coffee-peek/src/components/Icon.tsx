@@ -85,6 +85,8 @@ import {
   Minus,
   NavigationArrow,
   Plus,
+  CoffeeBean, ChatCenteredText, CalendarBlank, CaretUp, CaretUpDown,
+  PersonSimpleWalk, Trash, Monitor,
 } from '@phosphor-icons/react';
 
 export type { IconProps };
@@ -174,22 +176,24 @@ export {
   Minus,
   NavigationArrow,
   Plus,
+  CoffeeBean, ChatCenteredText, CalendarBlank, CaretUp, CaretUpDown,
+  PersonSimpleWalk, Trash, Monitor,
 };
 
 /** Backward-compatible aliases used across the app */
 export const Icons = {
   Coffee,
   Check,
-  Back: ArrowLeft,
+  Back: CaretLeft,
   Map: MapTrifold,
   Briefcase,
-  Tool: Wrench,
+  Tool: GearSix,
   Star,
   CheckIn: MapPin,
   Logout: SignOut,
   Menu: List,
   Close: X,
-  Alert: Warning,
+  Alert: WarningCircle,
   Home: House,
   Info,
 };

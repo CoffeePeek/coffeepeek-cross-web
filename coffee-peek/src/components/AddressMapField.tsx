@@ -4,7 +4,7 @@ import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 import { createOsmMap, coffeeDetailIcon, MINSK_CENTER } from '../map/osmMap';
-import { MapPin, Compass, MapTrifold, NavigationArrow } from '@/components/Icon';
+import { MapPin, MapTrifold, NavigationArrow } from '@/components/Icon';
 import { getDeviceLocation } from '../utils/geolocation';
 
 export type LatLng = { lat: number; lng: number };
@@ -207,7 +207,7 @@ export const AddressMapField: React.FC<AddressMapFieldProps> = ({
             onClick={() => void locateMe()}
             className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border ${themeClasses.border.default} ${themeClasses.bg.input} ${primary} hover:border-[#EAB308] transition-colors disabled:opacity-50`}
           >
-            <Compass size={16} className="text-[#EAB308]" />
+            <NavigationArrow size={16} className="text-[#EAB308]" />
             {locating ? 'Определяем…' : 'Моё местоположение'}
           </button>
           <button

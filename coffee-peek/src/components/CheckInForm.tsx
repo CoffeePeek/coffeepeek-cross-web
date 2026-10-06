@@ -4,7 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { brand, getThemeColors } from '../design-system/tokens';
 import Mascot, { type MascotPose } from './Mascot';
 import { StarIcon } from './icons';
-import { Calendar, Camera, CaretDown, MapPin, X } from './Icon';
+import { CalendarBlank, Camera, CaretDown, MapPin, X } from './Icon';
 import WobbleRing from './WobbleRing';
 import { CHECK_IN_LIMITS, todayInputValue } from '../utils/checkInForm';
 import { MAX_CHECKIN_PHOTOS } from '../api/photos';
@@ -192,7 +192,7 @@ const CheckInForm: React.FC<CheckInFormProps> = ({
         </label>
         <div className="relative">
           <div className="flex min-h-14 items-center gap-3 rounded-2xl px-4" style={{ backgroundColor: isDark ? colors.input : '#FFFFFF', color: colors.textPrimary, border: fieldBorder }}>
-            <Calendar size={22} color={colors.textSecondary} />
+            <CalendarBlank size={22} color={colors.textSecondary} />
             <span className="min-w-0 flex-1 text-base">{formattedDate}</span>
             <CaretDown size={20} color={colors.textSecondary} />
           </div>

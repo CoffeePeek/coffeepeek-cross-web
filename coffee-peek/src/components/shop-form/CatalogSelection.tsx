@@ -1,11 +1,13 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Check } from '../Icon';
+import { AppIcon } from '../icons';
 
 interface CatalogOption {
   id: string;
   name: string;
   image?: string | null;
   detail?: string;
+  iconName?: string;
 }
 
 interface CatalogSelectionProps {
@@ -37,7 +39,7 @@ export function CatalogSelection({ title, items, selectedIds, onChange, icon, lo
           const selected = selectedIds.includes(item.id);
           return (
             <button type="button" role="checkbox" aria-checked={selected} key={item.id} className="shop-wizard-option" onClick={() => onChange(selected ? selectedIds.filter((id) => id !== item.id) : [...selectedIds, item.id])}>
-              <span className="shop-wizard-option-icon" aria-hidden="true">{item.image ? <img src={item.image} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : icon}</span>
+              <span className="shop-wizard-option-icon" aria-hidden="true">{item.image ? <img src={item.image} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : item.iconName ? <AppIcon name={item.iconName} size={28} /> : icon}</span>
               <span className="shop-wizard-option-name">{item.name}{item.detail && <small>{item.detail}</small>}</span>
               {selected && <Check size={23} className="shop-wizard-check" />}
             </button>

@@ -65,7 +65,7 @@ const CheckInsPage: React.FC = () => {
       <div className="mx-auto w-full max-w-[760px]">
         <header className="mb-6 grid grid-cols-[52px_1fr_52px] items-center sm:mb-8">
           <button type="button" onClick={() => navigate(-1)} aria-label="Назад" className="flex h-12 w-12 items-center justify-center rounded-full border shadow-sm" style={{ borderColor: colors.border, background: colors.surface, color: colors.textPrimary }}>
-            <AppIcon name="arrow_back" size={24} color="currentColor" />
+            <AppIcon name="chevron_left" size={24} color="currentColor" />
           </button>
           <h1 className="text-center text-2xl font-extrabold sm:text-3xl" style={{ color: colors.textPrimary }}>Чекины</h1>
         </header>
@@ -103,9 +103,9 @@ const CheckInsPage: React.FC = () => {
 
         {view === 'feed' && (feed.data?.totalPages ?? 0) > 1 && (
           <div className="mt-6 flex items-center justify-center gap-3" style={{ color: colors.textPrimary }}>
-            <button type="button" disabled={page <= 1 || feed.isFetching} onClick={() => setPage(value => value - 1)} className="min-h-11 rounded-xl border px-4 disabled:opacity-40" style={{ borderColor: colors.border }} aria-label="Предыдущая страница">←</button>
+            <button type="button" disabled={page <= 1 || feed.isFetching} onClick={() => setPage(value => value - 1)} className="min-h-11 rounded-xl border px-4 disabled:opacity-40" style={{ borderColor: colors.border }} aria-label="Предыдущая страница"><AppIcon name="caret-left" size={20} /></button>
             <span>{page} / {feed.data?.totalPages}</span>
-            <button type="button" disabled={page >= (feed.data?.totalPages ?? 1) || feed.isFetching} onClick={() => setPage(value => value + 1)} className="min-h-11 rounded-xl border px-4 disabled:opacity-40" style={{ borderColor: colors.border }} aria-label="Следующая страница">→</button>
+            <button type="button" disabled={page >= (feed.data?.totalPages ?? 1) || feed.isFetching} onClick={() => setPage(value => value + 1)} className="min-h-11 rounded-xl border px-4 disabled:opacity-40" style={{ borderColor: colors.border }} aria-label="Следующая страница"><AppIcon name="caret-right" size={20} /></button>
           </div>
         )}
       </div>

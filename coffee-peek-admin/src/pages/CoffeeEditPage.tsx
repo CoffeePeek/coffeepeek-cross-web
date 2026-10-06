@@ -8,6 +8,7 @@ import { coffeeGroups, editAdminCoffee, editClassification, editVariantClassific
 import { httpClient } from '../api/core/httpClient';
 import { baseProtectedFields, coffeeContentSchema, coffeeDraft, executeVersionedChanges, isVersionConflict, type CoffeeDraft } from '../utils/coffeeEditor';
 import { useUnsavedCoffee } from '../hooks/useUnsavedCoffee';
+import { coffeeWarningLabel } from '../utils/coffeePresentation';
 import { useUser } from '../contexts/UserContext';
 import { useToast } from '../contexts/ToastContext';
 import { Button } from '../components/ui/Button';
@@ -78,7 +79,7 @@ function CoffeeEditor({ initial, initialClassification }: { initial: AdminCoffee
         <div className="flex flex-wrap gap-2"><Button variant="secondary" disabled={comparison.coffee.version !== comparison.classification.version} onClick={() => { version.current = comparison.coffee.version; setServer(comparison.coffee); setServerClassification(comparison.classification); form.reset(coffeeDraft(comparison.coffee, comparison.classification)); setConflict(false); }}>Использовать текущие данные</Button>
         <Button onClick={() => { if (comparison.coffee.version !== comparison.classification.version) return; version.current = comparison.coffee.version; setServer(comparison.coffee); setServerClassification(comparison.classification); setConflict(false); }}>Сохранить мой черновик для повторной попытки</Button></div></>}
     </Card>}
-    <Card className="space-y-2 p-5"><h2 className="font-bold">Проверка перед публикацией</h2><ul className="list-disc pl-5">{server.reviewWarnings.map(warning => <li key={warning}>{warning}</li>)}</ul>{!server.reviewWarnings.length && <p>Предупреждений нет.</p>}<p>Проверьте происхождение, фото, классификацию и защиту ручных правок.</p>{!server.variants.length && <p>Предложений покупки нет. После публикации кофе может отсутствовать в каталоге с фильтром «Только в наличии».</p>}</Card>
+    <Card className="space-y-2 p-5"><h2 className="font-bold">Проверка перед публикацией</h2><ul className="list-disc pl-5">{server.reviewWarnings.map(warning => <li key={warning}>{coffeeWarningLabel(warning)}</li>)}</ul>{!server.reviewWarnings.length && <p>Предупреждений нет.</p>}<p>Проверьте происхождение, фото, классификацию и защиту ручных правок.</p>{!server.variants.length && <p>Предложений покупки нет. После публикации кофе может отсутствовать в каталоге с фильтром «Только в наличии».</p>}</Card>
     <form onSubmit={event => { event.preventDefault(); void submit(server.status); }} className="space-y-5">
       <fieldset disabled={busy} className="space-y-5">
       <Card className="space-y-4 p-5"><h2 className="font-bold">Содержание</h2><label className="block">Название<Input {...form.register('content.name')} /></label>{protect('Name')}

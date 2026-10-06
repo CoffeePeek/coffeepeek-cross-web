@@ -13,7 +13,7 @@ import { AddressMapField } from '../components/AddressMapField';
 import { CatalogSelection } from '../components/shop-form/CatalogSelection';
 import { PhotoUploadField } from '../components/shop-form/PhotoUploadField';
 import { ShopScheduleStep } from '../components/shop-form/ShopScheduleStep';
-import { CaretLeft, Phone, InstagramLogo, Globe, Envelope, Coffee, Flame, Factory, Leaf } from '../components/Icon';
+import { CaretLeft, Phone, InstagramLogo, Globe, Envelope, Coffee, CoffeeBean, GearSix } from '../components/Icon';
 import { BeanPriceMarks } from '../components/icons/CoffeeBeanSign';
 import { brand, dark, light } from '../design-system/tokens';
 import { buildShopSubmissionPayload } from '../utils/shopModerationForm';
@@ -209,10 +209,10 @@ export default function CreateCoffeeShopPage({ onBack }: CreateCoffeeShopPagePro
 
             {step === 3 && (
               <div className="shop-wizard-catalogs">
-                <CatalogSelection title="Методы приготовления" items={methods} selectedIds={values.brewMethodIds} onChange={(ids) => updateSelection('brewMethodIds', ids)} icon={<Coffee size={25} weight="light" />} loading={methodsQuery.isPending} failed={methodsQuery.isError} onRetry={() => void methodsQuery.refetch()} />
-                <CatalogSelection title="Обжарщики" items={roasters.map((roaster) => ({ ...roaster, image: roaster.photoUrl ?? (roaster.coverPhoto ? getPhotoUrl(roaster.coverPhoto, 'thumbnail') : undefined) }))} selectedIds={values.roasterIds} onChange={(ids) => updateSelection('roasterIds', ids)} icon={<Flame size={25} weight="light" />} loading={roastersQuery.isPending} failed={roastersQuery.isError} onRetry={() => void roastersQuery.refetch()} />
-                <CatalogSelection title="Оборудование" items={equipments.map((item) => ({ id: item.id, name: formatEquipmentName(item), detail: getEquipmentCategoryLabel(item.category) }))} selectedIds={values.equipmentIds} onChange={(ids) => updateSelection('equipmentIds', ids)} icon={<Factory size={25} weight="light" />} loading={equipmentQuery.isPending} failed={equipmentQuery.isError} onRetry={() => void equipmentQuery.refetch()} />
-                <CatalogSelection title="Кофейные зёрна" items={beans} selectedIds={values.coffeeBeanIds} onChange={(ids) => updateSelection('coffeeBeanIds', ids)} icon={<Leaf size={25} weight="light" />} loading={beansQuery.isPending} failed={beansQuery.isError} onRetry={() => void beansQuery.refetch()} />
+                <CatalogSelection title="Методы приготовления" items={methods.map(method => ({ ...method, iconName: `brew:${method.name}` }))} selectedIds={values.brewMethodIds} onChange={(ids) => updateSelection('brewMethodIds', ids)} icon={<Coffee size={25} weight="light" />} loading={methodsQuery.isPending} failed={methodsQuery.isError} onRetry={() => void methodsQuery.refetch()} />
+                <CatalogSelection title="Обжарщики" items={roasters.map((roaster) => ({ ...roaster, image: roaster.photoUrl ?? (roaster.coverPhoto ? getPhotoUrl(roaster.coverPhoto, 'thumbnail') : undefined) }))} selectedIds={values.roasterIds} onChange={(ids) => updateSelection('roasterIds', ids)} icon={<CoffeeBean size={25} weight="light" />} loading={roastersQuery.isPending} failed={roastersQuery.isError} onRetry={() => void roastersQuery.refetch()} />
+                <CatalogSelection title="Оборудование" items={equipments.map((item) => ({ id: item.id, name: formatEquipmentName(item), detail: getEquipmentCategoryLabel(item.category) }))} selectedIds={values.equipmentIds} onChange={(ids) => updateSelection('equipmentIds', ids)} icon={<GearSix size={25} weight="light" />} loading={equipmentQuery.isPending} failed={equipmentQuery.isError} onRetry={() => void equipmentQuery.refetch()} />
+                <CatalogSelection title="Кофейные зёрна" items={beans} selectedIds={values.coffeeBeanIds} onChange={(ids) => updateSelection('coffeeBeanIds', ids)} icon={<CoffeeBean size={25} weight="light" />} loading={beansQuery.isPending} failed={beansQuery.isError} onRetry={() => void beansQuery.refetch()} />
               </div>
             )}
 

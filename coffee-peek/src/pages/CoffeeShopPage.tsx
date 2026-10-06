@@ -32,7 +32,7 @@ import { getPriceRangeTier } from '../utils/priceRange';
 import { formatDayOfWeekShort, getCurrentDayOfWeek, getCurrentStatus, toLocalSchedules } from '../utils/shopUtils';
 import { getThemeClasses } from '../utils/theme';
 import {
-  ArrowLeft, CaretDown, ChatCircleText, Check, Clock, Heart, MapPin,
+  ArrowLeft, CaretDown, ChatCenteredText, Check, Clock, Heart, MapPin,
   NavigationArrow, NotePencil, ShareNetwork, Star,
 } from '@/components/Icon';
 
@@ -213,7 +213,7 @@ const CoffeeShopPage: React.FC = () => {
             <div className="rounded-[22px] p-4" style={{ background: status?.isOpen ? (isDark ? '#183B2A' : '#DCF7E7') : (isDark ? '#442727' : '#FEE2E2'), color: status?.isOpen ? '#22C55E' : '#EF4444' }}><strong className="block text-sm sm:text-xl">● {status?.isOpen ? 'Открыта' : 'Закрыта'}</strong>{statusTime && <p className="mt-1 text-xs opacity-75">{status?.isOpen ? 'до' : 'с'} {statusTime}</p>}</div>
             <div className="rounded-[22px] border p-4" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}>{priceTier ? <BeanPriceMarks count={priceTier} size={17} color={colors.gold} /> : <strong className="text-lg">—</strong>}<p className="mt-1 text-xs" style={{ color: colors.muted }}>Стоимость</p></div>
           </div>
-          {!!shop.tags?.length && <div className="mt-4 flex flex-wrap gap-2">{shop.tags.map(tag => <span key={tag.id} className="rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: colors.border, color: colors.muted, background: colors.surface }}>{tag.name}</span>)}</div>}
+          {!!shop.tags?.length && <div className="mt-4 flex flex-wrap gap-2">{shop.tags.map(tag => <span key={tag.id} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: colors.border, color: colors.muted, background: colors.surface }}><AppIcon name={`tag:${tag.slug}`} size={18} />{tag.name}</span>)}</div>}
         </section>
 
         {shop.description && <section><SectionTitle colors={colors}>О кофейне</SectionTitle><div className="rounded-[24px] border p-5" style={{ background: colors.surface, borderColor: colors.border }}><p className="leading-relaxed" style={{ color: colors.muted }}>{shop.description}</p></div></section>}
@@ -222,7 +222,7 @@ const CoffeeShopPage: React.FC = () => {
 
         {!!shop.roasters?.length && <section><SectionTitle colors={colors}>Обжарщики</SectionTitle><div className="overflow-hidden rounded-[24px] border" style={{ background: colors.surface, borderColor: colors.border }}>{shop.roasters.map((roaster, index) => <PublicEntityLink key={roaster.id} kind="roasters" entityId={roaster.id} address={roaster.publicAddress} className="flex min-h-[72px] w-full items-center gap-4 px-5 py-3 text-left" style={{ borderTop: index ? `1px solid ${colors.border}` : undefined, color: colors.text }}>{roaster.photoUrl ? <img src={roaster.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 font-bold text-stone-700">{roaster.name[0]}</span>}<span className="flex-1 font-semibold">{roaster.name}</span><AppIcon name="chevron_right" size={20} color={colors.muted} /></PublicEntityLink>)}</div></section>}
 
-        {!!shop.brewMethods?.length && <section><SectionTitle colors={colors}>Методы заваривания</SectionTitle><div className="flex flex-wrap gap-2 rounded-[24px] border p-5" style={{ background: colors.surface, borderColor: colors.border }}>{shop.brewMethods.map(method => <span key={method.id} className="rounded-full px-3 py-2 text-sm font-semibold" style={{ background: isDark ? '#3A321F' : '#FBF4DF', color: '#B38B32' }}>{method.name}</span>)}</div></section>}
+        {!!shop.brewMethods?.length && <section><SectionTitle colors={colors}>Методы заваривания</SectionTitle><div className="flex flex-wrap gap-2 rounded-[24px] border p-5" style={{ background: colors.surface, borderColor: colors.border }}>{shop.brewMethods.map(method => <span key={method.id} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold" style={{ background: isDark ? '#3A321F' : '#FBF4DF', color: '#B38B32' }}><AppIcon name={`brew:${method.name}`} size={24} />{method.name}</span>)}</div></section>}
 
         {(shop.equipments?.length || shop.beans?.length) ? <section><SectionTitle colors={colors}>Кофе и оборудование</SectionTitle><div className="grid gap-4 rounded-[24px] border p-5 sm:grid-cols-2" style={{ background: colors.surface, borderColor: colors.border }}>{!!shop.equipments?.length && <div><h3 className="mb-2 font-bold" style={{ color: colors.text }}>Оборудование</h3><p className="text-sm leading-relaxed" style={{ color: colors.muted }}>{shop.equipments.map(item => item.name).join(', ')}</p></div>}{!!shop.beans?.length && <div><h3 className="mb-2 font-bold" style={{ color: colors.text }}>Зёрна</h3><p className="text-sm leading-relaxed" style={{ color: colors.muted }}>{shop.beans.map(item => item.name).join(', ')}</p></div>}</div></section> : null}
 
@@ -234,7 +234,7 @@ const CoffeeShopPage: React.FC = () => {
 
       <div className="fixed inset-x-0 bottom-0 z-[1150] flex items-center gap-2 border-t px-4 py-3 backdrop-blur-xl lg:hidden" style={{ background: isDark ? 'rgba(23,18,16,.9)' : 'rgba(248,247,245,.9)', borderColor: colors.border, paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
         <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label="Построить маршрут" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg" style={{ background: colors.gold, color: '#1A1412' }}><NavigationArrow size={22} weight="fill" /></a>
-        <button type="button" onClick={handleReview} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><ChatCircleText size={20} />Отзыв</button>
+        <button type="button" onClick={handleReview} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><ChatCenteredText size={20} />Отзыв</button>
         <button type="button" onClick={handleCheckIn} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><Check size={20} />Чекин</button>
       </div>
 

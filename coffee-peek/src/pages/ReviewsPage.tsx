@@ -69,7 +69,7 @@ const ReviewsPage: React.FC = () => {
               color: colors.textPrimary, cursor: 'pointer',
             }}
           >
-            <AppIcon name="arrow_back" size={20} color="currentColor" />
+            <AppIcon name="chevron_left" size={20} color="currentColor" />
           </button>
           <h1 style={{
             margin: 0, fontFamily: '"Manrope"', fontWeight: 700,

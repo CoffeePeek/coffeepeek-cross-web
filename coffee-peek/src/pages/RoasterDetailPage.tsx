@@ -113,7 +113,7 @@ const RoasterDetailPage: React.FC = () => {
                   rel="noopener noreferrer"
                   className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors hover:border-[#D4A84B]/60 ${borderColor} ${textMain}`}
                 >
-                  <AppIcon name="photo_camera" size={20} color="currentColor" />
+                  <AppIcon name="instagram-logo" size={20} color="currentColor" />
                   {instagramHandle(roaster.contact.instagramLink)}
                 </a>
               )}

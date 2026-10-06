@@ -10,11 +10,15 @@ interface ShopSearchBarProps {
   activeFilterCount: number;
   colors: { surface: string; border: string; textPrimary: string; textSecondary: string; background: string };
   dark: boolean;
+  placeholder?: string;
+  ariaLabel?: string;
+  className?: string;
 }
 
 const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
   searchQuery, onSearchChange, showFilters, onFilterToggle, activeFilterCount,
   colors, dark,
+  placeholder = 'Поиск кофейни…', ariaLabel = 'Поиск кофейни', className = 'mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-8',
 }) => {
   const gold = COLORS.primary;
   const goldWarm = '#D4A84B';
@@ -47,7 +51,7 @@ const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
   });
 
   return (
-    <div className="mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-8">
+    <div className={className}>
 
       {/* ── Desktop ───────────────────────────────────────────── */}
       <div className="hidden pb-1 pt-4 lg:block">
@@ -56,10 +60,12 @@ const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
             <AppIcon name="search" size={18} color={goldWarm} />
           </span>
           <input
+            type="search"
+            aria-label={ariaLabel}
             value={searchQuery}
             onChange={e => onSearchChange(e.target.value)}
             maxLength={100}
-            placeholder="Поиск кофейни…"
+            placeholder={placeholder}
             style={{ width: '100%', height: 44, borderRadius: 999, border: `1px solid ${inputBorder}`, background: inputBg, padding: '0 18px 0 48px', fontSize: 15, fontFamily: '"Manrope"', color: dark ? '#fff' : '#1C1917', outline: 'none', boxSizing: 'border-box' as const }}
           />
         </div>
@@ -74,10 +80,12 @@ const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
               <AppIcon name="search" size={18} color={goldWarm} />
             </span>
             <input
+              type="search"
+              aria-label={ariaLabel}
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
               maxLength={100}
-              placeholder="Поиск кофейни…"
+              placeholder={placeholder}
               style={{ width: '100%', height: 56, borderRadius: 999, border: `1px solid ${inputBorder}`, background: colors.surface, padding: '0 18px 0 48px', fontSize: 16, fontFamily: '"Manrope"', color: dark ? '#fff' : '#1C1917', outline: 'none', boxSizing: 'border-box' as const, minWidth: 0 }}
             />
           </div>

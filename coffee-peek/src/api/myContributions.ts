@@ -20,6 +20,7 @@ export interface Contribution {
   date?: string;
   link?: string;
   shopId?: string;
+  section?: ShopChangeSection;
   status: ModerationStatus;
   reason: string | null;
 }
@@ -48,7 +49,7 @@ export const toContribution = {
     date: r.createdAt, shopId: r.shop?.slug, link: r.shop?.canonicalPath,
   }),
   edits: (e: ShopChangeRequestDto): Contribution => ({
-    id: e.id, title: sectionLabels[e.section] ?? e.section, subtitle: 'Правка кофейни', status: e.status, reason: e.rejectionReason,
+    id: e.id, title: sectionLabels[e.section] ?? e.section, section: e.section, subtitle: 'Правка кофейни', status: e.status, reason: e.rejectionReason,
     date: e.createdAtUtc, shopId: e.shop?.slug, link: e.shop?.canonicalPath,
   }),
 };

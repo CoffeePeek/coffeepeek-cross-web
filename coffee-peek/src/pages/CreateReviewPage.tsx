@@ -337,7 +337,7 @@ const CreateReviewPage: React.FC = () => {
             className="flex items-center gap-2 font-semibold hover:opacity-70 transition-opacity"
             style={{ color: colors.textMuted }}
           >
-            <AppIcon name="arrow_back" size={24} />
+            <AppIcon name="chevron_left" size={24} />
             Назад
           </button>
         </div>

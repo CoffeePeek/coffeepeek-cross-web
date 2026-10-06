@@ -21,6 +21,10 @@ import { getMenuUploadUrls, getShopUploadUrls, putPhotoToStorage } from '../api/
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { getThemeClasses } from '../utils/theme';
+import { AppIcon } from '../components/icons';
+import { OptionRow } from '../components/ShopFilterPanel';
+import { SHOP_CHANGE_ICONS } from '../components/icons/iconMap';
+import { COLORS, getThemeColors } from '../constants/colors';
 
 const SECTIONS: Array<{ value: ShopChangeSection; label: string }> = [
   { value: 'Description', label: 'Описание' },
@@ -33,7 +37,7 @@ const SECTIONS: Array<{ value: ShopChangeSection; label: string }> = [
   { value: 'Menu', label: 'Меню' },
 ];
 
-type CatalogItem = { id: string; name: string };
+type CatalogItem = { id: string; name: string; slug?: string };
 
 async function uploadFiles(
   files: File[],
@@ -59,35 +63,26 @@ async function uploadFiles(
   }));
 }
 
-const selectedValues = (event: React.ChangeEvent<HTMLSelectElement>) =>
-  Array.from(event.target.selectedOptions, (option) => option.value);
-
 const nullable = (value: string) => value.trim() || null;
 
-const MultiSelect = ({
-  label,
-  items,
-  value,
-  onChange,
-}: {
-  label: string;
-  items: CatalogItem[];
-  value: string[];
-  onChange: (ids: string[]) => void;
-}) => (
-  <label className="block">
-    <span className="block mb-2 text-sm font-semibold">{label}</span>
-    <select
-      multiple
-      value={value}
-      onChange={(event) => onChange(selectedValues(event))}
-      className="w-full min-h-56 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-[#2D241F] p-3"
-    >
-      {items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-    </select>
-    <span className="mt-1 block text-xs opacity-60">Ctrl/Cmd + клик — выбрать несколько</span>
-  </label>
-);
+const MultiSelect = ({ label, items, value, onChange, section }: {
+  label: string; items: CatalogItem[]; value: string[];
+  onChange: (ids: string[]) => void; section: ShopChangeSection;
+}) => {
+  const { theme } = useTheme();
+  const colors = getThemeColors(theme);
+  return (
+    <fieldset className="space-y-1">
+      <legend className="mb-2 text-sm font-semibold">{label}</legend>
+      {items.map(item => (
+        <OptionRow key={item.id} label={item.name} checked={value.includes(item.id)}
+          onClick={() => onChange(value.includes(item.id) ? value.filter(id => id !== item.id) : [...value, item.id])}
+          gold={COLORS.primary} textPrimary={colors.textPrimary}
+          icon={<AppIcon name={section === 'Tags' ? `tag:${item.slug ?? ''}` : section === 'BrewMethods' ? `brew:${item.name}` : SHOP_CHANGE_ICONS[section]} size={24} />} />
+      ))}
+    </fieldset>
+  );
+};
 
 const EditCoffeeShopPage: React.FC = () => {
   const { shopId: routeId } = useParams<{ shopId: string }>();
@@ -221,7 +216,7 @@ const EditCoffeeShopPage: React.FC = () => {
     <main className={`min-h-screen ${tc.bg.primary} ${tc.text.primary} px-4 py-8`}>
       <form onSubmit={submit} className="mx-auto max-w-4xl space-y-6">
         <div>
-          <PublicEntityLink kind="shops" entityId={shop.id} className="text-sm text-[#D4A84B]">← {shop.name}</PublicEntityLink>
+          <PublicEntityLink kind="shops" entityId={shop.id} className="inline-flex items-center gap-1 text-sm text-[#D4A84B]"><AppIcon name="caret-left" size={18} />{shop.name}</PublicEntityLink>
           <h1 className="mt-2 text-3xl font-bold">Предложить изменения</h1>
           <p className={`mt-2 ${tc.text.secondary}`}>Выберите один раздел. Каждая заявка проверяется отдельно.</p>
         </div>
@@ -229,8 +224,8 @@ const EditCoffeeShopPage: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           {SECTIONS.map((item) => (
             <button key={item.value} type="button" onClick={() => setSection(item.value)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold ${section === item.value ? 'bg-[#D4A84B] text-white' : `${tc.bg.card} border ${tc.border.default}`}`}>
-              {item.label}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${section === item.value ? 'bg-[#D4A84B] text-white' : `${tc.bg.card} border ${tc.border.default}`}`}>
+              <AppIcon name={SHOP_CHANGE_ICONS[item.value]} size={18} />{item.label}
             </button>
           ))}
         </div>
@@ -244,15 +239,15 @@ const EditCoffeeShopPage: React.FC = () => {
           )}
           {section === 'Contacts' && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <label>Телефон<input maxLength={20} value={contacts.phoneNumber} onChange={(e) => setContacts({ ...contacts, phoneNumber: e.target.value })} className={`${inputClass} mt-2`} /></label>
-              <label>Email<input type="email" maxLength={255} value={contacts.email} onChange={(e) => setContacts({ ...contacts, email: e.target.value })} className={`${inputClass} mt-2`} /></label>
-              <label>Сайт<input type="url" maxLength={2048} value={contacts.siteLink} onChange={(e) => setContacts({ ...contacts, siteLink: e.target.value })} className={`${inputClass} mt-2`} /></label>
-              <label>Instagram<input maxLength={255} value={contacts.instagramLink} onChange={(e) => setContacts({ ...contacts, instagramLink: e.target.value })} className={`${inputClass} mt-2`} /></label>
+              <label><span className="inline-flex items-center gap-2"><AppIcon name="phone" size={18} />Телефон</span><input maxLength={20} value={contacts.phoneNumber} onChange={(e) => setContacts({ ...contacts, phoneNumber: e.target.value })} className={`${inputClass} mt-2`} /></label>
+              <label><span className="inline-flex items-center gap-2"><AppIcon name="envelope" size={18} />Email</span><input type="email" maxLength={255} value={contacts.email} onChange={(e) => setContacts({ ...contacts, email: e.target.value })} className={`${inputClass} mt-2`} /></label>
+              <label><span className="inline-flex items-center gap-2"><AppIcon name="globe" size={18} />Сайт</span><input type="url" maxLength={2048} value={contacts.siteLink} onChange={(e) => setContacts({ ...contacts, siteLink: e.target.value })} className={`${inputClass} mt-2`} /></label>
+              <label><span className="inline-flex items-center gap-2"><AppIcon name="instagram-logo" size={18} />Instagram</span><input maxLength={255} value={contacts.instagramLink} onChange={(e) => setContacts({ ...contacts, instagramLink: e.target.value })} className={`${inputClass} mt-2`} /></label>
             </div>
           )}
           {(section === 'Tags' || section === 'Roasters' || section === 'Equipment' || section === 'BrewMethods') && (
             <MultiSelect label={SECTIONS.find((item) => item.value === section)?.label ?? section}
-              items={catalogs[section]} value={ids[section]} onChange={(value) => setIds({ ...ids, [section]: value })} />
+              section={section} items={catalogs[section]} value={ids[section]} onChange={(value) => setIds({ ...ids, [section]: value })} />
           )}
           {section === 'Photos' && (
             <div className="space-y-5">

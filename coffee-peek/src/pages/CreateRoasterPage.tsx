@@ -136,7 +136,7 @@ const CreateRoasterPage: React.FC = () => {
             onClick={handleBack}
             className={`mb-3 sm:mb-6 flex items-center gap-2 ${themeClasses.text.secondary} hover:${themeClasses.text.primary} transition-colors`}
           >
-            <AppIcon name="arrow_back" size={24} />
+            <AppIcon name="chevron_left" size={24} />
             <span>Назад</span>
           </button>
           <h1 className={`text-2xl sm:text-4xl font-bold ${themeClasses.text.primary} mb-2 break-words`}>Добавить обжарщика</h1>

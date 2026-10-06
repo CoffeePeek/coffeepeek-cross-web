@@ -13,9 +13,10 @@ import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorHandler';
 import {
   CaretRight,
-  ChatCircleText,
+  Camera,
+  ChatCenteredText,
   Heart,
-  Factory,
+  CoffeeBean,
   MapPin,
   NotePencil,
   PencilSimple,
@@ -67,13 +68,13 @@ const ProfilePage: React.FC = () => {
     { title: 'Избранные кофейни', subtitle: 'Кофейни, которые вы сохранили', Icon: Heart, color: '#FB7185', bg: 'rgba(244,63,94,.16)', route: '/shops?filter=favorite' },
   ];
   const activities = [
-    { title: 'Мои отзывы', subtitle: 'Ваши оценки и отзывы о кофейнях', Icon: ChatCircleText, color: '#D58AE8', bg: 'rgba(192,82,214,.16)', route: '/my/reviews' },
+    { title: 'Мои отзывы', subtitle: 'Ваши оценки и отзывы о кофейнях', Icon: ChatCenteredText, color: '#D58AE8', bg: 'rgba(192,82,214,.16)', route: '/my/reviews' },
     { title: 'Чекины', subtitle: 'Места, которые вы уже посетили', Icon: MapPin, color: '#68B9E8', bg: 'rgba(56,153,211,.16)', route: '/check-ins' },
   ];
   const moderation = [
     { title: 'Правки кофеен', subtitle: 'Изменения, которые вы отправили', Icon: NotePencil, color: '#D8A743', bg: 'rgba(202,145,28,.16)', route: '/my/edits' },
     { title: 'Отправленные кофейни', subtitle: 'Кофейни, которые вы добавили', Icon: Plus, color: '#74C98B', bg: 'rgba(65,158,88,.18)', route: '/my/shops' },
-    { title: 'Отправленные обжарщики', subtitle: 'Обжарщики, которых вы добавили', Icon: Factory, color: '#68B9E8', bg: 'rgba(56,153,211,.16)', route: '/my/roasters' },
+    { title: 'Отправленные обжарщики', subtitle: 'Обжарщики, которых вы добавили', Icon: CoffeeBean, color: '#68B9E8', bg: 'rgba(56,153,211,.16)', route: '/my/roasters' },
   ];
 
   if (isLoading || isUserLoading) {
@@ -171,7 +172,7 @@ const ProfilePage: React.FC = () => {
                 : <span className="text-4xl font-extrabold" style={{ color: colors.gold }}>{initial}</span>}
               {isEditing && (
                 <label className="absolute inset-x-0 bottom-0 flex min-h-11 cursor-pointer items-center justify-center bg-black/65 text-white" aria-label="Изменить фотографию профиля">
-                  <PencilSimple size={20} />
+                  <Camera size={20} />
                   <input type="file" accept="image/*" onChange={event => setAvatar(event.target.files?.[0] ?? null)} className="sr-only" />
                 </label>
               )}

@@ -7,6 +7,7 @@ import { getPriceRangeTier } from '../utils/priceRange';
 import { isShopOpenNow } from '../utils/shopUtils';
 import { AppIcon, BeanPriceMarks, StarIcon } from './icons';
 import ShopPhotoPlaceholder from './ShopPhotoPlaceholder';
+import type { CoffeeCard, RoasterCard } from '../api/discovery';
 
 interface ShopCardColors {
   surface: string;
@@ -16,12 +17,12 @@ interface ShopCardColors {
   background: string;
 }
 
-interface ShopCardProps {
-  shop: CoffeeShop;
+type ShopCardProps = {
   colors: ShopCardColors;
   userLocation?: { latitude: number; longitude: number } | null;
   onSelect: (shopId: string) => void;
-}
+  children?: React.ReactNode;
+} & ({ shop: CoffeeShop; coffee?: never; roaster?: never } | { shop?: never; coffee: CoffeeCard; roaster?: never } | { shop?: never; coffee?: never; roaster: RoasterCard });
 
 function extractPhotos(shop: CoffeeShop): string[] {
   if (shop.shopPhotos?.length) return shop.shopPhotos.filter(Boolean);
@@ -42,33 +43,36 @@ const SHOP_TYPE_LABELS: Record<string, string> = {
   Cafe: 'Кафе', cafe: 'Кафе',
 };
 
-const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, onSelect }) => {
+const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors, userLocation, onSelect, children }) => {
   const [hovered, setHovered] = useState(false);
-  const { favorite, pending, toggle } = useFavorite('coffee_shop', shop.publicAddress, shop.isFavorite);
-  const photos = extractPhotos(shop);
+  const { favorite, pending, toggle } = useFavorite(roaster ? 'roaster' : 'coffee_shop', roaster?.address ?? shop?.publicAddress, roaster ? roaster.isFavorite : shop?.isFavorite);
+  const name = coffee?.name ?? roaster?.name ?? shop!.name;
+  const product = coffee ?? roaster;
+  const photos = product ? (product.coverPhoto ? [getPhotoUrl(product.coverPhoto, 'card')] : []) : extractPhotos(shop!);
   const raw = shop as unknown as Record<string, unknown>;
-  const brewMethods = Array.isArray(raw.brewMethods) ? raw.brewMethods as Array<{ id?: string; name: string }> : [];
-  const roasters = Array.isArray(raw.roasters) ? raw.roasters as Array<{ id?: string; name: string; photoUrl?: string | null }> : [];
-  const openNow = isShopOpenNow(shop);
-  const priceTier = getPriceRangeTier(shop.priceRange);
-  const address = shop.location?.address || shop.address || shop.cityName || '';
-  const latitude = shop.location?.latitude ?? shop.latitude;
-  const longitude = shop.location?.longitude ?? shop.longitude;
+  const brewMethods = Array.isArray(raw?.brewMethods) ? raw.brewMethods as Array<{ id?: string; name: string }> : [];
+  const roasters = coffee ? [{ name: coffee.roaster.name, photoUrl: coffee.roaster.coverPhoto ? getPhotoUrl(coffee.roaster.coverPhoto, 'thumbnail') : null }]
+    : Array.isArray(raw?.roasters) ? raw.roasters as Array<{ id?: string; name: string; photoUrl?: string | null }> : [];
+  const openNow = shop ? isShopOpenNow(shop) : undefined;
+  const priceTier = getPriceRangeTier(shop?.priceRange);
+  const address = shop?.location?.address || shop?.address || shop?.cityName || '';
+  const latitude = shop?.location?.latitude ?? shop?.latitude;
+  const longitude = shop?.location?.longitude ?? shop?.longitude;
   const distance = userLocation && latitude !== undefined && longitude !== undefined
     ? distanceKm(userLocation.latitude, userLocation.longitude, latitude, longitude)
     : null;
-  const type = shop.type ? (SHOP_TYPE_LABELS[shop.type] ?? shop.type) : '';
-  const showRating = (shop.rating ?? 0) > 0;
+  const type = shop?.type ? (SHOP_TYPE_LABELS[shop.type] ?? shop.type) : '';
+  const showRating = (shop?.rating ?? 0) > 0;
 
-  const open = () => onSelect(shop.id);
+  const open = () => onSelect(product?.address.slug ?? shop!.id);
 
   return (
     <article
       role="button"
       tabIndex={0}
-      aria-label={`Открыть кофейню ${shop.name}`}
-      onClick={open}
-      onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') open(); }}
+      aria-label={`Открыть ${coffee ? 'кофе' : roaster ? 'обжарщика' : 'кофейню'} ${name}`}
+      onClick={event => { if ((event.target as HTMLElement).closest('article') === event.currentTarget) open(); }}
+      onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className="overflow-hidden rounded-[28px] border outline-none transition-transform focus-visible:ring-2 focus-visible:ring-yellow-500"
@@ -82,19 +86,19 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
     >
       <div className="relative aspect-[16/9] overflow-hidden">
         {photos[0] ? (
-          <img src={photos[0]} alt={shop.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500" style={{ transform: hovered ? 'scale(1.035)' : undefined }} />
-        ) : <ShopPhotoPlaceholder />}
+          <img src={photos[0]} alt={name} loading="lazy" decoding="async" className={`h-full w-full ${coffee || roaster ? 'object-contain' : 'object-cover'} transition-transform duration-500`} style={{ transform: hovered && !roaster ? 'scale(1.035)' : undefined }} />
+        ) : roaster ? <div className="flex h-full w-full items-center justify-center" style={{ background: colors.background }}><AppIcon name="factory" size={64} color={colors.textSecondary} /></div> : <ShopPhotoPlaceholder />}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/15" />
 
-        {shop.isNew && (
+        {shop?.isNew && (
           <span className="absolute left-3 top-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-black/70 px-3 text-xs font-bold text-white backdrop-blur-md">
             <AppIcon name="auto_awesome" size={15} color={COLORS.primary} />
             Новое
           </span>
         )}
 
-        <div className="absolute right-3 top-3 flex items-center gap-1.5">
-          {showRating && (
+        {(shop || roaster) && <div className="absolute right-3 top-3 flex items-center gap-1.5">
+          {showRating && shop && (
             <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-black/70 px-3 text-xs font-bold text-white backdrop-blur-md" aria-label={`Рейтинг ${shop.rating?.toFixed(1)}`}>
               <StarIcon filled size={16} color={COLORS.primary} />
               {shop.rating?.toFixed(1)}
@@ -107,11 +111,11 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
             disabled={pending}
             onKeyDown={event => event.stopPropagation()}
             onClick={event => { event.stopPropagation(); toggle(); }}
-            className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-black/80 backdrop-blur-md transition-transform hover:scale-105"
+            className="flex h-11 w-11 items-center justify-center rounded-full border-0 bg-black/80 p-0 backdrop-blur-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
           >
             <AppIcon name="favorite" filled={favorite === true} size={26} color={favorite ? '#EAB308' : '#FFFFFF'} />
           </button>
-        </div>
+        </div>}
 
         {roasters.length > 0 && (
           <div className="absolute bottom-3 right-4 flex -space-x-3" aria-label={`Обжарщики: ${roasters.map(roaster => roaster.name).join(', ')}`}>
@@ -136,7 +140,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
 
       <div className="px-4 pb-4 pt-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="min-w-0 flex-1 truncate text-xl font-extrabold tracking-[-0.02em]" style={{ color: colors.textPrimary }}>{shop.name}</h3>
+          <h3 className="min-w-0 flex-1 truncate text-xl font-extrabold tracking-[-0.02em]" style={{ color: colors.textPrimary }}>{name}</h3>
           {openNow !== undefined && (
             <span className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[11px] font-extrabold uppercase" style={{ background: openNow ? 'rgba(34,197,94,.16)' : 'rgba(239,68,68,.14)', color: openNow ? '#22C55E' : '#EF4444' }}>
               <span className="h-2 w-2 rounded-full" style={{ background: 'currentColor' }} />
@@ -147,7 +151,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
 
         {brewMethods.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Методы заваривания">
-            {brewMethods.slice(0, 2).map((method, index) => <InfoChip key={method.id ?? `${method.name}-${index}`} colors={colors}>{method.name}</InfoChip>)}
+            {brewMethods.slice(0, 2).map((method, index) => <InfoChip key={method.id ?? `${method.name}-${index}`} colors={colors}><AppIcon name={`brew:${method.name}`} size={20} style={{ marginRight: 6 }} />{method.name}</InfoChip>)}
             {brewMethods.length > 2 && <InfoChip colors={colors}>+{brewMethods.length - 2}</InfoChip>}
           </div>
         )}
@@ -162,12 +166,13 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
 
         {(type || priceTier) && (
           <div className="mt-3 flex items-center gap-2 border-t pt-3 text-sm" style={{ borderColor: colors.border, color: colors.textSecondary }}>
-            {type && <span>{type}</span>}
+            {type && <span className="inline-flex items-center gap-1.5"><AppIcon name="coffee" size={18} />{type}</span>}
             {type && priceTier && <span>·</span>}
             {priceTier && <span className="inline-flex items-center gap-2" aria-label={`Уровень стоимости ${priceTier}`}><span>Стоимость</span><BeanPriceMarks count={priceTier} size={14} color={COLORS.primary} /></span>}
-            <CaretArrow color={colors.textSecondary} />
+            <AppIcon name="caret-right" size={20} color={colors.textSecondary} className="ml-auto shrink-0" />
           </div>
         )}
+        {children && <div className="mt-3 space-y-3" onClick={event => { if ((event.target as HTMLElement).closest('a, button, details')) event.stopPropagation(); }}>{children}</div>}
       </div>
     </article>
   );
@@ -175,14 +180,8 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
 
 ShopCard.displayName = 'ShopCard';
 
-const InfoChip: React.FC<{ colors: ShopCardColors; children: React.ReactNode }> = ({ colors, children }) => (
+export const InfoChip: React.FC<{ colors: ShopCardColors; children: React.ReactNode }> = ({ colors, children }) => (
   <span className="inline-flex min-h-8 items-center rounded-full border px-3 text-sm font-medium" style={{ borderColor: colors.border, background: colors.background, color: colors.textSecondary }}>{children}</span>
-);
-
-const CaretArrow: React.FC<{ color: string }> = ({ color }) => (
-  <svg className="ml-auto shrink-0" width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden>
-    <path d="m7.5 4 6 6-6 6" stroke={color} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
 );
 
 export default ShopCard;
