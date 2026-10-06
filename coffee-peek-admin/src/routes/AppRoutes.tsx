@@ -20,6 +20,11 @@ const PublishedShopEditPage = lazy(() => import('../pages/PublishedShopEditPage'
 const RoastersModerationPage = lazy(() => import('../pages/RoastersModerationPage').then((m) => ({ default: m.RoastersModerationPage })));
 const RoasterModerationDetailPage = lazy(() => import('../pages/RoasterModerationDetailPage').then((m) => ({ default: m.RoasterModerationDetailPage })));
 const RoasterEditPage = lazy(() => import('../pages/RoasterEditPage').then((m) => ({ default: m.RoasterEditPage })));
+const CoffeesPage = lazy(() => import('../pages/CoffeesPage').then(m => ({ default: m.CoffeesPage })));
+const CoffeeEditPage = lazy(() => import('../pages/CoffeeEditPage').then(m => ({ default: m.CoffeeEditPage })));
+const CoffeeImportPage = lazy(() => import('../pages/CoffeeImportPage').then(m => ({ default: m.CoffeeImportPage })));
+const CoffeeDictionariesPage = lazy(() => import('../pages/CoffeeDictionariesPage').then(m => ({ default: m.CoffeeDictionariesPage })));
+const RoasterTagsPage = lazy(() => import('../components/RoasterTagAssignments').then(m => ({ default: m.RoasterTagsPage })));
 const OwnerShopsPage = lazy(() => import('../pages/OwnerShopsPage').then((m) => ({ default: m.OwnerShopsPage })));
 const OwnerShopEditPage = lazy(() => import('../pages/OwnerShopEditPage').then((m) => ({ default: m.OwnerShopEditPage })));
 const BrowseShopsPage = lazy(() => import('../pages/BrowseShopsPage').then((m) => ({ default: m.BrowseShopsPage })));
@@ -78,6 +83,12 @@ export const AppRoutes: React.FC = () => (
       }
     >
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/coffees" element={<ProtectedRoute requireModerator><CoffeesPage /></ProtectedRoute>} />
+        <Route path="/coffees/:id" element={<ProtectedRoute requireModerator><CoffeeEditPage /></ProtectedRoute>} />
+        <Route path="/coffee-import" element={<ProtectedRoute requireModerator><CoffeeImportPage /></ProtectedRoute>} />
+        <Route path="/roaster-tags" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage kind="tags" /></ProtectedRoute>} />
+        <Route path="/roaster-tags/assignments/:id" element={<ProtectedRoute requireModerator><RoasterTagsPage /></ProtectedRoute>} />
+        <Route path="/coffee-filter-values" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage kind="values" /></ProtectedRoute>} />
         <Route path="/review-reports" element={<ProtectedRoute requireAdmin><ReviewReportsPage /></ProtectedRoute>} />
 
         <Route path="/coffee-shops" element={<BrowseShopsPage />} />

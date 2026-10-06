@@ -69,6 +69,7 @@ export function getPhotoUrl(
 }
 
 export interface CoffeeShop {
+  isFavorite?: boolean | null;
   publicAddress?: PublicAddress;
   canonicalPath?: string;
   id: string;
@@ -174,6 +175,7 @@ export interface ShopTagDto {
 }
 
 export interface DetailedCoffeeShop {
+  isFavorite?: boolean | null;
   publicAddress?: PublicAddress;
   canonicalPath?: string;
   id: string;
@@ -363,6 +365,10 @@ export interface Roaster {
 }
 
 export interface RoasterDetails {
+  tags?: { slug: string; name: string }[];
+  availableCoffeeProducts?: number;
+  coffeeCatalogUpdatedAtUtc?: string | null;
+  isFavorite?: boolean | null;
   publicAddress?: PublicAddress;
   canonicalPath?: string;
   id: string;
@@ -766,9 +772,10 @@ export async function getRoasters(): Promise<ApiResponse<Roaster[]>> {
 /**
  * Получает полную информацию об обжарщике
  */
-export async function getRoasterBySlug(slug: string): Promise<ApiResponse<RoasterDetails>> {
+export async function getRoasterBySlug(slug: string, signal?: AbortSignal): Promise<ApiResponse<RoasterDetails>> {
   return httpClient.get<RoasterDetails>(API_ENDPOINTS.ROASTERS.BY_SLUG(slug), {
     requiresAuth: false,
+    signal,
   });
 }
 
@@ -789,9 +796,10 @@ export async function getShopTags(): Promise<ApiResponse<ShopTagDto[]>> {
 /**
  * Получает кофейню по публичному slug
  */
-export async function getCoffeeShopBySlug(slug: string): Promise<ApiResponse<DetailedCoffeeShop>> {
+export async function getCoffeeShopBySlug(slug: string, signal?: AbortSignal): Promise<ApiResponse<DetailedCoffeeShop>> {
   return httpClient.get<DetailedCoffeeShop>(API_ENDPOINTS.COFFEE_SHOP.BY_SLUG(slug), {
     requiresAuth: false,
+    signal,
   });
 }
 

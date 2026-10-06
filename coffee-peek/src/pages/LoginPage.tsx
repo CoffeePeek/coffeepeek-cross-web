@@ -93,7 +93,8 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { updateUserFromToken } = useUser();
-  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/shops';
+  const returnLocation = (location.state as { from?: { pathname?: string; search?: string; hash?: string } } | null)?.from;
+  const from = (returnLocation?.pathname || '/shops') + (returnLocation?.search || '') + (returnLocation?.hash || '');
   const passedEmail = (location.state as { email?: string } | null)?.email || '';
   const sessionReason = new URLSearchParams(location.search).get('reason');
   const sessionMessage = sessionReason ? forceLogoutMessage(sessionReason) : null;

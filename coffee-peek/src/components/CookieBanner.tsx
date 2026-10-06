@@ -40,7 +40,7 @@ const CookieBanner: React.FC = () => {
     >
       <p className={`font-body text-sm leading-[1.5] ${isDark ? 'text-stone-300' : 'text-slate-500'}`}>
         <strong className={isDark ? 'text-white' : 'text-black'}>Использование данных. </strong>
-        Сохраняем вход, настройки и согласие в браузере; избранное — на вашем устройстве.
+        Сохраняем настройки и согласие в браузере; избранное — в вашем аккаунте.
         Используем технические метрики хостинга.{' '}
         <Link
           to={LEGAL_ROUTES.privacy}

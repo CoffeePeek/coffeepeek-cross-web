@@ -9,6 +9,8 @@
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",
     "preview": "vite preview",
     "test": "jest --runInBand",
+    "test:coffee-catalog": "node scripts/verify-coffee-catalog.mjs",
+    "test:discovery-live": "node scripts/verify-live-discovery.mjs",
     "extension:build": "node scripts/build-link-import-extension.mjs",
     "test:link-import": "npm run extension:build && node scripts/verify-link-import.mjs",
     "predev": "npm run extension:build",

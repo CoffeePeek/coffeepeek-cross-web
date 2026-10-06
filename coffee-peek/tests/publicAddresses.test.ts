@@ -16,7 +16,7 @@ test.each(['cities', 'zones'] as const)('%s is an unwrapped DTO', async kind => 
 test('user has a separate address and slug path is encoded', async () => {
   getRaw.mockResolvedValue({ data: { userName: 'Petr' }, address });
   expect((await getBySlug('users', 'кофе /?')).address).toEqual(address);
-  expect(getRaw).toHaveBeenCalledWith(`/api/Users/by-slug/${encodeURIComponent('кофе /?')}`);
+  expect(getRaw).toHaveBeenCalledWith(`/api/Users/by-slug/${encodeURIComponent('кофе /?')}`, { signal: undefined });
 });
 test('missing mandatory address is an error, never a GUID fallback', async () => {
   getRaw.mockResolvedValue({ isSuccess: true, data: { name: 'Coffee' } });
