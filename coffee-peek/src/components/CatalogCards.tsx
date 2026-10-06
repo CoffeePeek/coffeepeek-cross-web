@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { CoffeeCard as Coffee, CoffeeOffer, RoasterCard as Roaster, ShopCard as Shop, Photo, FilterGroup, Classification } from '../api/discovery';
 import type { PublicAddress } from '../api/publicAddresses';
@@ -8,9 +8,9 @@ import ShopPhotoPlaceholder from './ShopPhotoPlaceholder';
 import ShopCard, { InfoChip } from './ShopCard';
 import { useTheme } from '../contexts/ThemeContext';
 import { COLORS, getThemeColors } from '../constants/colors';
-import { brand } from '../design-system';
 import { getPhotoUrl } from '../api/coffeeshop';
 import { AppIcon } from './icons';
+import { useRoaster } from '../hooks/queries/useCatalogs';
 
 export const catalogPanel = 'rounded-2xl border border-stone-200 bg-white p-4 dark:border-[#3D2F28] dark:bg-[#2D241F]';
 export const catalogButton = 'min-h-11 rounded-xl border border-stone-300 px-4 py-2 font-semibold hover:border-yellow-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 disabled:opacity-50 dark:border-[#4A3D35]';
@@ -87,46 +87,63 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
   const name = roaster.name ?? 'Обжарщик';
+  const title = useRef<HTMLHeadingElement>(null);
+  const [titleOverflow, setTitleOverflow] = useState(0);
+  useLayoutEffect(() => {
+    const heading = title.current;
+    if (!heading) return;
+    const measure = () => setTitleOverflow(Math.max(0, (heading.firstElementChild?.scrollWidth ?? 0) - heading.clientWidth));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(heading);
+    document.fonts.addEventListener('loadingdone', measure);
+    return () => { observer.disconnect(); document.fonts.removeEventListener('loadingdone', measure); };
+  }, [name]);
+  const { data: details } = useRoaster(roaster.address.slug);
   const address = roaster.address.slug && roaster.address.canonicalPath ? { ...roaster.address, slug: roaster.address.slug, canonicalPath: roaster.address.canonicalPath } : undefined;
   const photo = (roaster.coverPhoto && getPhotoUrl(roaster.coverPhoto, 'card')) || roaster.photoUrl;
-  const accent = theme === 'dark' ? brand.goldWarm : colors.textPrimary;
-  const count = (value: number | string | null | undefined) => {
-    const number = Number(value);
-    return Number.isSafeInteger(number) && number > 0 ? number.toLocaleString('ru-RU') : '—';
-  };
+  const plural = new Intl.PluralRules('ru');
+  const count = (value: number | string | null | undefined) => value == null || value === '' || !Number.isSafeInteger(Number(value)) || Number(value) < 0 ? null : Number(value);
+  const shopCount = count(roaster.coffeeShopsCount ?? details?.coffeeShopsCount);
+  const productCount = count(roaster.coffeeProductsCount ?? details?.coffeeProductsCount);
   const stats = [
-    { label: 'Кофейни используют', icon: 'coffee', value: roaster.coffeeShopsCount },
-    { label: 'Товары в каталоге', icon: 'coffee-bean', value: roaster.coffeeProductsCount },
+    { label: 'Кофейни используют', icon: 'coffee', count: shopCount, empty: 'Нет кофеен', unknown: 'Кофейни: —', forms: { one: 'кофейня', few: 'кофейни', other: 'кофеен' } },
+    { label: 'Товары в каталоге', icon: 'coffee-bean', count: productCount, empty: 'Нет товаров', unknown: 'Товары: —', forms: { one: 'товар', few: 'товара', other: 'товаров' } },
   ];
   const catalogPath = `/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [roaster.address.slug], availableOnly: false }))}`;
   const open = () => { if (roaster.address.canonicalPath) navigate(roaster.address.canonicalPath); };
   return (
     <article role={roaster.address.canonicalPath ? 'button' : undefined} tabIndex={roaster.address.canonicalPath ? 0 : undefined} aria-label={`Открыть обжарщика ${name}`}
       onClick={open} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } }}
-      className="flex flex-col rounded-2xl border p-3 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="roaster-catalog-card flex h-full flex-col rounded-2xl border p-4 outline-none transition-colors hover:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary"
       style={{ background: colors.surface, borderColor: theme === 'light' ? colors.borderHover : colors.border, color: colors.textPrimary, cursor: roaster.address.canonicalPath ? 'pointer' : undefined }}>
-      <div className="grid grid-cols-[64px_minmax(0,1fr)_44px] items-start gap-x-3 gap-y-1.5">
-        <div className="row-span-2 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl" style={{ background: photo ? COLORS.light.surface : theme === 'dark' ? colors.background : colors.badge }}>
+      <div className="mb-3 flex h-32 shrink-0 items-start gap-3">
+        <div className="flex h-32 w-32 shrink-0 items-center justify-center overflow-hidden rounded-2xl" style={{ background: photo ? COLORS.light.surface : theme === 'dark' ? colors.background : colors.badge }}>
           {photo
             ? <img src={photo} alt={name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
-            : <AppIcon name="factory" size={28} color={colors.textSecondary} />}
+            : <AppIcon name="factory" size={48} color={colors.textSecondary} />}
         </div>
-        <div className="min-w-0 self-center">
-          <h3 className="break-words text-xl font-bold leading-tight tracking-tight">{name}</h3>
+        <div className="min-w-0 flex-1">
+          <h3 ref={title} className="roaster-card-title text-2xl font-bold leading-7 tracking-tight" title={name} data-overflow={titleOverflow > 0} style={{ '--roaster-title-offset': `${-titleOverflow}px` } as CSSProperties}><span>{name}</span></h3>
+          <p className="mt-3 line-clamp-3 text-sm leading-6" style={{ color: colors.textSecondary }}>{details?.about?.trim() || 'Описание пока не добавлено.'}</p>
         </div>
-        <FavoriteButton kind="roaster" address={address} value={roaster.isFavorite}
-          className="row-span-2 flex h-11 w-11 items-center justify-center rounded-full border border-border-light bg-transparent outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary dark:border-[#4A3D35]" />
       </div>
-      <dl aria-label="Статистика обжарщика" className="mb-2.5 mt-3 grid grid-cols-2 gap-2">
-        {stats.map(stat => <div key={stat.label} className="flex items-center gap-2 rounded-xl border p-2" style={{ background: theme === 'dark' ? colors.background : colors.surfaceAlt, borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: theme === 'dark' ? colors.surface : undefined, color: theme === 'dark' ? accent : colors.textSecondary }}><AppIcon name={stat.icon} size={22} /></span>
-          <div className="min-w-0"><dt className="text-xs leading-tight" style={{ color: colors.textSecondary }}>{stat.label}</dt><dd className="mt-0.5 text-[22px] font-semibold leading-none tracking-tight">{count(stat.value)}</dd></div>
-        </div>)}
-      </dl>
-      {roaster.address.slug && <Link to={catalogPath} onClick={event => event.stopPropagation()} className="mt-auto flex min-h-11 items-center justify-between gap-3 border-t pt-2 outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-primary" style={{ borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
-        <div><span className="text-sm font-semibold" style={{ color: accent }}>Смотреть каталог</span><span className="mt-0.5 block text-xs" style={{ color: colors.textSecondary }}>Кофе этого обжарщика</span></div>
-        <AppIcon name="caret-right" size={20} color={theme === 'dark' ? accent : brand.goldWarmHover} className="shrink-0" />
-      </Link>}
+      <div className="mt-auto flex items-center gap-2 border-t pt-2" style={{ borderColor: colors.border }}>
+        <dl aria-label="Статистика обжарщика" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-2 text-xs" style={{ color: colors.textSecondary }}>
+          {stats.map((stat, index) => {
+            const value = stat.count === null ? stat.unknown : stat.count === 0 ? stat.empty : `${stat.count.toLocaleString('ru-RU')} ${stat.forms[plural.select(stat.count) as 'one' | 'few'] ?? stat.forms.other}`;
+            return <div key={stat.label} className="flex items-center gap-1.5 whitespace-nowrap">
+              {index > 0 && <span aria-hidden="true" className="mr-1">·</span>}
+              <AppIcon name={stat.icon} size={20} className="shrink-0" />
+              <dt className="sr-only">{stat.label}</dt><dd>{index === 1 && roaster.address.slug && productCount !== 0
+                ? <Link to={catalogPath} aria-label={`Смотреть каталог ${name}`} onClick={event => event.stopPropagation()} className="inline-flex min-h-11 items-center rounded-lg outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">{value}</Link>
+                : <span aria-disabled={index === 1 && productCount === 0 || undefined} title={index === 1 && productCount === 0 ? 'Каталог пока пуст' : undefined}>{value}</span>}</dd>
+            </div>;
+          })}
+        </dl>
+        <FavoriteButton kind="roaster" address={address} value={roaster.isFavorite}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-transparent outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary" />
+      </div>
     </article>
   );
 }

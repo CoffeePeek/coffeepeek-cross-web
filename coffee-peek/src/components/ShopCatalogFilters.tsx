@@ -1,6 +1,8 @@
 import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getEquipments, getCoffeeBeans, getRoasters, getBrewMethods, getShopTags, type CoffeeShopFilters } from '../api/coffeeshop';
+import { getEquipments, getCoffeeBeans, getPhotoUrl, getBrewMethods, getShopTags, type CoffeeShopFilters } from '../api/coffeeshop';
+import { getRoasterCards } from '../api/discovery';
+import { getCatalogScope } from '../lib/catalogSession';
 import { shopFiltersSchema, normalizeFilters, type ShopFilters } from '../utils/catalogSearch';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
@@ -20,11 +22,12 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
   current.current = filters;
   const draft = filters;
   const catalogs = useQuery({ queryKey: ['catalogs', 'shop-filters'], queryFn: async () => {
-    const [equipments, beans, roasters, methods, tags] = await Promise.all([getEquipments(), getCoffeeBeans(), getRoasters(), getBrewMethods(), getShopTags()]);
-    const list = <T,>(data: unknown, key: string): T[] => Array.isArray(data) ? data : (data as Record<string, T[]>)[key] ?? [];
-    return { equipments: list<import('../api/coffeeshop').Equipment>(equipments.data, 'equipments'), beans: list<import('../api/coffeeshop').CoffeeBean>(beans.data, 'beans'),
-      roasters: list<import('../api/coffeeshop').Roaster>(roasters.data, 'roasters'), methods: list<import('../api/coffeeshop').BrewMethod>(methods.data, 'methods'), tags: list<import('../api/coffeeshop').ShopTagDto>(tags.data, 'tags') };
+    const [equipments, beans, methods, tags] = await Promise.allSettled([getEquipments(), getCoffeeBeans(), getBrewMethods(), getShopTags()]);
+    const list = <T,>(data: unknown, key: string): T[] => Array.isArray(data) ? data : (data as Record<string, T[]> | null)?.[key] ?? [];
+    return { equipments: list<import('../api/coffeeshop').Equipment>(equipments.status === 'fulfilled' ? equipments.value.data : [], 'equipments'), beans: list<import('../api/coffeeshop').CoffeeBean>(beans.status === 'fulfilled' ? beans.value.data : [], 'beans'),
+      methods: list<import('../api/coffeeshop').BrewMethod>(methods.status === 'fulfilled' ? methods.value.data : [], 'methods'), tags: list<import('../api/coffeeshop').ShopTagDto>(tags.status === 'fulfilled' ? tags.value.data : [], 'tags') };
   }, retry: false });
+  const roasters = useQuery({ queryKey: ['catalog', getCatalogScope(), 'roasters', 'all'], queryFn: ({ signal }) => getRoasterCards(signal), retry: false });
   const patch = (values: Partial<ShopFilters>) => {
     const next = normalizeFilters({ ...current.current, ...values });
     if (!shopFiltersSchema.safeParse(next).success) return;
@@ -50,7 +53,9 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
     onTagToggle: (tag: string) => patch({ tags: draft.tags?.includes(tag) ? draft.tags.filter(value => value !== tag) : [...(draft.tags ?? []), tag] }),
     filters: { cityId: draft.city, priceRange: draft.priceRange ? draft.priceRange[0].toUpperCase() + draft.priceRange.slice(1) : undefined, coffeeFocus: draft.type?.replace('-', '_') } as CoffeeShopFilters,
     selectedEquipments: draft.equipments ?? [], selectedBeans: draft.beans ?? [], selectedRoasters: draft.roasters ?? [], selectedBrewMethods: draft.brewMethods ?? [],
-    equipments: catalogs.data?.equipments ?? [], coffeeBeans: catalogs.data?.beans ?? [], roasters: catalogs.data?.roasters ?? [], brewMethods: catalogs.data?.methods ?? [],
+    equipments: catalogs.data?.equipments ?? [], coffeeBeans: catalogs.data?.beans ?? [],
+    roasters: (roasters.data ?? []).flatMap(roaster => roaster.address.slug ? [{ id: roaster.address.slug, name: roaster.name ?? 'Обжарщик', photoUrl: roaster.coverPhoto ? getPhotoUrl(roaster.coverPhoto, 'thumbnail') : roaster.photoUrl }] : []),
+    brewMethods: catalogs.data?.methods ?? [],
     colors: getThemeColors(theme), dark: theme === 'dark', canLocate: typeof navigator !== 'undefined' && !!navigator.geolocation && deviceLocation.data !== null,
     onApplyFilters: (values: import('./ShopFilterPanel').AppliedFilters) => patch({ equipments: values.equipments, beans: values.beans, roasters: values.roasters, brewMethods: values.brewMethods,
       priceRange: values.priceRange?.toLowerCase() as ShopFilters['priceRange'], type: values.coffeeFocus?.replace('_', '-') as ShopFilters['type'] }),

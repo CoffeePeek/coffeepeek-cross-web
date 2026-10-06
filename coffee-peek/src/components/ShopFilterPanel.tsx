@@ -316,7 +316,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
     return (
       <div style={{ paddingBottom: 10 }}>
         <div className="overflow-x-auto no-scrollbar" style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <div className="flex w-max min-w-full items-center justify-center gap-0.5 lg:w-full lg:flex-wrap">
             {statusAndFocusChips}
           </div>
         </div>

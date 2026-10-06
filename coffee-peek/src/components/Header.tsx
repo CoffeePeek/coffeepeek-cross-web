@@ -3,15 +3,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { COLORS } from '../constants/colors';
-import { Coffee, Factory, GearSix, MapTrifold, SignOut, CaretDown, User } from '@/components/Icon';
+import { MagnifyingGlass, GearSix, SignOut, CaretDown, User } from '@/components/Icon';
 import { CoffeeBean } from '@phosphor-icons/react';
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
 
 const PUBLIC_NAV = [
-  { id: 'coffeeshops', label: 'Кофейни', route: '/shops', Icon: Coffee, match: (p: string) => ['/shops', '/coffee-shops', '/search'].some(route => p.startsWith(route)) },
-  { id: 'roasters', label: 'Обжарщики', route: '/roasters', Icon: Factory, match: (p: string) => p.startsWith('/roasters') },
+  { id: 'discovery', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => ['/shops', '/coffee-shops', '/search', '/roasters', '/dashboard', '/map', '/cities', '/coffee-zones'].some(route => p.startsWith(route)) },
   { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: CoffeeBean, match: (p: string) => p.startsWith('/coffees') },
-  { id: 'map',         label: 'Карта',   route: '/dashboard?page=map', Icon: MapTrifold, match: (p: string) => p.includes('page=map') },
 ] as const;
 
 const AUTH_NAV = [
@@ -202,7 +200,7 @@ const Header: React.FC = () => {
       </div>
     </header>
       <nav
-        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-6 border-t lg:hidden`}
+        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-4 border-t lg:hidden`}
         aria-label="Основная навигация"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: bg, borderColor, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
       >

@@ -26,7 +26,7 @@ import { getCurrentDayOfWeek, toLocalSchedules } from '../utils/shopUtils';
 import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { useSearchCoffeeShops } from '../hooks/queries/useCoffeeShops';
 
-const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean }> = ({ embedded = false, autoPreview = false, reduceMotion = false }) => {
+const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean; fillContainer?: boolean; showSearch?: boolean; compactPreview?: boolean }> = ({ embedded = false, autoPreview = false, reduceMotion = false, fillContainer = false, showSearch = true, compactPreview = false }) => {
   const openPublic = usePublicNavigate();
   const [searchParams] = useSearchParams();
   const { theme } = useTheme();
@@ -337,14 +337,14 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
 
   return (
     <div
-      className={`relative z-0 isolate overflow-hidden ${themeClasses.bg.primary}`}
-      style={{ height: embedded ? 480 : 'var(--app-content-height, 100dvh)', clipPath: embedded ? 'inset(0 round 28px 28px 0 0)' : undefined }}
+      className={`relative z-0 isolate overflow-hidden ${compactPreview ? 'coffee-map--compact-preview' : ''} ${themeClasses.bg.primary}`}
+      style={{ height: fillContainer ? '100%' : embedded ? 480 : 'var(--app-content-height, 100dvh)', clipPath: embedded ? 'inset(0 round 28px 28px 0 0)' : undefined }}
       onMouseEnter={() => autoPreview && setPreviewPaused(true)}
       onMouseLeave={() => autoPreview && setPreviewPaused(false)}
       onFocusCapture={() => autoPreview && setPreviewPaused(true)}
       onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setPreviewPaused(false); }}
     >
-      {!isLoading && (
+      {showSearch && !isLoading && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[550] w-[calc(100%-1.5rem)] max-w-xl">
           <div className={`flex items-center gap-3 h-14 px-5 rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
             <MagnifyingGlass size={24} weight="regular" className={`h-6 w-6 shrink-0 ${themeClasses.text.secondary}`} />
@@ -436,17 +436,17 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       </div>
 
-      <div className="absolute right-4 z-[500] flex flex-col gap-3" style={{ bottom: carouselItems.length ? 164 : 16 }}>
+      <div className="coffee-map-controls absolute right-4 z-[500] flex flex-col gap-3" style={{ bottom: carouselItems.length ? 164 : 16 }}>
         <div className={`mb-3 flex flex-col overflow-hidden rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
           <button type="button" onClick={() => mapInstanceRef.current?.zoomIn()} aria-label="Приблизить карту" className={`flex h-14 w-14 items-center justify-center ${themeClasses.text.primary}`}><Plus size={28} className="h-7 w-7 shrink-0" /></button>
           <button type="button" onClick={() => mapInstanceRef.current?.zoomOut()} aria-label="Отдалить карту" className={`flex h-14 w-14 items-center justify-center border-t ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={28} className="h-7 w-7 shrink-0" /></button>
         </div>
-        <button type="button" onClick={() => setShowZones(value => !value)} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={28} className="h-7 w-7 shrink-0" weight="regular" /></button>
+        <button type="button" onClick={() => setShowZones(value => !value)} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`coffee-map-zones flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={28} className="h-7 w-7 shrink-0" weight="regular" /></button>
         <button type="button" onClick={() => void handleLocate()} disabled={isLocating} aria-label="Моё местоположение" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 disabled:opacity-60 ${themeClasses.bg.card} ${themeClasses.border.default} ${themeClasses.text.primary}`}>
           {isLocating ? <span className="h-7 w-7 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <NavigationArrow size={30} className="h-8 w-8 shrink-0" />}
         </button>
       </div>
-      {carouselItems.length > 0 && <section aria-label={userPosition ? 'Кофейни рядом' : 'Кофейни на карте'} className="absolute inset-x-0 bottom-4 z-[500]">
+      {carouselItems.length > 0 && <section aria-label={userPosition ? 'Кофейни рядом' : 'Кофейни на карте'} className="coffee-map-carousel absolute inset-x-0 bottom-4 z-[500]" style={{ containerType: 'inline-size' }}>
         <div ref={carouselRef} onScroll={() => {
           if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
           scrollTimerRef.current = setTimeout(() => {
@@ -462,11 +462,11 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
             }
             if (shop && selectedIdRef.current !== shop.id) selectShop(shop, true);
           }, 150);
-        }} className="relative flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ paddingInline: 'max(8vw, calc((100% - 448px) / 2))' }}>
+        }} className="relative flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ paddingInline: 'max(16px, calc((100cqw - 448px) / 2))' }}>
           {loopedItems.map((shop, index) => {
             const active = selectedShop?.id === shop.id;
             const details = active ? selectedShopDetails : null;
-            return <article key={`${shop.id}-${index}`} data-shop-id={shop.id} aria-label={shop.title} style={{ height: 128 }} className={`flex w-[min(448px,84vw)] shrink-0 snap-center items-center gap-4 rounded-[28px] border p-4 shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
+            return <article key={`${shop.id}-${index}`} data-shop-id={shop.id} aria-label={shop.title} style={{ height: 128, width: 'min(448px, calc(100cqw - 32px))' }} className={`flex shrink-0 snap-center items-center gap-4 rounded-[28px] border p-4 shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl"><MapShopThumb alt="" src={details?.photos?.[0] ? getPhotoUrl(details.photos[0], 'thumbnail') : undefined} /></div>
               <div className="min-w-0 flex-1">
                 <p className={`mb-1 flex h-5 items-center gap-1 truncate text-sm ${themeClasses.text.secondary}`}><Star size={16} weight="fill" color="#EAB308" />{details ? details.reviewCount ? `${details.rating.toFixed(1)} · ${details.reviewCount} отзывов` : 'Нет отзывов' : userPosition ? 'Кофейня рядом' : 'Кофейня на карте'}</p>

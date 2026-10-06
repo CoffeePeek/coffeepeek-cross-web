@@ -73,6 +73,17 @@ export function filterRoasters(items: RoasterCard[], state: Pick<SearchState, 'q
       : state.sort === 'relevance' && q ? Number(text(b.name).startsWith(q)) - Number(text(a.name).startsWith(q)) : 0)
       || text(a.name).localeCompare(text(b.name), 'ru'));
 }
+export function isDiscoveryFiltering(q: string, filters: ShopFilters, defaultCity: string): boolean {
+  return !!normalizeQuery(q) || Object.entries(normalizeFilters(filters)).some(([key, value]) =>
+    key === 'city' ? value !== defaultCity : value !== false);
+}
+export function discoveryRoasters(items: RoasterCard[], state: Pick<SearchState, 'q' | 'filters' | 'sort'>, isFavorite: (slug: string) => boolean = () => false): RoasterCard[] {
+  const filters = state.filters as ShopFilters;
+  const selected = filters.roasters ?? [];
+  if (!selected.length && !state.q && Object.entries(normalizeFilters(filters)).some(([key, value]) => !['city', 'favoritesOnly'].includes(key) && value !== false)) return [];
+  return filterRoasters(items, { ...state, q: selected.length ? '' : state.q, filters: { favoritesOnly: filters.favoritesOnly } }, isFavorite)
+    .filter(item => !selected.length || !!item.address.slug && selected.includes(item.address.slug));
+}
 export function normalizeFilters(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.keys(value).sort().flatMap(key => {
     const raw = value[key];

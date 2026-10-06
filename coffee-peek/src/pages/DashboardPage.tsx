@@ -1,11 +1,9 @@
-import { usePublicNavigate } from '../hooks/usePublicNavigate';
 import React, { useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { getThemeClasses } from '../utils/theme';
 import CoffeeShopList from '../components/CoffeeShopList';
-import MapPage from '../components/MapPage';
 import SettingsPage from '../pages/SettingsPage';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -15,7 +13,6 @@ const DashboardPage: React.FC = () => {
   const { user, isLoading } = useUser();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const openPublic = usePublicNavigate();
   const location = useLocation();
   
   const page = searchParams.get('page') || 'coffeeshops';
@@ -34,22 +31,16 @@ const DashboardPage: React.FC = () => {
   };
   usePageTitle(pageTitles[page] || 'Панель управления');
 
-  const handleShopSelect = (shopId: string) => {
-    openPublic('shops', shopId);
-  };
-
   if (page === 'settings' && (isLoading || !user)) {
     return null;
   }
 
   return (
     <div className={`min-h-screen ${themeClasses.bg.primary}`}>
-      {page === 'map' ? (
-        <MapPage />
-      ) : page === 'settings' ? (
+      {page === 'settings' ? (
         <SettingsPage />
       ) : (
-        <CoffeeShopList onShopSelect={handleShopSelect} />
+        <CoffeeShopList initialMapExpanded={page === 'map'} />
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import { applyCriteria, filterRoasters, readSearchState, writeSearchState, validateSearch, transferDiscovery, normalizeFilters, safePurchaseUrl } from '../src/utils/catalogSearch';
+import { applyCriteria, discoveryRoasters, isDiscoveryFiltering, filterRoasters, readSearchState, writeSearchState, validateSearch, transferDiscovery, normalizeFilters, safePurchaseUrl } from '../src/utils/catalogSearch';
 import type { RoasterCard } from '../src/api/discovery';
 
 test('URL restores criteria and independent discovery pages; changes reset both', () => {
@@ -32,6 +32,26 @@ test('roasters search the complete list locally, normalize names and apply tags,
   expect(filterRoasters(all, { q: '', filters: {}, sort: 'name_asc' })).toHaveLength(25);
   expect(items.map(item => item.address.slug)).toEqual(['a', 'b', 'c', 'd']);
 });
+test('discovery includes name matches and selected roasters, while shop criteria hide the map immediately', () => {
+  const items: RoasterCard[] = ['Кофе Ёж', 'Roast'].map((name, index) => ({
+    address: { slug: String(index), canonicalPath: `/roasters/${index}`, revision: '1', isAlias: false }, name,
+    photoUrl: null, coverPhoto: null, tags: [], coffeeShopsCount: null, coffeeProductsCount: null, availableCoffeeProducts: null,
+  }));
+  const state = { q: '', filters: { city: 'minsk' }, sort: 'name_asc' };
+  expect(discoveryRoasters(items, state)).toHaveLength(2);
+  expect(discoveryRoasters(items, { ...state, q: 'еж' }).map(item => item.name)).toEqual(['Кофе Ёж']);
+  expect(discoveryRoasters(items, { ...state, q: 'ничего' })).toEqual([]);
+  expect(discoveryRoasters(items, { ...state, filters: { isOpen: true } })).toEqual([]);
+  expect(discoveryRoasters(items, { ...state, q: 'кофейня', filters: { roasters: ['1'], isOpen: true } }).map(item => item.name)).toEqual(['Roast']);
+  expect(discoveryRoasters(items, { ...state, filters: { roasters: ['missing'] } })).toEqual([]);
+  expect(discoveryRoasters(items, { ...state, filters: { favoritesOnly: true } }, slug => slug === '1').map(item => item.name)).toEqual(['Roast']);
+  expect(isDiscoveryFiltering('', { city: 'minsk', isOpen: false, roasters: [] }, 'minsk')).toBe(false);
+  expect(isDiscoveryFiltering('R', { city: 'minsk' }, 'minsk')).toBe(true);
+  expect(isDiscoveryFiltering('', { roasters: ['1'] }, 'minsk')).toBe(true);
+  expect(isDiscoveryFiltering('', { isOpen: true }, 'minsk')).toBe(true);
+  expect(isDiscoveryFiltering('', { city: 'brest' }, 'minsk')).toBe(true);
+});
+
 test('price sort requires currency and exact weight; filter scopes are strict', () => {
   const state = readSearchState(new URLSearchParams('sort=price_asc'), 'coffees');
   expect(validateSearch(state, 'coffees').sort).toBeDefined();

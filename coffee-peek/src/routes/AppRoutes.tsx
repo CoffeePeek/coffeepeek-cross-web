@@ -68,8 +68,8 @@ export const AppRoutes: React.FC = () => {
     <ErrorBoundary>
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        <Route path="/search" element={<AuthenticatedLayout><CatalogSearchPage kind="discovery" /></AuthenticatedLayout>} />
-        <Route path="/roasters" element={<AuthenticatedLayout><CatalogSearchPage kind="roasters" /></AuthenticatedLayout>} />
+        <Route path="/search" element={<AuthenticatedLayout><CoffeeShopListPage /></AuthenticatedLayout>} />
+        <Route path="/roasters" element={<AuthenticatedLayout><CoffeeShopListPage initialSection="roasters" /></AuthenticatedLayout>} />
         <Route path="/coffees" element={<AuthenticatedLayout><CatalogSearchPage kind="coffees" /></AuthenticatedLayout>} />
         <Route path="/coffees/:slug" element={<AuthenticatedLayout><CoffeeDetailPage /></AuthenticatedLayout>} />
         {/* Public routes */}

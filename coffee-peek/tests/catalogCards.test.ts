@@ -4,6 +4,7 @@ jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'li
 jest.mock('../src/api/core/httpClient', () => ({ httpClient: {} }));
 jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {} }));
 jest.mock('../src/utils/logger', () => ({ logger: { warn: jest.fn() } }));
+jest.mock('../src/hooks/queries/useCatalogs', () => ({ useRoaster: () => ({ data: { about: 'Настоящее описание обжарщика.', location: { address: 'Беларусь · Минск' } } }) }));
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
@@ -28,23 +29,30 @@ test('compact prices group matching offers by exact weight and currency', () => 
   expect(html).not.toContain('от 10');
 });
 
-test('roaster card uses contract counts, dashes for zero/missing values and a filtered catalog link', () => {
+test('roaster card shows its description without the address, inline counts and empty catalog state', () => {
   const roaster: RoasterCard = { address: { slug: 'roast', canonicalPath: '/roasters/roast', revision: '1', isAlias: false }, name: 'Roast', photoUrl: '/fallback.png', coverPhoto: { fullUrl: null, urls: { thumbnail: '/thumbnail.png', card: '/logo.png', detail: '/detail.png', fullscreen: '/fullscreen.png' } }, tags: [{ slug: 'online-order', name: 'Онлайн-заказ', description: null, sortOrder: '1' }], coffeeShopsCount: null, coffeeProductsCount: null, availableCoffeeProducts: '14' };
   const render = () => renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(RoasterCatalogCard, { roaster })));
-  for (const [count, label] of [[7, '7'], ['12', '12'], [0, '—'], ['0', '—'], [null, '—'], ['string', '—'], [-1, '—'], [1.5, '—']] as const) {
+  for (const [count, shops, products] of [[7, '7 кофеен', '7 товаров'], ['12', '12 кофеен', '12 товаров'], [1, '1 кофейня', '1 товар'], [2, '2 кофейни', '2 товара'], [0, 'Нет кофеен', 'Нет товаров'], ['0', 'Нет кофеен', 'Нет товаров'], [null, 'Кофейни: —', 'Товары: —'], ['string', 'Кофейни: —', 'Товары: —'], [-1, 'Кофейни: —', 'Товары: —'], [1.5, 'Кофейни: —', 'Товары: —']] as const) {
     roaster.coffeeShopsCount = count;
     roaster.coffeeProductsCount = count;
     const html = render();
-    expect(html.match(new RegExp(`>${label}</dd>`, 'g'))).toHaveLength(2);
+    expect(html).toContain(`>${shops}</span>`);
+    expect(html).toContain(`>${products}</${count === 0 || count === '0' ? 'span' : 'a'}>`);
+    expect(html).toContain('Настоящее описание обжарщика.');
+    expect(html).not.toContain('Беларусь · Минск');
     expect(html).toContain('Кофейни используют');
     expect(html).toContain('Товары в каталоге');
     expect(html).not.toContain('>99</dd>');
     expect(html).not.toContain('>14</dd>');
     expect(html).toContain('src="/logo.png"');
     expect(html).not.toContain('/fallback.png');
-    expect(html).toContain(`/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: ['roast'], availableOnly: false }))}`);
+    if (count === 0 || count === '0') {
+      expect(html).toContain('Каталог пока пуст');
+      expect(html).toContain('aria-disabled="true"');
+      expect(html).not.toContain('/coffees?');
+    } else expect(html).toContain(`/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: ['roast'], availableOnly: false }))}`);
     expect(html).toContain('object-contain');
-    expect(html.match(/<svg/g)).toHaveLength(4);
+    expect(html.match(/<svg/g)).toHaveLength(3);
     expect(html).toContain('Добавить в избранное');
     expect(html).not.toContain('Проверка не указана');
     expect(html).not.toContain('Светлая');
@@ -52,8 +60,8 @@ test('roaster card uses contract counts, dashes for zero/missing values and a fi
   }
   roaster.coffeeShopsCount = 0;
   roaster.coffeeProductsCount = '3';
-  expect(render()).toContain('>—</dd>');
-  expect(render()).toContain('>3</dd>');
+  expect(render()).toContain('>Нет кофеен</span>');
+  expect(render()).toContain('>3 товара</a>');
   roaster.coverPhoto = null;
   expect(render()).toContain('src="/fallback.png"');
   roaster.name = null;
@@ -65,4 +73,38 @@ test('roaster card uses contract counts, dashes for zero/missing values and a fi
   expect(html).toContain('disabled=""');
   expect(html).not.toContain('/coffees?');
   expect(html).not.toContain('role="button"');
+});
+
+test('roaster titles move only when they overflow and recalculate after resizing', () => {
+  const heading = { firstElementChild: { scrollWidth: 180 }, clientWidth: 200 };
+  const setOverflow = jest.fn();
+  let resize = () => {};
+  const previousDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const previousObserver = Object.getOwnPropertyDescriptor(globalThis, 'ResizeObserver');
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: { fonts: { addEventListener: jest.fn(), removeEventListener: jest.fn() } } });
+  Object.defineProperty(globalThis, 'ResizeObserver', { configurable: true, value: class {
+    constructor(callback: () => void) { resize = callback; }
+    observe() {}
+    disconnect() {}
+  } });
+  jest.spyOn(React, 'useRef').mockReturnValueOnce({ current: heading });
+  jest.spyOn(React, 'useState').mockImplementationOnce(() => [0, setOverflow] as any);
+  jest.spyOn(React, 'useLayoutEffect').mockImplementationOnce(effect => { effect(); });
+  try {
+    const roaster = { name: 'A long roaster name', address: {}, coffeeShopsCount: 0, coffeeProductsCount: 0 } as RoasterCard;
+    renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(RoasterCatalogCard, { roaster })));
+    expect(setOverflow).toHaveBeenLastCalledWith(0);
+    heading.clientWidth = 120;
+    resize();
+    expect(setOverflow).toHaveBeenLastCalledWith(60);
+    heading.clientWidth = 240;
+    resize();
+    expect(setOverflow).toHaveBeenLastCalledWith(0);
+  } finally {
+    jest.restoreAllMocks();
+    if (previousDocument) Object.defineProperty(globalThis, 'document', previousDocument);
+    else Reflect.deleteProperty(globalThis, 'document');
+    if (previousObserver) Object.defineProperty(globalThis, 'ResizeObserver', previousObserver);
+    else Reflect.deleteProperty(globalThis, 'ResizeObserver');
+  }
 });
