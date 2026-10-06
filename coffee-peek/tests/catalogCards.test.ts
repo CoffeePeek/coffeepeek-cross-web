@@ -15,3 +15,10 @@ test('all detail offers keep currencies separate, unknown weight/stock and safe 
   const html = renderToStaticMarkup(React.createElement(OfferList, { offers: [offer, { ...offer, offerKey: 'rub', currency: 'RUB', price: 600, weightGrams: null, availability: 'Unknown', sourceUrl: 'javascript:alert(1)' }] }));
   expect(html).toContain('32 BYN'); expect(html).toContain('600 RUB'); expect(html).toContain('Вес не указан'); expect(html).toContain('Наличие не подтверждено'); expect(html).not.toContain('javascript:'); expect(html).toContain('noopener noreferrer');
 });
+
+test('compact prices group matching offers by exact weight and currency', () => {
+  const coffee = { address: { slug: 'coffee', canonicalPath: '/coffees/coffee', revision: 1 }, name: 'Coffee', roaster: { name: 'Roaster', address: { slug: 'roaster', canonicalPath: '/roasters/roaster', revision: 1 }, coverPhoto: null }, productKind: 'roasted_beans', productForm: 'whole_beans', classification: { defaultBrewPurposes: [], caffeine: null, roastLevel: null, acidity: null, processing: [], fermentation: [], tasteGroups: [], composition: null }, countries: [], coverPhoto: null, matchingOffers: [offer, { ...offer, offerKey: '250-expensive', price: 40 }, { ...offer, offerKey: '100', weightGrams: 100, price: 10 }, { ...offer, offerKey: 'rub', currency: 'RUB', price: 600 }], sortPrice: null, createdAtUtc: offer.checkedAtUtc, catalogCheckedAtUtc: null };
+  const html = renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeCatalogCard, { coffee: coffee as CoffeeCard, groups: [] })));
+  expect(html).toContain('от 32'); expect(html).toContain('250 г'); expect(html).toContain('100 г'); expect(html).toContain('600'); expect(html).toContain('RUB');
+  expect(html).not.toContain('от 10');
+});

@@ -77,8 +77,26 @@ export function CatalogFilters({ kind, filters, groups = [], tags = [], errors =
   const budgetFields = (prefix: string) => <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
     {numberField(`${prefix}minPrice`, 'Цена от')}{numberField(`${prefix}maxPrice`, 'Цена до')}
   </div>;
+  const coffeeSections = [
+    { name: 'Тип продукта', codes: ['productKind', 'productForm'] }, { name: 'Степень обжарки', codes: ['roast'] },
+    { name: 'Вкусовые ноты', codes: ['taste'] }, { name: 'Обжарщики', codes: ['roasters'] },
+    { name: 'Способ обработки', codes: ['processing'] }, { name: 'Кислотность', codes: ['acidity'] },
+    { name: 'Страны', codes: ['countries'] }, { name: 'Приготовление', codes: ['brew'] },
+    { name: 'Кофеин', codes: ['caffeine'] }, { name: 'Ферментация', codes: ['fermentation'] },
+    { name: 'Состав', codes: ['composition'] }, { name: 'Вес, валюта и цена', codes: ['weightGrams', 'currency'] },
+    { name: 'Наличие', codes: ['availabilityScope'] },
+  ];
   return <form onSubmit={form.handleSubmit(values => onApply(normalizeFilters(values.filters)))} className="space-y-5 text-sm">
-    {kind === 'discovery' ? <>
+    {kind === 'coffees' ? <div className="divide-y divide-stone-200 dark:divide-[#3D2F28]">
+      {coffeeSections.map(section => <details key={section.name} className="group" open={section.codes.some(code => get(code) != null) || undefined}>
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 py-4 text-base font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 [&::-webkit-details-marker]:hidden">{section.name}<span aria-hidden="true" className="text-2xl font-light text-stone-500 group-open:rotate-45">+</span></summary>
+        <div className="space-y-3 pb-4 [&_legend]:sr-only">{section.codes.map(code => { const group = groups.find(group => group.code === code); return group ? groupControl(group) : null; })}
+          {section.codes.includes('acidity') && <button type="button" className={catalogButton} onClick={() => put('acidity', ['low', 'balanced'])}>Неяркая кислотность</button>}
+          {section.codes.includes('currency') && budgetFields('')}
+          {section.codes.includes('availabilityScope') && <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={get('availableOnly') !== false} onChange={event => put('availableOnly', event.target.checked)} />Только в наличии</label>}
+        </div>
+      </details>)}
+    </div> : kind === 'discovery' ? <>
       <fieldset><legend className="font-semibold">Приготовление</legend>{[{ code: 'espresso', name: 'Эспрессо' }, { code: 'filter', name: 'Фильтр' }].map(option => <label key={option.code} className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={(get('brew') as string[] ?? []).includes(option.code)} onChange={event => put('brew', event.target.checked ? [...(get('brew') as string[] ?? []), option.code] : (get('brew') as string[]).filter(value => value !== option.code))} />{option.name}</label>)}</fieldset>
       {selectField('budget.currency', 'Валюта бюджета', [{ code: 'BYN', name: 'BYN' }, { code: 'RUB', name: 'RUB' }])}
       <fieldset className="space-y-3"><legend className="mb-2 font-semibold">Цена напитка</legend>{numberField('budget.minDrinkPrice', 'Напиток: цена от')}{numberField('budget.maxDrinkPrice', 'Напиток: цена до')}{numberField('budget.drinkVolumeMl', 'Объём напитка, мл', 5000)}</fieldset>
@@ -96,7 +114,7 @@ export function CatalogFilters({ kind, filters, groups = [], tags = [], errors =
       <label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={get(`${coffeePrefix}availableOnly`) !== false} onChange={event => put(`${coffeePrefix}availableOnly`, event.target.checked)} />Только в наличии</label>
       <details><summary className="min-h-11 cursor-pointer font-semibold">Дополнительные фильтры</summary><div className="space-y-4">{coffeeGroups.filter(group => !primary.has(group.code.replace(/^coffee\./, ''))).map(groupControl)}</div></details>
     </>}
-    <div className="flex flex-wrap gap-2"><button type="submit" className={`${catalogButton} bg-yellow-400 text-stone-950`}>Применить</button><button type="button" className={catalogButton} onClick={() => form.reset({ filters: kind === 'coffees' ? { availableOnly: true } : {} })}>Сбросить</button></div>
+    <div className="flex flex-wrap gap-2"><button type="submit" className={`${catalogButton} ${kind === 'coffees' ? 'bg-stone-950 text-white dark:bg-white dark:text-stone-950' : 'bg-yellow-400 text-stone-950'}`}>Применить</button><button type="button" className={catalogButton} onClick={() => form.reset({ filters: kind === 'coffees' ? { availableOnly: true } : {} })}>Сбросить</button></div>
     {form.formState.errors.filters?.message && <p role="alert">{String(form.formState.errors.filters.message)}</p>}
   </form>;
 }

@@ -91,7 +91,7 @@ Published `Review.id` нужен для чтения отзыва и жалоб.
 
 ## Discovery / каталог кофе — PR #334
 
-Сверено с 8a8bc274213404612e446fb46ae55fd45b8fa8a6 и OpenAPI задачи. Типы/маршруты: src/api/coffeeCatalog.ts; результаты live/mock: ../../docs/DISCOVERY-VERIFICATION.md.
+Сверено с OpenAPI задачи и PR #334: первоначально 8a8bc274213404612e446fb46ae55fd45b8fa8a6, после деплоя — merged head 09e383e890f3596942f44176d33be09f9511da41. Live public search/facets теперь возвращают 200; admin и favorites без JWT — 401. Типы/маршруты: src/api/coffeeCatalog.ts; результаты live/mock: ../../docs/DISCOVERY-VERIFICATION.md.
 
 - /api/admin/roaster-tags и /api/admin/coffee-filter-values: GET всех значений, POST создания; /{id} PATCH и DELETE деактивации. Slug либо groupCode+code неизменяемы. Реактивация через PATCH isActive:true.
 - /api/admin/roasters/{id}/tags: GET назначений; PUT {tagIds: GUID[]} полностью заменяет их, возвращает 204. Неактивные теги нельзя назначать повторно.

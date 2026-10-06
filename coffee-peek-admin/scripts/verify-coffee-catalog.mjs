@@ -14,6 +14,7 @@ const at = '2026-10-05T08:00:00Z';
 const classification = { defaultBrewPurposes: ['filter'], caffeine: 'decaf', roastLevel: 'light', acidity: 'balanced', processing: ['washed'], fermentation: [], tasteGroups: ['chocolate'], composition: null };
 const offer = { offerKey: 'offer-250', weightGrams: 250, price: 32, currency: 'BYN', brewPurpose: 'filter', grind: null, availability: 'InStock', availabilityScope: 'online', sellerName: 'Пример обжарщика', sourceUrl: 'https://example.test/coffee', checkedAtUtc: at };
 const coffee = { address: address('coffees', 'example-decaf'), name: 'Пример декафа', roaster: { address: address('roasters', 'sample-roaster'), name: 'Пример обжарщика', coverPhoto: null }, productKind: 'roasted_beans', productForm: 'whole_beans', classification, countries: [{ code: 'CO', nameRu: 'Колумбия', nameEn: 'Colombia' }], coverPhoto: null, matchingOffers: [offer], sortPrice: null, createdAtUtc: at, catalogCheckedAtUtc: at };
+const catalogCoffees = [coffee, ...['Пример шоколадного кофе', 'Пример кофе для фильтра'].map((name, i) => ({ ...coffee, address: address('coffees', `example-coffee-${i + 1}`), name, matchingOffers: [{ ...offer, offerKey: `offer-example-${i + 1}`, price: 42 + i * 10 }] }))];
 const tagId = '10000000-0000-4000-8000-000000000001';
 let tags = [{ id: tagId, slug: 'online-order', name: 'Онлайн-заказ', description: 'Подтверждён заказ у обжарщика', sortOrder: 10, isActive: true }];
 const values = [['brew', 'filter', 'Для фильтра'], ['brew', 'espresso', 'Для эспрессо'], ['caffeine', 'decaf', 'Декаф'], ['caffeine', 'regular', 'Обычный'], ['roast', 'light', 'Светлая'], ['acidity', 'balanced', 'Умеренная'], ['acidity', 'low', 'Низкая'], ['processing', 'washed', 'Мытая'], ['taste', 'chocolate', 'Шоколад'], ['taste', 'tea', 'Чайные ноты']].map(([groupCode, code, name], i) => ({ id: `20000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, groupCode, code, name, description: null, sortOrder: i * 10, isActive: true }));
@@ -57,9 +58,10 @@ async function setup(isAdmin = false, roles = ['Admin']) {
       if (prefixed) facets.unshift({ code: 'roasterTags', name: 'Услуги', selection: 'and', options: tags.filter(tag => tag.isActive).map(tag => ({ code: tag.slug, name: tag.name, count: 1, selected: body.filters?.tags?.includes(tag.slug) ?? false })) });
       const totalItems = prefixed && body.filters?.favoritesOnly && !favorites.has(`${identity}:roaster:sample-roaster`) ? 0 : 1;
       if (!totalItems) for (const group of facets) for (const option of group.options) option.count = 0;
-      return reply({ totalItems, groups: facets, ...(prefixed ? {} : { priceRange: body.filters?.currency && body.filters?.weightGrams ? { currency: body.filters.currency, weightGrams: body.filters.weightGrams, min: 32, max: 62 } : null }) });
+      if (!prefixed) for (const group of facets) for (const option of group.options) if (option.count) option.count = catalogCoffees.length;
+      return reply({ totalItems: prefixed ? totalItems : catalogCoffees.length, groups: facets, ...(prefixed ? {} : { priceRange: body.filters?.currency && body.filters?.weightGrams ? { currency: body.filters.currency, weightGrams: body.filters.weightGrams, min: 32, max: 62 } : null }) });
     }
-    if (api === '/api/v1/coffees/search') return failure ? error(failure) : reply(pageResult(body.q === 'empty' ? [] : [{ ...coffee, sortPrice: body.sort?.startsWith('price_') ? 32 : null }], body.page));
+    if (api === '/api/v1/coffees/search') return failure ? error(failure) : reply(pageResult(body.q === 'empty' ? [] : catalogCoffees.map(coffee => ({ ...coffee, sortPrice: body.sort?.startsWith('price_') ? coffee.matchingOffers[0].price : null })), body.page));
     if (api === '/api/v1/roasters/search') { const isFavorite = identity ? favorites.has(`${identity}:roaster:sample-roaster`) : null; return reply(pageResult((body.filters?.favoritesOnly && !isFavorite) || body.filters?.coffee?.caffeine?.includes('decaf') && body.filters?.coffee?.roast?.includes('dark') ? [] : [{ ...roaster, isFavorite }], body.page)); }
     if (api === '/api/v1/coffee-shops/search') return reply(pageResult([shop], body.page));
     if (api === '/api/v1/coffees/example-decaf') { const { coverPhoto, matchingOffers, sortPrice, ...details } = coffee; return reply({ ...details, description: 'Описание кофе', tasteDescriptors: ['Шоколад'], photos: [], offers: [offer, { ...offer, offerKey: '100', weightGrams: 100, price: 7, availability: 'OutOfStock' }, { ...offer, offerKey: 'rub', price: 600, currency: 'RUB', weightGrams: null, availability: 'Unknown', sourceUrl: 'javascript:alert(1)' }] }); }
@@ -108,13 +110,22 @@ try {
   await page.getByText('В этой секции ничего не найдено.').waitFor(); await page.getByRole('heading', { name: 'Обжарщики (1)' }).waitFor();
   await page.goto(`${customer}/coffees?sort=price_asc&filters=${encodeURIComponent(JSON.stringify({ currency: 'BYN', weightGrams: 250, availableOnly: true }))}`);
   await page.getByRole('heading', { name: coffee.name }).waitFor(); assert(!(await page.locator('main').innerText()).includes('100 г'));
+  await page.getByRole('button', { name: 'Без яркой кислотности', exact: true }).click(); await page.waitForURL(/balanced/);
+  assert.deepEqual(JSON.parse(new URL(page.url()).searchParams.get('filters')).acidity, ['balanced', 'low']);
+  assert.equal(new URL(page.url()).searchParams.get('page'), '1');
+  await page.getByRole('button', { name: 'Без яркой кислотности', exact: true }).click(); await page.waitForURL(url => !(url.searchParams.get('filters') || '').includes('balanced'));
+  await page.setViewportSize({ width: 1264, height: 900 });
+  await page.getByText(/^3\s*товара по вашим условиям$/).waitFor();
+  const cardTops = await page.locator('main article').evaluateAll(cards => cards.map(card => card.getBoundingClientRect().top));
+  assert.equal(cardTops.length, 3); assert(cardTops.every(top => Math.abs(top - cardTops[0]) < 1));
   await page.screenshot({ path: path.join(output, 'customer-desktop-light.png'), fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.getByRole('button', { name: /^Фильтры/ }).click();
-  await page.getByRole('dialog').getByLabel('Декаф (1)', { exact: true }).check();
+  await page.getByRole('dialog').locator('summary').filter({ hasText: 'Кофеин' }).click();
+  await page.getByRole('dialog').getByLabel('Декаф (3)', { exact: true }).check();
   await page.keyboard.press('Escape'); assert(!(new URL(page.url()).searchParams.get('filters') || '').includes('decaf'));
   assert(await page.getByRole('button', { name: /^Фильтры/ }).evaluate(button => button === document.activeElement));
-  await page.getByRole('button', { name: /^Фильтры/ }).click(); await page.getByRole('dialog').getByLabel('Декаф (1)', { exact: true }).check(); await page.getByRole('dialog').getByRole('button', { name: 'Применить' }).click();
+  await page.getByRole('button', { name: /^Фильтры/ }).click(); await page.getByRole('dialog').locator('summary').filter({ hasText: 'Кофеин' }).click(); await page.getByRole('dialog').getByLabel('Декаф (3)', { exact: true }).check(); await page.getByRole('dialog').getByRole('button', { name: 'Применить' }).click();
   await page.waitForURL(/decaf/); await page.reload(); await page.getByRole('heading', { name: coffee.name }).waitFor();
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(output, 'customer-mobile-light.png'), fullPage: true });
