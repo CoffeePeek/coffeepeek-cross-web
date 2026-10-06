@@ -1,6 +1,6 @@
-let mockShopCount: number | undefined = 7;
+let mockDetails: Record<string, unknown> | undefined;
 let mockDetailsError = false;
-jest.mock('../src/hooks/queries/useCatalogs', () => ({ useRoaster: () => ({ data: mockShopCount === undefined ? undefined : { shops: Array.from({ length: mockShopCount }) }, isError: mockDetailsError }) }));
+jest.mock('../src/hooks/queries/useCatalogs', () => ({ useRoaster: () => ({ data: mockDetails, isError: mockDetailsError }) }));
 jest.mock('../src/hooks/useFavorites', () => ({ useFavorite: () => ({ favorite: null, pending: false, toggle: jest.fn() }) }));
 jest.mock('../src/components/ShopPhotoPlaceholder', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
@@ -31,27 +31,36 @@ test('compact prices group matching offers by exact weight and currency', () => 
   expect(html).not.toContain('от 10');
 });
 
-test('roaster row keeps confirmed tags and counts, with unknown count distinct from zero', () => {
+test('roaster card uses contract counts, dashes for zero/missing values and a filtered catalog link', () => {
   const roaster = { address: { slug: 'roast', canonicalPath: '/roasters/roast', revision: 1 }, name: 'Roast', coverPhoto: { fullUrl: '/logo.png', urls: null }, tags: [{ slug: 'online-order', name: 'Онлайн-заказ', description: null, sortOrder: 1 }], isFavorite: false, availableCoffeeProducts: 14, matchingCoffeeProducts: null, coffeeCatalogUpdatedAtUtc: null, matchingCoffee: null } as RoasterCard;
   const render = () => renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(RoasterCatalogCard, { roaster })));
-  for (const [count, label] of [[0, '0 кофеен используют'], [1, '1 кофейня использует'], [2, '2 кофейни используют'], [7, '7 кофеен используют'], [11, '11 кофеен используют'], [21, '21 кофейня использует']] as const) {
-    mockShopCount = count;
+  for (const [count, label] of [[7, '7'], ['12', '12'], [0, '—'], ['0', '—'], [undefined, '—'], [null, '—'], ['string', '—'], [-1, '—'], [1.5, '—']] as const) {
+    mockDetails = { coffeeShopsCount: count, coffeeProductsCount: count, shops: Array.from({ length: 99 }), about: 'Обжариваем кофе с 2010 года.', location: { address: 'Минск, Беларусь' } };
     const html = render();
-    expect(html).toContain(label);
-    expect(html).toContain('Доступные товары: 14');
-    expect(html).toContain('Онлайн-заказ');
+    expect(html.match(new RegExp(`>${label}</dd>`, 'g'))).toHaveLength(2);
+    expect(html).toContain('Кофейни используют');
+    expect(html).toContain('Товары в каталоге');
+    expect(html).not.toContain('>99</dd>');
+    expect(html).not.toContain('>14</dd>');
+    expect(html).toContain('Обжариваем кофе с 2010 года.');
+    expect(html).toContain('Минск, Беларусь');
+    expect(html).toContain(`/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: ['roast'], availableOnly: false }))}`);
     expect(html).toContain('object-contain');
-    expect(html.match(/<svg/g)).toHaveLength(3);
+    expect(html.match(/<svg/g)).toHaveLength(5);
     expect(html).toContain('Добавить в избранное');
     expect(html).not.toContain('Проверка не указана');
     expect(html).not.toContain('Светлая');
     expect(html).not.toContain('Декаф');
   }
-  mockShopCount = undefined;
-  expect(render()).toContain('Загрузка числа кофеен');
-  expect(render()).not.toContain('0 кофеен');
+  mockDetails = undefined;
+  expect(render().match(/>—<\/dd>/g)).toHaveLength(2);
   mockDetailsError = true;
-  expect(render()).toContain('Число кофеен недоступно');
-  expect(render()).toContain('Повторить загрузку числа кофеен');
+  expect(render()).toContain('Повторить загрузку данных обжарщика');
   mockDetailsError = false;
+  roaster.coffeeShopsCount = 0;
+  roaster.coffeeProductsCount = '3';
+  mockDetails = { coffeeShopsCount: 99, coffeeProductsCount: 99 };
+  expect(render()).toContain('>—</dd>');
+  expect(render()).toContain('>3</dd>');
+  expect(render()).not.toContain('>99</dd>');
 });

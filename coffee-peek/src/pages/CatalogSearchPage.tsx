@@ -93,7 +93,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
   };
   const filterForm = () => kind === 'shops' ? <ShopCatalogFilters filters={state.filters as ShopFilters} onApply={apply} /> : <CatalogFilters kind={kind} filters={state.filters} groups={groups} errors={errors} onApply={apply} />;
   const reset = () => update(applyCriteria(state, { filters: kind === 'coffees' ? { availableOnly: true } : {}, q: '', sort: 'name_asc' }));
-  const cards = (items: (CoffeeCard | RoasterCard | ShopCard)[], section: CatalogKind) => <div className={`grid grid-cols-1 gap-4 ${section === 'roasters' ? 'md:grid-cols-2 min-[1500px]:grid-cols-3' : 'md:grid-cols-2 min-[1180px]:grid-cols-3'}`}>{items.map(item => section === 'coffees' ? <CoffeeCatalogCard key={item.address.slug} coffee={item as CoffeeCard} groups={dictionary.data ?? []} />
+  const cards = (items: (CoffeeCard | RoasterCard | ShopCard)[], section: CatalogKind) => <div className="grid grid-cols-1 gap-4 md:grid-cols-2 min-[1180px]:grid-cols-3">{items.map(item => section === 'coffees' ? <CoffeeCatalogCard key={item.address.slug} coffee={item as CoffeeCard} groups={dictionary.data ?? []} />
     : section === 'roasters' ? <RoasterCatalogCard key={item.address.slug} roaster={item as RoasterCard} /> : <ShopCatalogCard key={item.address.slug} shop={item as ShopCard} />)}</div>;
   const result = query.data?.pages[0];
   const rawPage = result && 'items' in result ? scroll ? { ...result, items: [...new Map(query.data!.pages.flatMap(page => 'items' in page ? page.items : []).map(item => [item.address.slug, item])).values()] } : result : undefined;

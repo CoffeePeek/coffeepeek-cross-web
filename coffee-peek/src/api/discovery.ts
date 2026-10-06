@@ -27,6 +27,8 @@ export interface CoffeeDetails extends Omit<CoffeeCard, 'coverPhoto' | 'matching
   description: string | null; tasteDescriptors: string[]; photos: Photo[]; offers: CoffeeOffer[];
 }
 export interface RoasterCard {
+  coffeeShopsCount?: number | string | null;
+  coffeeProductsCount?: number | string | null;
   address: PublicAddress; name: string; coverPhoto: Photo | null; tags: PublicTag[]; isFavorite: boolean | null;
   availableCoffeeProducts: number; matchingCoffeeProducts: number | null;
   coffeeCatalogUpdatedAtUtc: string | null; matchingCoffee: CoffeeCard | null;

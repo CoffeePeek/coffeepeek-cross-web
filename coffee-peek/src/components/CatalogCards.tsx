@@ -8,6 +8,7 @@ import ShopPhotoPlaceholder from './ShopPhotoPlaceholder';
 import ShopCard, { InfoChip } from './ShopCard';
 import { useTheme } from '../contexts/ThemeContext';
 import { COLORS, getThemeColors } from '../constants/colors';
+import { brand } from '../design-system';
 import { getPhotoUrl } from '../api/coffeeshop';
 import { useRoaster } from '../hooks/queries/useCatalogs';
 import { AppIcon } from './icons';
@@ -86,42 +87,50 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
-  // ponytail: search has no shop count; reuse cached details until the list DTO includes it.
   const details = useRoaster(roaster.address.slug);
-  const shopCount = details.data?.shops?.length;
-  const plural = new Intl.PluralRules('ru').select(shopCount ?? 0);
-  const shopsLabel = plural === 'one' ? 'кофейня использует' : plural === 'few' ? 'кофейни используют' : 'кофеен используют';
+  const address = details.data?.location?.address?.trim();
+  const about = details.data?.about?.trim();
+  const accent = theme === 'dark' ? brand.goldWarm : colors.textPrimary;
+  const count = (value: number | string | null | undefined) => {
+    const number = Number(value);
+    return Number.isSafeInteger(number) && number > 0 ? number.toLocaleString('ru-RU') : '—';
+  };
+  const stats = [
+    { label: 'Кофейни используют', icon: 'coffee', value: roaster.coffeeShopsCount ?? details.data?.coffeeShopsCount },
+    { label: 'Товары в каталоге', icon: 'coffee-bean', value: roaster.coffeeProductsCount ?? details.data?.coffeeProductsCount },
+  ];
+  const catalogPath = `/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [roaster.address.slug], availableOnly: false }))}`;
   const open = () => navigate(roaster.address.canonicalPath);
   return (
     <article role="button" tabIndex={0} aria-label={`Открыть обжарщика ${roaster.name}`}
       onClick={open} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } }}
-      className="flex flex-col rounded-[28px] border p-4 shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-yellow-500 sm:p-5"
-      style={{ background: colors.surface, borderColor: colors.border, color: colors.textPrimary, cursor: 'pointer' }}>
-      <div className="flex items-center gap-4">
-        <div className={`flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl sm:h-24 sm:w-24 ${roaster.coverPhoto ? 'bg-white' : ''}`}>
+      className="flex flex-col rounded-2xl border p-3 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      style={{ background: colors.surface, borderColor: theme === 'light' ? colors.borderHover : colors.border, color: colors.textPrimary, cursor: 'pointer' }}>
+      <div className="grid grid-cols-[64px_minmax(0,1fr)_44px] items-start gap-x-3 gap-y-1.5">
+        <div className="row-span-2 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl" style={{ background: roaster.coverPhoto ? COLORS.light.surface : theme === 'dark' ? colors.background : colors.badge }}>
           {roaster.coverPhoto
             ? <img src={getPhotoUrl(roaster.coverPhoto, 'card')} alt={roaster.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
-            : <AppIcon name="factory" size={40} color={colors.textSecondary} />}
+            : <AppIcon name="factory" size={28} color={colors.textSecondary} />}
         </div>
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="flex items-center gap-2">
-            <h3 className="min-w-0 flex-1 break-words text-lg font-semibold leading-snug sm:text-xl">{roaster.name}</h3>
-            <FavoriteButton kind="roaster" address={roaster.address} value={roaster.isFavorite}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-0 bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500" />
-          </div>
-          {details.data?.about?.trim() && <p className="line-clamp-2 text-sm leading-relaxed" style={{ color: colors.textSecondary }}>{details.data.about.trim()}</p>}
-          {!!roaster.tags.length && <div className="flex flex-wrap gap-2">{roaster.tags.map(tag => <span key={tag.slug} title={tag.description ?? undefined} className="rounded-full bg-stone-100 px-3 py-1 text-sm dark:bg-[#1A1412]" style={{ color: colors.textSecondary }}>{tag.name}</span>)}</div>}
+        <div className="min-w-0 self-center">
+          <h3 className="break-words text-xl font-bold leading-tight tracking-tight">{roaster.name}</h3>
+          {address && <p className="mt-1 flex items-start gap-1 text-xs leading-snug" style={{ color: colors.textSecondary }}><AppIcon name="map-pin" filled size={14} className="mt-0.5 shrink-0" /><span className="line-clamp-2">{address}</span></p>}
         </div>
+        <FavoriteButton kind="roaster" address={roaster.address} value={roaster.isFavorite}
+          className="row-span-2 flex h-11 w-11 items-center justify-center rounded-full border border-border-light bg-transparent outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary dark:border-[#4A3D35]" />
+        {about && <p className="col-start-2 line-clamp-2 text-[13px] leading-snug" style={{ color: colors.textSecondary }}>{about}</p>}
       </div>
-      <div className="mt-4 space-y-2 border-t pt-3 text-sm" style={{ borderColor: colors.border, color: colors.textSecondary }}>
-        <div className="flex items-center gap-2">
-          <AppIcon name="coffee" size={20} style={{ flexShrink: 0 }} />
-          {shopCount !== undefined ? <span>{shopCount} {shopsLabel} это зерно</span>
-            : details.isError ? <><span>Число кофеен недоступно</span><button type="button" aria-label="Повторить загрузку числа кофеен" className="min-h-11 underline" onClick={event => { event.stopPropagation(); void details.refetch(); }}>Повторить</button></>
-            : <span role="status">Загрузка числа кофеен…</span>}
-        </div>
-        <p className="flex items-center gap-2"><AppIcon name="coffee-bean" size={20} style={{ flexShrink: 0 }} />Доступные товары: {roaster.availableCoffeeProducts}</p>
-      </div>
+      <dl aria-label="Статистика обжарщика" aria-busy={details.isPending} className="mb-2.5 mt-3 grid grid-cols-2 gap-2">
+        {stats.map(stat => <div key={stat.label} className="flex items-center gap-2 rounded-xl border p-2" style={{ background: theme === 'dark' ? colors.background : colors.surfaceAlt, borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: theme === 'dark' ? colors.surface : undefined, color: theme === 'dark' ? accent : colors.textSecondary }}><AppIcon name={stat.icon} size={22} /></span>
+          <div className="min-w-0"><dt className="text-xs leading-tight" style={{ color: colors.textSecondary }}>{stat.label}</dt><dd className="mt-0.5 text-[22px] font-semibold leading-none tracking-tight">{count(stat.value)}</dd></div>
+        </div>)}
+      </dl>
+      {details.isError && <button type="button" className="mb-3 min-h-11 self-start text-sm underline" onClick={event => { event.stopPropagation(); void details.refetch(); }}>Повторить загрузку данных обжарщика</button>}
+      <Link to={catalogPath} onClick={event => event.stopPropagation()} className="mt-auto flex min-h-11 items-center justify-between gap-3 border-t pt-2 outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-primary" style={{ borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
+        <div><span className="text-sm font-semibold" style={{ color: accent }}>Смотреть каталог</span><span className="mt-0.5 block text-xs" style={{ color: colors.textSecondary }}>Кофе этого обжарщика</span></div>
+        <AppIcon name="caret-right" size={20} color={theme === 'dark' ? accent : brand.goldWarmHover} className="shrink-0" />
+      </Link>
     </article>
   );
 }

@@ -356,6 +356,8 @@ export interface CoffeeBean {
 }
 
 export interface Roaster {
+  coffeeShopsCount?: number | string | null;
+  coffeeProductsCount?: number | string | null;
   publicAddress?: PublicAddress;
   canonicalPath?: string;
   id: string;
@@ -365,6 +367,8 @@ export interface Roaster {
 }
 
 export interface RoasterDetails {
+  coffeeShopsCount?: number | string | null;
+  coffeeProductsCount?: number | string | null;
   tags?: { slug: string; name: string }[];
   availableCoffeeProducts?: number;
   coffeeCatalogUpdatedAtUtc?: string | null;

@@ -22,7 +22,7 @@ const groups = [...new Set(values.map(value => value.groupCode))].map(code => ({
 const shopTags = ['Roastery', 'Зерно на продажу', 'Decaf', 'Растительное молоко', 'Laptop Friendly', 'Завтраки', 'Кондитерская', 'Pet Friendly'].map((name, i) => ({ slug: ['roastery', 'beans-for-sale', 'decaf', 'plant-based-milk', 'laptop_friendly', 'breakfasts', 'confectionery', 'pet_friendly'][i], name, description: null, sortOrder: i }));
 const brewCatalog = ['Aeropress', 'Batch Brew', 'Cezve (Turkish Coffee)', 'Chemex', 'Cold Brew', 'Espresso', 'Hario V60', 'Moka Pot'].map((name, i) => ({ address: address('brew-methods', `brew-${i}`), name }));
 const shop = { address: address('coffee-shops', 'sample-shop'), name: 'Пример кофейни', city: address('cities', 'minsk'), addressLine: 'Минск, Пример улицы, 1', coverPhoto: null, rating: 4.3, reviewCount: 12, isOpen: true, isVisited: true, isFavorite: null, distanceMeters: null, tags: shopTags, matchingMenuItems: [{ drinkSlug: 'filter-coffee', name: 'Фильтр-кофе', brewMethod: 'filter', price: 8, currency: 'BYN', volumeMl: 250, checkedAtUtc: at }] };
-const roaster = { address: coffee.roaster.address, name: coffee.roaster.name, coverPhoto: { fullUrl: `${customer}/logo/logo.png`, urls: null }, tags: tags.map(({ id, isActive, ...tag }) => tag), isFavorite: null, availableCoffeeProducts: 14, matchingCoffeeProducts: 2, coffeeCatalogUpdatedAtUtc: at, matchingCoffee: coffee };
+const roaster = { address: coffee.roaster.address, name: coffee.roaster.name, coverPhoto: { fullUrl: `${customer}/logo/logo.png`, urls: null }, tags: tags.map(({ id, isActive, ...tag }) => tag), isFavorite: null, coffeeShopsCount: 7, coffeeProductsCount: '12', availableCoffeeProducts: 14, matchingCoffeeProducts: 2, coffeeCatalogUpdatedAtUtc: at, matchingCoffee: coffee };
 const id = '30000000-0000-4000-8000-000000000001';
 const variantId = '40000000-0000-4000-8000-000000000001';
 let entry = { id, roasterId: id, slug: 'example-decaf', status: 'Draft', content: { name: coffee.name, description: 'Описание источника', productKind: 'roasted_beans', productForm: 'whole_beans', compositionKind: 'unknown', processing: 'исходная обработка', roastLevel: null, acidity: null, body: null, qGraderScoreRaw: null, tasteDescriptors: ['Шоколад'], brewRecommendations: [], grindOptions: [], features: ['Исходная характеристика'] }, countries: coffee.countries, protectedFields: ['Photos'], photos: [], variants: [{ ...offer, roastPurpose: null }], reviewWarnings: ['Проверьте происхождение'], version: 7 };
@@ -115,7 +115,7 @@ async function setup(isAdmin = false, roles = ['Admin']) {
     if (api.toLowerCase() === '/api/coffeeshops/by-slug/sample-shop' || api.toLowerCase() === '/api/coffeeshops/sample-shop') return reply({ ...shop, description: 'Описание кофейни', location: { address: shop.addressLine }, shopContact: {}, schedules: [], photos: [], tags: [shopTags[0]], roasters: [], equipments: [], brewMethods: [], menu: null });
     if (api.toLowerCase().startsWith('/api/roasters/')) {
       const slug = api.split('/').at(-1);
-      return reply({ ...roaster, address: address('roasters', slug), photos: [], shops: Array.from({ length: 7 }, (_, i) => ({ address: address('coffee-shops', `example-shop-${i}`), name: `Кофейня ${i + 1}`, coverPhoto: null })) });
+      return reply({ ...roaster, address: address('roasters', slug), about: 'Обжариваем кофе с 2010 года. Подбираем зерно для разных способов приготовления.', location: { address: 'Минск, Беларусь' }, photos: [], shops: Array.from({ length: 9 }, (_, i) => ({ address: address('coffee-shops', `example-shop-${i}`), name: `Кофейня ${i + 1}`, coverPhoto: null })) });
     }
     if (api === '/api/ShopChangeRequests' && method === 'POST') return reply({ id: 'mock-edit', shop: shop.address, section: body.section, payload: body.payload, status: 'Pending', createdAtUtc: at });
     if (api.endsWith('/mine')) return reply(pageResult([]));
@@ -335,16 +335,24 @@ try {
   const logoImage = roasterCard.getByRole('img', { name: roaster.name, exact: true });
   await logoImage.waitFor();
   const logoSize = await logoImage.boundingBox();
-  assert.equal(logoSize.width, 96); assert.equal(logoSize.height, 96);
+  const cardSize = await roasterCard.boundingBox();
+  assert.equal(logoSize.width, logoSize.height);
+  assert(cardSize.width < 500 && cardSize.height < 280);
   assert.equal(await logoImage.evaluate(image => getComputedStyle(image).objectFit), 'contain');
   const titlePosition = await roasterCard.getByRole('heading', { name: roaster.name, exact: true }).boundingBox();
   const favoriteSize = await roasterCard.getByRole('button', { name: 'Добавить в избранное', exact: true }).boundingBox();
   assert(favoriteSize.width >= 44 && favoriteSize.height >= 44);
   assert(logoSize.x < titlePosition.x && titlePosition.x < favoriteSize.x);
   const heartSize = await roasterCard.getByRole('button', { name: 'Добавить в избранное', exact: true }).locator('svg').boundingBox();
-  assert.equal(heartSize.width, 26); assert.equal(heartSize.height, 26);
-  await roasterCard.getByText('7 кофеен используют это зерно', { exact: true }).waitFor();
-  await roasterCard.getByText('Доступные товары: 14', { exact: true }).waitFor();
+  assert(heartSize.width >= 26 && heartSize.height >= 26);
+  assert(titlePosition.x + titlePosition.width <= favoriteSize.x);
+  await roasterCard.getByText('Минск, Беларусь', { exact: true }).waitFor();
+  assert.equal(await roasterCard.locator('dl > div').filter({ hasText: 'Кофейни используют' }).locator('dd').innerText(), '7');
+  assert.equal(await roasterCard.locator('dl > div').filter({ hasText: 'Товары в каталоге' }).locator('dd').innerText(), '12');
+  await roasterCard.getByRole('link', { name: /Смотреть каталог/ }).click();
+  await page.waitForURL(url => url.pathname === '/coffees' && JSON.parse(url.searchParams.get('filters')).roasters.includes('sample-roaster'));
+  assert.equal(JSON.parse(new URL(page.url()).searchParams.get('filters')).availableOnly, false);
+  await page.goBack(); await roasterCard.getByText('Минск, Беларусь', { exact: true }).waitFor();
   assert.equal(await roasterCard.getByText('Проверка не указана', { exact: true }).count(), 0);
   assert.equal(await roasterCard.getByRole('button', { name: /^Открыть кофе/ }).count(), 0);
   assert.equal(await page.getByText(/^Результатов:/).count(), 0);
