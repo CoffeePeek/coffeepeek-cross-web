@@ -17,17 +17,21 @@ import { normalizeDayOfWeek } from '../../utils/shopUtils';
  */
 export class TokenManager {
   private static accessToken: string | null = null;
+  private static revision = 0;
+  static getRevision(): number { return this.revision; }
 
   static getAccessToken(): string | null {
     return this.accessToken;
   }
 
   static setAccessToken(accessToken: string): void {
+    this.revision++;
     this.accessToken = accessToken;
     sessionAbsent = false;
   }
 
   static clearTokens(): void {
+    this.revision++;
     this.accessToken = null;
   }
 
@@ -83,12 +87,14 @@ export function pickAuthTokens(payload: unknown): { accessToken?: string; refres
 }
 
 async function performRefresh(baseURL: string): Promise<RefreshResult> {
+  const revision = TokenManager.getRevision();
   try {
     const response = await fetch(`${baseURL}${TOKEN_PATH}`, {
       method: 'PUT',
       headers: { Accept: 'application/json' },
       credentials: 'include',
     });
+    if (revision !== TokenManager.getRevision()) return 'error';
     if (response.status === 401 || response.status === 403) {
       sessionAbsent = true;
       return 'rejected';
@@ -96,6 +102,7 @@ async function performRefresh(baseURL: string): Promise<RefreshResult> {
     if (!response.ok) return 'error';
 
     const json = await response.json();
+    if (revision !== TokenManager.getRevision()) return 'error';
     const payload = json?.data ?? json;
     const tokens = pickAuthTokens(payload);
     if (!tokens.accessToken) return 'error';
@@ -169,6 +176,7 @@ export async function responseInterceptor<T>(
   response: Response,
   url: string
 ): Promise<T> {
+  if (response.status === 204) return {} as T;
   const contentType = response.headers.get('content-type');
 
   logger.log(`[API Response] ${response.status} ${url}`, {

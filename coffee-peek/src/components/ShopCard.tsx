@@ -1,7 +1,7 @@
 import React, { memo, useState } from 'react';
 import { type CoffeeShop, getPhotoUrl } from '../api/coffeeshop';
 import { COLORS } from '../constants/colors';
-import { useLocalFavorites } from '../hooks/useLocalFavorites';
+import { useFavorite } from '../hooks/useFavorites';
 import { distanceKm, formatDistance } from '../utils/distance';
 import { getPriceRangeTier } from '../utils/priceRange';
 import { isShopOpenNow } from '../utils/shopUtils';
@@ -44,8 +44,7 @@ const SHOP_TYPE_LABELS: Record<string, string> = {
 
 const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, onSelect }) => {
   const [hovered, setHovered] = useState(false);
-  const { isFavorite, toggleFavorite } = useLocalFavorites();
-  const favorite = isFavorite(shop.id);
+  const { favorite, pending, toggle } = useFavorite('coffee_shop', shop.publicAddress, shop.isFavorite);
   const photos = extractPhotos(shop);
   const raw = shop as unknown as Record<string, unknown>;
   const brewMethods = Array.isArray(raw.brewMethods) ? raw.brewMethods as Array<{ id?: string; name: string }> : [];
@@ -105,10 +104,12 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, colors, userLocation, on
           <button
             type="button"
             aria-label={favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
-            onClick={event => { event.stopPropagation(); toggleFavorite(shop.id); }}
+            disabled={pending}
+            onKeyDown={event => event.stopPropagation()}
+            onClick={event => { event.stopPropagation(); toggle(); }}
             className="flex h-10 w-10 items-center justify-center rounded-full border-0 bg-black/80 backdrop-blur-md transition-transform hover:scale-105"
           >
-            <AppIcon name="favorite" filled={favorite} size={26} color={favorite ? '#EAB308' : '#FFFFFF'} />
+            <AppIcon name="favorite" filled={favorite === true} size={26} color={favorite ? '#EAB308' : '#FFFFFF'} />
           </button>
         </div>
 

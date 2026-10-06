@@ -5,6 +5,10 @@ import { Header } from './Header';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const ROUTE_TITLES: Record<string, string> = {
+  '/coffees': 'Кофе',
+  '/coffee-import': 'Импорт кофе',
+  '/roaster-tags': 'Теги обжарщиков',
+  '/coffee-filter-values': 'Характеристики кофе',
   '/dashboard': 'Дашборд',
   '/coffee-shops': 'Кофейни',
   '/map': 'Карта',

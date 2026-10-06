@@ -17,6 +17,7 @@ import {
 } from './interceptors';
 import { ApiRequestError } from './apiError';
 import { emitSessionInvalidated } from '../../realtime/forceLogout';
+import { getCatalogScope } from '../../lib/catalogSession';
 
 /**
  * Базовый HTTP клиент
@@ -78,6 +79,8 @@ class HttpClient {
     options: RequestOptions & { _retry?: boolean; raw?: boolean } = {}
   ): Promise<ApiResponse<T>> {
     const { params, requiresAuth = true, skipAuthHeader, _retry, raw, ...fetchOptions } = options;
+    const scope = getCatalogScope();
+    const checkSession = () => { if (scope !== getCatalogScope() || fetchOptions.signal?.aborted) throw new DOMException('Session changed or request cancelled', 'AbortError'); };
 
     // Строим URL с параметрами
     const urlWithParams = buildUrlWithParams(endpoint, params);
@@ -86,6 +89,7 @@ class HttpClient {
     if (!_retry && !skipAuthHeader && !isAuthTokenEndpoint(endpoint)) {
       await ensureFreshAccessToken(this.baseURL);
     }
+    checkSession();
 
     // Применяем request interceptor
     const requestOptions = requestInterceptor(
@@ -97,6 +101,7 @@ class HttpClient {
     try {
       // Выполняем запрос
       const response = await fetch(fullUrl, requestOptions);
+      checkSession();
 
       const canRefresh =
         response.status === 401 &&
@@ -107,6 +112,7 @@ class HttpClient {
       if (canRefresh) {
         const hadSession = !!TokenManager.getAccessToken();
         const refreshed = await tryRefreshAccessToken(this.baseURL);
+        checkSession();
         if (refreshed === 'ok') {
           return this.request<T>(endpoint, { ...options, _retry: true });
         }
@@ -120,6 +126,7 @@ class HttpClient {
       // Применяем response interceptor
       if (raw) {
         const body = await response.text();
+        checkSession();
         let parsed: any;
         try { parsed = body ? JSON.parse(body) : null; } catch { parsed = null; }
         if (!response.ok) {
@@ -135,6 +142,7 @@ class HttpClient {
       }
 
       const data = await responseInterceptor<any>(response, fullUrl);
+      checkSession();
 
       // Нормализуем данные
       const normalizedData = normalizeResponseData<T>(data.data ?? data);

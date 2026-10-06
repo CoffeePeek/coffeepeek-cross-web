@@ -51,7 +51,7 @@ export const REJECT_REASON_TO_API: Record<RejectReason, number> = {
 
 export const IMPORT_SOURCE_LABELS: Record<ImportSource, string> = {
   Osm: 'OSM',
-  File: 'файл',
+  File: 'внешний импорт',
 };
 
 /** Backend: Osm=1, File=2. */

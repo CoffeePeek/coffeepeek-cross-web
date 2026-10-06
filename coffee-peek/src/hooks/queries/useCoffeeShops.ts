@@ -1,4 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getCatalogScope } from '../../lib/catalogSession';
+import { useUser } from '../../contexts/UserContext';
 import {
   getCoffeeShopBySlug,
   searchCoffeeShops,
@@ -25,17 +27,18 @@ export const coffeeShopKeys = {
  * Hook to fetch a single coffee shop by ID
  */
 export function useCoffeeShop(shopId: string | null, enabled: boolean = true) {
+  const { isLoading } = useUser();
   return useQuery({
-    queryKey: coffeeShopKeys.detail(shopId!),
-    queryFn: async () => {
+    queryKey: [...coffeeShopKeys.detail(shopId!), getCatalogScope()],
+    queryFn: async ({ signal }) => {
       if (!shopId) throw new Error('Shop ID is required');
-      const response = await getCoffeeShopBySlug(shopId);
+      const response = await getCoffeeShopBySlug(shopId, signal);
       if (!response.success) {
         throw new Error(response.message || 'Failed to fetch coffee shop');
       }
       return response.data;
     },
-    enabled: enabled && !!shopId,
+    enabled: enabled && !!shopId && !isLoading,
   });
 }
 

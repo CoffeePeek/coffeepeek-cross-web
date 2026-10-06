@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "CoffeePeek — импорт по ссылке",
+  "version": "1.1.0",
+  "minimum_chrome_version": "110",
+  "description": "Чтение карточек Яндекса и профилей Instagram для импорта в CoffeePeek.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://*.yandex.ru/*", "https://*.yandex.by/*", "https://*.yandex.com/*", "https://*.yandex.kz/*", "https://*.yandex.uz/*", "https://*.instagram.com/*", "https://avatars.mds.yandex.net/*", "https://*.cdninstagram.com/*"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "worker.js", "type": "module" },
+  "action": { "default_popup": "popup.html" }
+}

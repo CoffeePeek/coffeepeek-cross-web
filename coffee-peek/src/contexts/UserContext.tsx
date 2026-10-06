@@ -5,6 +5,7 @@ import { ensureFreshAccessToken, LOGGED_OUT_KEY } from '../api/core/interceptors
 import { API_BASE_URL } from '../api/core/apiConfig';
 import { getProfile, logout as apiLogout, type UserProfile } from '../api/auth';
 import { queryClient } from '../lib/queryClient';
+import { changeCatalogSession, getCatalogScope } from '../lib/catalogSession';
 
 
 export interface AppUser {
@@ -48,6 +49,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const updateUserFromToken = useCallback((token: string) => {
     if (!token || isTokenExpired(token)) {
       TokenManager.clearTokens();
+      changeCatalogSession(null, true);
+      void queryClient.cancelQueries();
+      queryClient.clear();
       setUser(null);
       return;
     }
@@ -58,12 +62,20 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     const id = getUserId(token);
     const emailConfirmed = isEmailVerified(token);
 
+    const previousScope = getCatalogScope();
+    changeCatalogSession(id || null);
+    if (previousScope !== getCatalogScope()) {
+      void queryClient.cancelQueries();
+      queryClient.clear();
+    }
+
     setUser({
       id: id || '',
       email: email || '',
       roles,
       emailConfirmed,
     });
+    setIsLoading(false);
   }, []);
 
   const updateUserProfile = useCallback((profile: UserProfile) => {
@@ -79,22 +91,33 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const clearSession = useCallback(() => {
     localStorage.setItem(LOGGED_OUT_KEY, '1');
     TokenManager.clearTokens();
+    changeCatalogSession(null, true);
+    sessionStorage.removeItem('coffeepeek.favoriteIntent');
+    void queryClient.cancelQueries();
     queryClient.clear();
     setUser(null);
   }, []);
 
   const logout = useCallback(async () => {
+    changeCatalogSession(null, true);
+    const logoutScope = getCatalogScope();
+    void queryClient.cancelQueries();
+    queryClient.clear();
+    setUser(null);
+    setIsLoading(true);
+    const request = apiLogout();
     try {
-      await apiLogout();
+      await request;
     } catch {
       // Keep the browser logged out even if the server is temporarily unavailable.
     } finally {
-      clearSession();
+      if (logoutScope === getCatalogScope()) { clearSession(); setIsLoading(false); }
     }
   }, [clearSession]);
 
   useEffect(() => {
     let cancelled = false;
+    const restoredScope = getCatalogScope();
 
     const restoreSession = async () => {
       try {
@@ -104,7 +127,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
           return;
         }
         const fresh = await ensureFreshAccessToken(API_BASE_URL);
-        if (cancelled) return;
+        if (cancelled || restoredScope !== getCatalogScope()) return;
         const token = TokenManager.getAccessToken();
         if (fresh && token) {
           updateUserFromToken(token);

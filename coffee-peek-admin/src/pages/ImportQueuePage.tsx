@@ -19,6 +19,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '../components/ui/Dialog';
 import { DossierMap } from '../components/import/DossierMap';
 import { DossierQueue } from '../components/import/DossierQueue';
+import { LinkImportDialog } from '../components/import/LinkImportDialog';
 import { MenuEditor } from '../components/menu/MenuEditor';
 import LogoMark from '../components/LogoMark';
 import { useMediaQuery } from '../hooks/useMediaQuery';
@@ -48,6 +49,7 @@ import {
   suggestedFocusFromSignals,
 } from '../utils/importDossier';
 import { formatImportOpeningHours } from '../utils/importOpeningHours';
+import { emptyEnrichment, loadImportEnrichment, saveImportEnrichment } from '../utils/linkImportEnrichment';
 import { ImportInboxPage } from './ImportInboxPage';
 import { ImportStatsPage } from './ImportStatsPage';
 
@@ -84,6 +86,7 @@ export const ImportQueuePage: React.FC = () => {
   const panel = parseWorkspacePanel(searchParams.get('panel'));
   const queuePage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10) || 1);
   const [queueOpen, setQueueOpen] = useState(false);
+  const [linkImportOpen, setLinkImportOpen] = useState(false);
   const [focus, setFocus] = useState<CoffeeFocus | undefined>();
   const [tagSlugs, setTagSlugs] = useState<string[]>([]);
   const [instagramDraft, setInstagramDraft] = useState('');
@@ -97,6 +100,7 @@ export const ImportQueuePage: React.FC = () => {
   const [advancing, setAdvancing] = useState(false);
   const idRef = useRef(id);
   idRef.current = id;
+  useEffect(() => { setLinkImportOpen(false); }, [id]);
 
   const queueQuery = useQuery({
     queryKey: ['admin', 'import', 'queue', queuePage],
@@ -145,7 +149,8 @@ export const ImportQueuePage: React.FC = () => {
   useEffect(() => {
     if (!candidate) return;
     setFocus(candidate.coffeeFocus ?? suggestedFocusFromSignals(candidate));
-    setTagSlugs(candidate.tagSlugs);
+    const local = loadImportEnrichment(candidate.id, candidate.externalId);
+    setTagSlugs(local && (candidate.queueStatus === 'Pending' || candidate.queueStatus === 'Skipped') ? local.tagSlugs : candidate.tagSlugs);
     setInstagramDraft('');
     setPhoneDraft('');
     setWebsiteDraft('');
@@ -442,6 +447,7 @@ export const ImportQueuePage: React.FC = () => {
           ))}
         </div>
         <span className="flex-1" />
+        <Button size="sm" variant="secondary" disabled={busy} onClick={() => setLinkImportOpen(true)}>По ссылке</Button>
         {candidate && panel !== 'stats' && (
           <>
             <span className="text-sm text-text-muted tabular-nums hidden sm:inline">
@@ -461,6 +467,15 @@ export const ImportQueuePage: React.FC = () => {
           </>
         )}
       </header>
+
+      {linkImportOpen && <LinkImportDialog candidate={candidate} selectedTagSlugs={tagSlugs} onTagsSelected={(candidateId, tags) => {
+        if (idRef.current === candidateId) setTagSlugs(tags);
+      }} onClose={() => setLinkImportOpen(false)} onUpdated={(updated) => {
+        qc.setQueryData(['admin', 'import', 'candidate', updated.id], updated);
+        if (idRef.current === updated.id) {
+          setInstagramDraft(''); setPhoneDraft(''); setWebsiteDraft(''); setIgPaste('');
+        }
+      }} />}
 
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
         {showMapQueue && isDesktop && <div className="w-[248px] shrink-0 min-h-0">{queuePanel}</div>}
@@ -624,7 +639,7 @@ export const ImportQueuePage: React.FC = () => {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold mb-2">Теги в каталог</h2>
+              <h2 className="text-sm font-semibold mb-2">Теги для публикации</h2>
               <div className="flex flex-wrap gap-1.5">
                 {tagOptions.map((tag) => {
                   const active = tagSlugs.includes(tag.slug);
@@ -632,12 +647,15 @@ export const ImportQueuePage: React.FC = () => {
                     <button
                       key={tag.slug}
                       type="button"
+                      aria-pressed={active}
                       disabled={Boolean(decided)}
-                      onClick={() =>
-                        setTagSlugs((current) =>
-                          active ? current.filter((slug) => slug !== tag.slug) : [...current, tag.slug]
-                        )
-                      }
+                      onClick={() => {
+                        const next = active ? tagSlugs.filter((slug) => slug !== tag.slug) : [...tagSlugs, tag.slug];
+                        setTagSlugs(next);
+                        try {
+                          saveImportEnrichment(candidate.id, loadImportEnrichment(candidate.id, candidate.externalId)?.enrichment ?? emptyEnrichment(), next);
+                        } catch { showToast('Не удалось сохранить черновик тегов в браузере', 'warning'); }
+                      }}
                       className={active ? pillOn : pillOff}
                     >
                       {tag.label}
