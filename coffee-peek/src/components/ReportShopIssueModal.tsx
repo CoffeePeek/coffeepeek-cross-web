@@ -13,7 +13,7 @@ import {
   ShopIssueReportValidationError,
   type ShopIssueCategory,
 } from '../utils/shopIssueReportForm';
-import { Flag, X } from './Icon';
+import { WarningCircle, X } from './Icon';
 import WobbleRing from './WobbleRing';
 
 interface ReportShopIssueModalProps {
@@ -103,7 +103,7 @@ const ReportShopIssueModal: React.FC<ReportShopIssueModalProps> = ({ isOpen, onC
           <fieldset disabled={isPending} className="flex flex-col gap-5 border-0 p-0 m-0 min-w-0">
             <header className="space-y-1.5">
               <h2 className="font-extended font-bold text-[24px] leading-none tracking-tight flex items-center gap-2" style={{ color: colors.textPrimary }}>
-                <Flag size={22} weight="fill" color={brand.primary} />
+                <WarningCircle size={22} weight="fill" color={brand.primary} />
                 Сообщить о неточности
               </h2>
               <p className="font-body text-[13px]" style={{ color: colors.textSecondary }}>

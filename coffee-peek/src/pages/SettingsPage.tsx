@@ -11,7 +11,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { getErrorMessage } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import {
-  CaretRight, Factory, Lock, MapPin, Moon, Plus, ShareNetwork,
+  CaretRight, CoffeeBean, Lock, MapPin, Moon, Plus, ShareNetwork,
 } from '@phosphor-icons/react';
 
 type Colors = { bg: string; surface: string; border: string; text: string; muted: string; gold: string };
@@ -85,7 +85,7 @@ const SettingsPage: React.FC = () => {
 
         {user && <SettingsSection title="Добавить" colors={colors}>
           <SettingsRow title="Добавить кофейню" subtitle="Предложить новое место для CoffeePeek" Icon={Plus} color="#D8A743" iconBg="rgba(202,145,28,.16)" colors={colors} onClick={() => navigate('/coffee-shops/new')} />
-          <SettingsRow title="Добавить обжарщика" subtitle="Помогите сообществу открыть новых обжарщиков" Icon={Factory} color="#74C98B" iconBg="rgba(65,158,88,.18)" colors={colors} onClick={() => navigate('/roasters/new')} />
+          <SettingsRow title="Добавить обжарщика" subtitle="Помогите сообществу открыть новых обжарщиков" Icon={CoffeeBean} color="#74C98B" iconBg="rgba(65,158,88,.18)" colors={colors} onClick={() => navigate('/roasters/new')} />
         </SettingsSection>}
 
         <SettingsSection title="Настройки" colors={colors}>

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { DotsThree, Flag, X } from '@phosphor-icons/react';
+import { DotsThree, WarningCircle, X } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
 import { reportReview } from '../api/reviewReports';
 import { useUser } from '../contexts/UserContext';
@@ -63,7 +63,7 @@ export default function ReportReviewButton({ reviewId }: { reviewId: string }) {
         <DotsThree size={26} weight="bold" />
       </button>
       {menuOpen && <div id={`${id}-menu`} className={`absolute right-0 top-12 z-20 w-52 rounded-2xl border p-1.5 shadow-lg ${classes.bg.card} ${classes.border.default}`}>
-        <button type="button" autoFocus disabled={sent} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50" onClick={() => { setMenuOpen(false); mutation.reset(); setOpen(true); }}><Flag size={18} />{sent ? 'Жалоба отправлена' : 'Пожаловаться'}</button>
+        <button type="button" autoFocus disabled={sent} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50" onClick={() => { setMenuOpen(false); mutation.reset(); setOpen(true); }}><WarningCircle size={18} />{sent ? 'Жалоба отправлена' : 'Пожаловаться'}</button>
       </div>}
       {open && createPortal(
         <dialog ref={dialog} aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} onCancel={event => { event.preventDefault(); close(); }} onClick={event => { if (event.target === event.currentTarget) close(); }} className={`fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none overflow-y-auto rounded-t-[28px] border p-0 backdrop:bg-black/55 sm:inset-0 sm:m-auto sm:w-[calc(100%-2rem)] sm:max-w-[460px] sm:rounded-[28px] ${classes.bg.card} ${classes.text.primary} ${classes.border.default}`}>

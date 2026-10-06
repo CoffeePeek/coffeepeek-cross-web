@@ -80,25 +80,102 @@ try {
   page.on('pageerror', error => browserErrors.push(error.message));
   page.on('requestfailed', request => console.error('Request failed:', request.url(), request.failure()?.errorText));
   page.on('response', response => { const url = new URL(response.url()); const route = url.pathname.replace(/^\/backend/, ''); if (route.startsWith('/api/v1/')) browserRequests.push({ path: route, status: response.status() }); });
-  for (const [route, heading] of [['/search', 'Поиск кофеен и обжарщиков'], ['/roasters', 'Обжарщики'], ['/coffees', /Каталог specialty coffee/]]) {
+  for (const [route, heading] of [['/search', 'Поиск кофеен и обжарщиков'], ['/roasters', 'Обжарщики'], ['/coffees', 'Кофе']]) {
     await page.goto(`${customer}${route}`); await page.getByRole('heading', { name: heading, exact: typeof heading === 'string' }).waitFor();
     if (route === '/search') await page.getByRole('heading', { name: /Кофейни \(/ }).waitFor();
-    else await page.getByText(/Результатов: \d+/).waitFor();
+    else if (route === '/roasters') await page.getByRole('button', { name: /^Открыть обжарщика/ }).first().waitFor();
+    else await page.getByRole('button', { name: /^Открыть кофе/ }).or(page.getByText('Ничего не найдено. Попробуйте другой фильтр.', { exact: true })).first().waitFor();
     assert.equal(await page.getByText('Каталог временно недоступен.', { exact: true }).count(), 0);
+    assert.equal(await page.getByRole('navigation', { name: 'Каталоги', exact: true }).count(), 0);
+    assert.equal(await page.getByLabel('Сортировка', { exact: true }).count(), 0);
+    if (route === '/roasters') assert.equal(await page.getByRole('searchbox').count(), 0);
   }
+  assert.equal(await page.getByRole('heading', { name: /Каталог specialty coffee/ }).count(), 0);
+  assert.equal(await page.getByText(/^Результатов:/).count(), 0);
+  assert.equal(await page.getByRole('navigation', { name: 'Страницы: Кофе' }).count(), 0);
+  assert.equal(await page.getByRole('button', { name: 'Только в наличии ×', exact: true }).count(), 0);
+  assert.deepEqual(await page.locator('header nav button').allTextContents(), ['Кофейни', 'Обжарщики', 'Кофе', 'Карта']);
   const consent = page.getByRole('button', { name: 'Отклонить', exact: true }); if (await consent.count()) await consent.click();
   await page.screenshot({ path: path.join(output, 'customer-live-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
   await page.getByRole('button', { name: /^Фильтры/ }).click();
-  await page.getByRole('dialog').locator('summary').filter({ hasText: 'Кофеин' }).click();
-  await page.getByRole('dialog').getByLabel('Декаф (0)', { exact: true }).check();
+  await page.getByRole('dialog').getByRole('button', { name: 'Кофеин', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: /Декаф.*\(0\)/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Применить', exact: true }).click();
-  await page.waitForURL(/decaf/); await page.reload(); await page.getByText(/Результатов: \d+/).waitFor();
+  await page.waitForURL(/decaf/); await page.reload(); await page.getByRole('button', { name: /^Открыть кофе/ }).or(page.getByText('Ничего не найдено. Попробуйте другой фильтр.', { exact: true })).first().waitFor();
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: path.join(output, 'customer-live-mobile.png'), fullPage: true });
-  await page.evaluate(() => localStorage.setItem('theme', 'dark')); await page.reload(); await page.getByText(/Результатов: \d+/).waitFor();
+  await page.evaluate(() => localStorage.setItem('theme', 'dark')); await page.reload(); await page.getByRole('button', { name: /^Открыть кофе/ }).or(page.getByText('Ничего не найдено. Попробуйте другой фильтр.', { exact: true })).first().waitFor();
   assert(await page.evaluate(() => document.documentElement.classList.contains('dark')));
   await page.screenshot({ path: path.join(output, 'customer-live-mobile-dark.png'), fullPage: true });
+  await page.evaluate(() => localStorage.setItem('theme', 'light'));
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.locator('header nav').getByRole('button', { name: 'Кофейни', exact: true }).click();
+  await page.waitForURL('**/shops');
+  await page.getByRole('button', { name: /^Открыть кофейню/ }).first().waitFor();
+  await page.locator('aside').getByRole('button', { name: 'Обжарщики', exact: true }).click();
+  await page.locator('aside').getByRole('button', { name: 'Roast', exact: true }).locator('img').waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('aside img')].every(image => image.complete && image.naturalWidth > 0));
+  assert(await page.locator('aside').getByRole('button', { name: 'Roast', exact: true }).locator('img').evaluate(image => image.parentElement.classList.contains('rounded-full')));
+  for (const row of await page.locator('[aria-label="Теги кофейни"]').all()) {
+    assert(await row.evaluate(element => {
+      const chips = [...element.children].filter(chip => chip.getAttribute('aria-hidden') === 'false');
+      return chips.every(chip => Math.abs(chip.getBoundingClientRect().top - chips[0].getBoundingClientRect().top) < 1 && chip.getBoundingClientRect().right <= element.getBoundingClientRect().right + 1);
+    }));
+  }
+  assert.equal(await page.getByRole('navigation', { name: 'Каталоги', exact: true }).count(), 0);
+  await page.screenshot({ path: path.join(output, 'customer-shops-live-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.getByRole('button', { name: 'Фильтры', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Цена', exact: true }).waitFor();
+  await page.screenshot({ path: path.join(output, 'customer-shops-live-mobile-filters.png'), fullPage: true });
+  await page.keyboard.press('Escape');
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(`${customer}/roasters`); await page.getByRole('button', { name: /^Открыть обжарщика/ }).first().waitFor();
+  await page.locator('main .h-1').scrollIntoViewIfNeeded();
+  const nextPage = await page.waitForResponse(response => response.url().endsWith('/api/v1/roasters/search') && response.request().postDataJSON()?.page === 2);
+  if (nextPage.status() >= 500) {
+    await page.getByRole('button', { name: 'Повторить', exact: true }).click();
+  }
+  await page.waitForFunction(count => [...document.querySelectorAll('main article')].filter(card => card.getAttribute('aria-label')?.startsWith('Открыть обжарщика')).length === count, roasters.totalItems);
+  assert.equal(await page.getByRole('navigation', { name: 'Страницы: Обжарщики' }).count(), 0);
+  assert.equal(await page.getByText(/^Результатов:/).count(), 0);
+  const heart = await page.getByRole('button', { name: 'Добавить в избранное', exact: true }).first().locator('svg').boundingBox();
+  assert.equal(heart.width, 26); assert.equal(heart.height, 26);
+  const marconi = page.getByRole('button', { name: 'Открыть обжарщика Marconi', exact: true });
+  await marconi.hover();
+  assert.equal(await marconi.locator('img').evaluate(image => getComputedStyle(image).objectFit), 'contain');
+  assert.equal(await marconi.locator('img').evaluate(image => getComputedStyle(image).transform), 'none');
+  const roastCard = page.getByRole('button', { name: 'Открыть обжарщика Roast', exact: true });
+  const roastDetails = await check('roast card shop count', '/api/roasters/roast');
+  const roastCount = roastDetails.shops.length;
+  const word = new Intl.PluralRules('ru').select(roastCount);
+  const phrase = word === 'one' ? 'кофейня использует' : word === 'few' ? 'кофейни используют' : 'кофеен используют';
+  await roastCard.getByText(`${roastCount} ${phrase} это зерно`, { exact: true }).waitFor();
+  await roastCard.getByText('Доступные товары: 0', { exact: true }).waitFor();
+  const logoSize = await roastCard.getByRole('img', { name: 'Roast', exact: true }).boundingBox();
+  assert.equal(logoSize.width, 96); assert.equal(logoSize.height, 96);
+  assert.equal(await page.locator('aside').getByRole('button', { name: /^(Применить|Сбросить)$/ }).count(), 0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: path.join(output, 'customer-roasters-live-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert.equal(await page.locator('main aside, main form').count(), 0);
+  assert.equal(await page.getByRole('button', { name: /^Фильтры/ }).count(), 0);
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: path.join(output, 'customer-roasters-live-mobile.png'), fullPage: true });
+  await page.evaluate(() => localStorage.setItem('theme', 'dark')); await page.reload();
+  await roastCard.getByText('Доступные товары: 0', { exact: true }).waitFor();
+  const darkLogo = roastCard.getByRole('img', { name: 'Roast', exact: true });
+  assert.equal(await darkLogo.evaluate(image => getComputedStyle(image.parentElement).backgroundColor), 'rgb(255, 255, 255)');
+  await page.screenshot({ path: path.join(output, 'customer-roasters-live-mobile-dark.png'), fullPage: true });
+
+  await page.goto(`${customer}/dashboard?page=map`);
+  await page.locator('.maplibregl-canvas').waitFor();
+  await page.getByRole('button', { name: 'Приблизить карту', exact: true }).waitFor();
+  await page.getByRole('region', { name: 'Кофейни на карте', exact: true }).waitFor();
+  await page.screenshot({ path: path.join(output, 'customer-map-live-mobile.png'), fullPage: true });
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(browserErrors, []);
   assert(browserRequests.some(request => request.path === coffeePath && request.status === 200));
   assert(browserRequests.every(request => request.status === 200));

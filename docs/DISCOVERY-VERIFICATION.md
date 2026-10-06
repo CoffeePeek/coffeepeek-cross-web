@@ -12,14 +12,14 @@ After the deployment, read-only checks against `https://api.coffeepeek.by` pass.
 | GET `/api/v1/catalogs/roaster-tags` | 200 |
 | POST `/api/v1/discovery/search` | 200; independent pages and null unselected section |
 | POST `/api/v1/coffee-shops/search` | 200; 139 shops with city=minsk |
-| POST `/api/v1/roasters/search` | 200; 20 roasters |
+| POST `/api/v1/roasters/search` | 200; 22 roasters |
 | POST `/api/v1/coffees/search` | 200; 0 published coffee, including availableOnly=false |
 | POST `/api/v1/coffees/facets` | 200; selected zero-count values preserved |
 | POST `/api/v1/roasters/facets` | 200; service AND and coffee.* groups |
 | GET `/api/v1/favorites`, admin dictionaries/coffees/import runs without JWT | 401 |
 | GET non-existent v1 coffee detail | 404 NOT_FOUND |
 
-`npm run test:discovery-live` inside admin performs 37 real API checks and a customer browser smoke (15 real v1 responses in the recorded run). It verifies scopes, wrong-group/unknown values, invalid price/currency/weight/range, empty relevance, missing geo origin, forbidden nested roasters, overlapping tags/excludeTags, independent budgets/pages and JWT requirements. API responses are not mocked. The browser verifies discovery/roasters/coffee, mobile filters and reload, 375 px width and light/dark themes.
+`npm run test:discovery-live` inside admin performs 38 real API checks and a customer browser smoke. It verifies scopes, wrong-group/unknown values, invalid price/currency/weight/range, empty relevance, missing geo origin, forbidden nested roasters, overlapping tags/excludeTags, independent budgets/pages and JWT requirements. API responses are not mocked. The browser verifies discovery/roasters/coffee, restored shops, the original map, mobile filters and reload, 375 px width and light/dark themes, and all 22 roasters through scroll loading. A transient 502 during the next-page request retains the first page and exposes Retry.
 
 No published coffee is currently available: positive offer/detail/price-ordering and same-product AND scenarios therefore remain on the explicit mock. No live admin writes or authenticated favorites/admin integration checks were performed; those require a test account. Database persistence across devices is not established by mock checks.
 
@@ -40,6 +40,11 @@ Start both Vite apps on 5173/5174 and run `npm run test:coffee-catalog` inside a
 Verified with synthetic OpenAPI/PR fixtures:
 
 - Both discovery sections; empty shops with remaining roasters; independent pagination and browser Back.
+- Four main navigation items in the requested order with cup/factory/bean/map icons; no duplicate catalog navigation, coffee hero or sort selectors; no roaster search box. Coffee search reuses the full-width shop search bar.
+- Restored shop quick filters, city default, 12-item infinite paging, nearby distance ordering without a fixed radius, invalid-code removal and mobile bottom sheet focus return. Tags fit one row with an exact +N remainder and adapt when card width changes.
+- Roasters use the existing RoasterCatalogCard in the new horizontal layout: an uncropped square logo on the left, title and a 44 px favorite button with a 26 px heart on the right, confirmed tags below the title, and a separated footer with real shop count and available products. The visible heading, result counter, filter panel and mobile filter control were removed following the latest request. Scroll loads subsequent pages, retains existing cards on failure and retries the failed page.
+- Coffee uses scroll loading without page controls or a visible result counter. A new search starts at page 1 and replaces the previous cards. Its empty state reuses the shop Mascot and message; active filter chips above the list are removed.
+- Coffee filters reuse FilterAccordion and OptionRow from ShopFilterPanel, including count badges, checkmarks, selected tint, keyboard focus and 44 px option rows. Zero-count options remain selectable. The shop roaster filter displays circular source logos (initials when no image is supplied).
 - List shows 250 g matchingOffers only; details include 100 g, RUB and Unknown. Unsafe purchase links are absent. Visible search 400/401/503 and detail 404.
 - Mobile draft Escape/discard/focus return, Apply, URL/reload restoration, 375 px without horizontal overflow and light/dark themes.
 - Guest favorite intent survives login; favorites survive reload; 503 rolls back; logout A → login B has an empty B favorites-only result. Controlled unit promises cover old A responses arriving after B starts.
@@ -48,7 +53,7 @@ Verified with synthetic OpenAPI/PR fixtures:
 - Declining the unsaved navigation prompt keeps the editor/draft. Moderator edits coffee and does not see Admin slug controls.
 - Journal displays Applied/Failed by source; no import/rollback controls.
 
-Map routes/API calls remain available. Map tiles and permission denial were not manually exercised in this new smoke; existing distance/geolocation/bounds tests pass.
+The original MapPage has no source changes relative to the pre-PR state. Live browser smoke verifies its map canvas, tiles, shop carousel and controls at 375 px. Geolocation permission denial was not exercised; existing distance/geolocation/bounds tests pass.
 
 ## Contract limitation
 
@@ -56,9 +61,25 @@ Admin coffee DTO exposes slug but no address revision read endpoint for Draft/Ar
 
 ## Customer design
 
-The two supplied references are applied to `/coffees`: a spacious hero and count panel, pill presets, native sidebar accordions, three-column desktop cards, restrained borders/shadows, compact taste labels and exact-weight/currency prices. Mobile retains the draft/apply dialog and keyboard focus behavior. The count is the server product total for current criteria; cards show only matchingOffers and keep other offers on detail pages.
+The coffee hero, preset panel, sort selector, result counter and active filter chips were removed following the latest request. Search uses the full-width ShopSearchBar from the shop list. Coffee cards reuse ShopCard with the same rounded surface, 16:9 image area, title and hover/focus treatment. The existing RoasterCatalogCard now follows the supplied compact horizontal reference: logo left, title and FavoriteButton right, confirmed tags under the title, then a divider and shop/product counts. Logos fit entirely within an 80 px mobile or 96 px desktop square; a white logo surface preserves dark marks in dark mode. Favorites use a 26 px heart inside a 44 px button. Existing useRoaster loads the shop count from the detail DTO because v1 search does not expose it. Loading/failure is distinct from a real zero, failed counts can be retried, and Russian singular/plural forms are verified. No light-roast/decaf badges are inferred from unrelated coffee. Nested coffee previews and the check timestamp are removed from the compact roaster card; assortment remains on the detail page. Coffee prices remain grouped by exact weight and currency. Cards show matchingOffers only, with other offers on detail pages. Keyboard Enter opens a card; nested details and coffee cards do not trigger their parent card. The coffee empty state matches the shop list using the existing search Mascot and message.
+
+The shop list restores the pre-PR layout using the existing ShopSearchBar, ShopFilterPanel, ShopCard, skeletons, Mascot and useLoadMoreOnScroll. Desktop has the original quick filters and sidebar; mobile uses the original bottom sheet with native dialog focus handling. Searches still use the v1 server filters, auth scope and 12-item infinite pages. City defaults to the saved setting or first catalog city. Filter changes reset pagination, and invalid saved codes can be removed explicitly. No new UI component files were added.
+
+The main public navigation is exactly «Кофейни · Обжарщики · Кофе · Карта», with cup, factory, bean and map icons from the installed icon library. The duplicate catalog navigation and sort selectors were removed. Roasters have no visible page heading, text search, filter panel, result counter or pagination controls; their grid fills the content width. Both roasters and coffee reuse useLoadMoreOnScroll and React Query to load further server pages. Background refresh and next-page loading do not add visible status text to these grids. A semantic visually hidden heading remains for accessibility.
+
+Coffee filters follow [Apple HIG toggle guidance](https://developer.apple.com/design/human-interface-guidelines/toggles) using the existing shop filter primitives. Selection is visible through a checkmark and tint, keyboard focus has a ring, and rows provide at least 44 px hit areas. The grouped rounded panel matches the shop sidebar. Native selects and numeric inputs retain Zod validation; the existing draft/Apply behavior is preserved. The skill checker passes the targeted 44×44 size and primary/secondary text contrast pairs in both themes (17.49, 13.91, 7.63 and 10.19); this is not a full-site accessibility certification. No new UI components or dependencies were introduced.
 
 The current public DTO has no Q score, body, archive total, drip/limited-edition filter or coffee favorite kind. Those reference elements are not simulated with invented data or inert controls. Supported filters stay available; the card action opens real purchase variants. No dependencies were added.
+
+## Customer icons
+
+The supplied Phosphor map is applied through the existing AppIcon/Icon adapters. Tags use the mobile slug mapping, including both plant-based-milk spellings and ListStar for unknown values. Settings/equipment, reviews, roasters, walking distance, generic navigation and calendar symbols follow the table. Edit sections and contribution entries share one icon map; favorite states use regular/fill hearts.
+
+All seven supplied SVGs are copied unchanged into public/icons/brew-methods. CSS masks use currentColor in both themes. Deployed names Hario V60 and Cezve (Turkish Coffee) resolve to the supplied V60/Cezve assets; Moka Pot keeps the coffee fallback because no asset was supplied. The same icons appear in shop filters, details and creation/edit forms. No component files or dependencies were added.
+
+Runnable icon tests cover asset existence/aliases, safe unknown/prototype fallbacks and accessible decorative/labeled semantics. Browser checks load all seven assets (200), assert 24 px filter icons and both theme colors, select by keyboard, retain the one-row +N tag layout, and verify the exact submitted tag IDs on mock API. The shop wizard displays all seven icons and preserves checkbox state. Live verification makes only read requests.
+
+[Icons, light](screenshots/discovery/customer-icons-light.png), [icons, dark](screenshots/discovery/customer-icons-dark.png), [creation form](screenshots/discovery/customer-icons-wizard.png).
 
 ## Screenshots (mock data)
 
@@ -70,4 +91,8 @@ The current public DTO has no Q score, body, archive total, drip/limited-edition
 
 Live screenshots: [desktop](screenshots/discovery/customer-live-desktop.png), [mobile light](screenshots/discovery/customer-live-mobile.png), [mobile dark](screenshots/discovery/customer-live-mobile-dark.png). The empty coffee catalog is real API data.
 
-Final result: customer 146 tests; admin 50 tests; customer SSR 13 tests. Both typechecks and production builds pass. Browser mock smoke and live discovery checks pass (request count varies with refetches).
+Restored shop list: [desktop, live](screenshots/discovery/customer-shops-live-desktop.png), [mobile filters, live](screenshots/discovery/customer-shops-live-mobile-filters.png). Original [map, mobile, live](screenshots/discovery/customer-map-live-mobile.png). Native list behavior on mock: [desktop](screenshots/discovery/customer-shops-desktop.png), [mobile filters](screenshots/discovery/customer-shops-mobile-filters.png).
+
+Roasters: [desktop, live](screenshots/discovery/customer-roasters-live-desktop.png), [mobile, live](screenshots/discovery/customer-roasters-live-mobile.png), [mobile dark, live](screenshots/discovery/customer-roasters-live-mobile-dark.png); mock [desktop](screenshots/discovery/customer-roasters-desktop.png), [mobile](screenshots/discovery/customer-roasters-mobile.png), [mobile dark](screenshots/discovery/customer-roasters-mobile-dark.png).
+
+Final result: customer 150 tests; admin 52 tests; customer SSR 13 tests. Both typechecks and production builds pass. Browser mock smoke and live discovery checks pass (request count varies with refetches).

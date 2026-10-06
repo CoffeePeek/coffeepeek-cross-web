@@ -16,7 +16,7 @@ import { useCreateCheckIn } from '../hooks/queries/useCheckIns';
 import { useCheckInDraft } from '../hooks/useCheckInDraft';
 import { getErrorMessage } from '../utils/errorHandler';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { ArrowLeft } from '../components/Icon';
+import { CaretLeft } from '../components/Icon';
 import CheckInForm from '../components/CheckInForm';
 
 interface ShopBasicInfo {
@@ -131,7 +131,7 @@ const CreateCheckInPage: React.FC = () => {
           className="hidden sm:flex items-center gap-2 mb-5 font-body text-sm"
           style={{ color: colors.textSecondary }}
         >
-          <ArrowLeft size={18} />
+          <CaretLeft size={18} />
           Назад
         </button>
         <div

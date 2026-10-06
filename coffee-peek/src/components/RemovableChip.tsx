@@ -1,18 +1,5 @@
 import React from 'react';
-
-const CloseIcon: React.FC<{ color: string; size?: number }> = ({ color, size = 13 }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 16 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden
-    style={{ display: 'block', flexShrink: 0 }}
-  >
-    <path d="M3.2 3.2l9.6 9.6M12.8 3.2l-9.6 9.6" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
-  </svg>
-);
+import { X } from './Icon';
 
 /** Removable gold pill used in filters and create-shop multi-selects. */
 export const RemovableChip: React.FC<{
@@ -50,7 +37,7 @@ export const RemovableChip: React.FC<{
         padding: 2,
       }}
     >
-      <CloseIcon color={gold} size={13} />
+      <X color={gold} size={13} aria-hidden />
     </button>
   </span>
 );

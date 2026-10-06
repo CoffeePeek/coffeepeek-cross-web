@@ -8,7 +8,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import {
   Envelope, Lock, WarningCircle, Eye, EyeSlash,
-  CheckCircle, Clock, ArrowClockwise, ArrowLeft, Check, X,
+  CheckCircle, Clock, ArrowClockwise, CaretLeft, Check, X,
 } from '@/components/Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
@@ -392,7 +392,7 @@ const LoginPage: React.FC = () => {
             <button type="button" onClick={() => navigate(passedEmail ? '/register' : '/')}
               className="whitespace-nowrap text-[11px] min-[360px]:text-xs sm:text-[13px]"
               style={{ padding: 0, background: 'none', border: 'none', color: textMuted, fontFamily: '"Manrope"', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <ArrowLeft size={14} /> Назад
+              <CaretLeft size={14} /> Назад
             </button>
             <button type="button" onClick={() => navigate('/register')}
               className="whitespace-nowrap text-[11px] min-[360px]:text-xs sm:text-[13px]"

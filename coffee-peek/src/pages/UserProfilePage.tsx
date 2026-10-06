@@ -14,7 +14,7 @@ import { logger } from '../utils/logger';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { StarIcon } from '../components/icons';
 import {
-  ArrowLeft, SealCheck, ShoppingCart, ChatCircleText, Star,
+  SealCheck, ShoppingCart, ChatCenteredText, Star,
   NotePencil, ArrowRight, CaretLeft, CaretRight,
 } from '@/components/Icon';
 import Mascot from '../components/Mascot';
@@ -179,7 +179,7 @@ const UserProfilePage: React.FC = () => {
       {/* Back button */}
       <div className="fixed top-20 left-4 z-10">
         <Button onClick={() => navigate(-1)} variant="secondary">
-          <ArrowLeft size={20} />
+          <CaretLeft size={20} />
           Назад
         </Button>
       </div>
@@ -254,7 +254,7 @@ const UserProfilePage: React.FC = () => {
             </div>
             <div className={`${bgSurface} p-8 rounded-3xl border ${borderClass} shadow-sm flex flex-col items-center text-center group ${themeClasses.border.activeHover} transition-all`}>
               <div className={`w-12 h-12 rounded-2xl ${themeClasses.primary.bgLight} ${themeClasses.primary.text} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <ChatCircleText size={30} />
+                <ChatCenteredText size={30} />
               </div>
               <span className={`text-4xl font-bold ${textMain}`}>
                 {profile.reviewCount ?? 0}

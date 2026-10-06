@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import type { Equipment, CoffeeBean, Roaster, BrewMethod, CoffeeShopFilters, ShopTagDto } from '../api/coffeeshop';
+import { getPhotoUrl, type Equipment, type CoffeeBean, type Roaster, type BrewMethod, type CoffeeShopFilters, type ShopTagDto } from '../api/coffeeshop';
 import { COLORS } from '../constants/colors';
 import type { IconProps } from '@phosphor-icons/react';
 import {
-  SquaresFour, Clock, Sparkle, CheckCircle, Heart,
-  CaretDown, Check, NavigationArrow,
+  Clock, Sparkle, CheckCircle, Heart,
+  CaretDown, Check, PersonSimpleWalk, X,
 } from '@/components/Icon';
+import { AppIcon } from './icons';
 import { RemovableChip } from './RemovableChip';
 import { PriceRangeSlider } from './PriceRangeSlider';
 import { PRICE_FILTER_OPTIONS, toPriceFilterLevel } from '../utils/priceRange';
@@ -21,40 +22,9 @@ function remainingLabel(count: number): string {
   return `Ещё ${count} вариантов`;
 }
 
-const CloseIcon: React.FC<{ color: string; size?: number }> = ({ color, size = 16 }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 16 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden
-    style={{ display: 'block', flexShrink: 0 }}
-  >
-    <path d="M3.2 3.2l9.6 9.6M12.8 3.2l-9.6 9.6" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
-  </svg>
-);
-
-const AllGridIcon: React.FC<{ color: string; size?: number }> = ({ color, size = 14 }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 16 16"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    aria-hidden
-    style={{ display: 'block', flexShrink: 0 }}
-  >
-    <rect x="1.2" y="1.2" width="5.6" height="5.6" rx="1.1" stroke={color} strokeWidth="1.35" />
-    <rect x="9.2" y="1.2" width="5.6" height="5.6" rx="1.1" stroke={color} strokeWidth="1.35" />
-    <rect x="1.2" y="9.2" width="5.6" height="5.6" rx="1.1" stroke={color} strokeWidth="1.35" />
-    <rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.1" stroke={color} strokeWidth="1.35" />
-  </svg>
-);
-
-const FIXED_QUICK_FILTERS: { id: string; label: string; Icon: React.ComponentType<IconProps> }[] = [
-  { id: 'all',      label: 'Все',        Icon: SquaresFour },
-  { id: 'nearby',   label: 'Рядом',      Icon: NavigationArrow },
+const FIXED_QUICK_FILTERS: { id: string; label: string; Icon?: React.ComponentType<IconProps> }[] = [
+  { id: 'all',      label: 'Все' },
+  { id: 'nearby',   label: 'Рядом',      Icon: PersonSimpleWalk },
   { id: 'open',     label: 'Открыто',    Icon: Clock        },
   { id: 'new',      label: 'Новые',      Icon: Sparkle      },
   { id: 'visited',  label: 'Уже был',    Icon: CheckCircle },
@@ -111,7 +81,7 @@ function toggle(arr: string[], id: string): string[] {
   return arr.includes(id) ? arr.filter(x => x !== id) : [...arr, id];
 }
 
-const FilterAccordion: React.FC<{
+export const FilterAccordion: React.FC<{
   title: string;
   count?: number;
   defaultOpen?: boolean;
@@ -126,6 +96,7 @@ const FilterAccordion: React.FC<{
     <div style={{ borderBottom: `1px solid ${borderColor}` }}>
       <button
         type="button"
+        className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         style={{
@@ -157,7 +128,7 @@ const CheckMark: React.FC<{ checked: boolean; gold: string }> = ({ checked, gold
   </span>
 );
 
-const OptionRow: React.FC<{
+export const OptionRow: React.FC<{
   label: React.ReactNode;
   checked: boolean;
   onClick: () => void;
@@ -167,6 +138,7 @@ const OptionRow: React.FC<{
 }> = ({ label, checked, onClick, gold, textPrimary, icon }) => (
   <button
     type="button"
+    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
     onClick={onClick}
     aria-pressed={checked}
     style={{
@@ -186,7 +158,7 @@ const OptionRow: React.FC<{
 );
 
 const ExpandableOptions: React.FC<{
-  items: { id: string; name: string }[];
+  items: { id: string; name: string; photoUrl?: string | null; iconName?: string }[];
   selected: string[];
   onToggle: (id: string) => void;
   gold: string;
@@ -205,6 +177,9 @@ const ExpandableOptions: React.FC<{
           onClick={() => onToggle(item.id)}
           gold={gold}
           textPrimary={textPrimary}
+          icon={item.photoUrl !== undefined ? <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-100 text-xs font-bold text-stone-700">
+            {item.photoUrl ? <img src={item.photoUrl} alt="" loading="lazy" className="h-full w-full object-cover" /> : item.name.slice(0, 2).toUpperCase()}
+          </span> : item.iconName ? <AppIcon name={item.iconName} size={24} color={textPrimary} /> : undefined}
         />
       ))}
       {items.length > LIST_PREVIEW && (
@@ -303,11 +278,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
             style={chipBase}
           >
             <span style={quickChipContentStyle(active)}>
-              {id === 'all' ? (
-                <AllGridIcon color={goldWarm} />
-              ) : (
-                <Icon size={14} weight={active ? 'bold' : 'regular'} color={goldWarm} style={{ display: 'block', flexShrink: 0, overflow: 'visible', background: 'transparent' }} />
-              )}
+              {Icon && <Icon size={14} weight={active ? id === 'favorite' ? 'fill' : 'bold' : 'regular'} color={goldWarm} style={{ display: 'block', flexShrink: 0, overflow: 'visible', background: 'transparent' }} />}
               {label}
             </span>
           </button>
@@ -410,7 +381,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
             aria-label="Закрыть фильтры"
             style={{ width: 44, height: 44, borderRadius: 999, border: 'none', background: dark ? 'rgba(255,255,255,.08)' : 'rgba(120,113,108,.1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: textPrimary, padding: 0, flexShrink: 0 }}
           >
-            <CloseIcon color={textPrimary} size={16} />
+            <X color={textPrimary} size={16} aria-hidden />
           </button>
         </div>
       )}
@@ -426,6 +397,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
               onClick={() => onTagToggle(tag.id)}
               gold={gold}
               textPrimary={textPrimary}
+              icon={<AppIcon name={`tag:${tag.slug ?? ''}`} size={22} color={textPrimary} />}
             />
           ))}
         </FilterAccordion>
@@ -468,7 +440,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
       {roasters.length > 0 && (
         <FilterAccordion title="Обжарщики" count={selectedRoasters.length} defaultOpen={selectedRoasters.length > 0} {...accordionProps}>
           <ExpandableOptions
-            items={roasters}
+            items={roasters.map(roaster => ({ ...roaster, photoUrl: roaster.photoUrl ?? (roaster.coverPhoto ? getPhotoUrl(roaster.coverPhoto, 'thumbnail') : null) }))}
             selected={selectedRoasters}
             onToggle={(id) => patch({ roasters: toggle(selectedRoasters, id) })}
             gold={gold}
@@ -480,7 +452,7 @@ const ShopFilterPanel: React.FC<ShopFilterPanelProps> = ({
       {brewMethods.length > 0 && (
         <FilterAccordion title="Заваривание" count={selectedBrewMethods.length} defaultOpen={selectedBrewMethods.length > 0} {...accordionProps}>
           <ExpandableOptions
-            items={brewMethods}
+            items={brewMethods.map(method => ({ ...method, iconName: `brew:${method.name}` }))}
             selected={selectedBrewMethods}
             onToggle={(id) => patch({ brewMethods: toggle(selectedBrewMethods, id) })}
             gold={gold}

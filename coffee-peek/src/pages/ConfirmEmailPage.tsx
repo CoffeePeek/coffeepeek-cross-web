@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { confirmEmail } from '../api/auth';
 import { isApiRequestError } from '../api/core/apiError';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { SignIn, ArrowLeft } from '@/components/Icon';
+import { SignIn, CaretLeft } from '@/components/Icon';
 import LogoMark from '../components/LogoMark';
 import Mascot from '../components/Mascot';
 
@@ -139,7 +139,7 @@ const ConfirmEmailPage: React.FC = () => {
               <button
                 onClick={() => navigate('/login')}
                 style={{ width: '100%', height: 48, borderRadius: 12, background: 'transparent', color: textPrimary, border: `1px solid ${cardBorder}`, fontFamily: '"Manrope"', fontWeight: 600, fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <ArrowLeft size={18} />
+                <CaretLeft size={18} />
                 На страницу входа
               </button>
             </>

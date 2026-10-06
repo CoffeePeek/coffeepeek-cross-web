@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CaretDown } from '@/components/Icon';
+import { CaretUpDown } from '@/components/Icon';
 import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 
@@ -132,7 +132,7 @@ const MaterialSelect: React.FC<MaterialSelectProps> = ({
           }
           ${isOpen ? 'rotate-180' : ''}
         `}>
-          <CaretDown size={20} />
+          <CaretUpDown size={20} />
         </div>
       </div>
 

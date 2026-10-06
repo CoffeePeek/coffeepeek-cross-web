@@ -24,7 +24,7 @@ test('each /mine endpoint maps data.items and status/reason fields', async () =>
   expect((await getMyContributions('reviews', query)).items[0]).toMatchObject({ status: 'Rejected', reason: 'Spam', link: '/coffee-shops/shop' });
 
   get.mockResolvedValueOnce({ data: { ...paging, items: [{ id: 'e', shop, section: 'Menu', status: 'Rejected', rejectionReason: 'Wrong', createdAtUtc: '2026-09-01T00:00:00Z' }] } });
-  expect((await getMyContributions('edits', query)).items[0]).toMatchObject({ title: 'Меню', status: 'Rejected', reason: 'Wrong', link: '/coffee-shops/shop' });
+  expect((await getMyContributions('edits', query)).items[0]).toMatchObject({ title: 'Меню', section: 'Menu', status: 'Rejected', reason: 'Wrong', link: '/coffee-shops/shop' });
   expect(get).toHaveBeenLastCalledWith('/api/ShopChangeRequests/mine', { params: query });
 });
 

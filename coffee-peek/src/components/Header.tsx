@@ -3,21 +3,21 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { COLORS } from '../constants/colors';
-import { MagnifyingGlass, Gear, MapTrifold, SignOut, CaretDown, User } from '@/components/Icon';
+import { Coffee, Factory, GearSix, MapTrifold, SignOut, CaretDown, User } from '@/components/Icon';
+import { CoffeeBean } from '@phosphor-icons/react';
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
 
 const PUBLIC_NAV = [
-  { id: 'search', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/search') },
-  { id: 'coffeeshops', label: 'Кофейни', route: '/shops', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/shops') || p.startsWith('/coffee-shops') },
-  { id: 'roasters', label: 'Обжарщики', route: '/roasters', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/roasters') },
-  { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/coffees') },
+  { id: 'coffeeshops', label: 'Кофейни', route: '/shops', Icon: Coffee, match: (p: string) => ['/shops', '/coffee-shops', '/search'].some(route => p.startsWith(route)) },
+  { id: 'roasters', label: 'Обжарщики', route: '/roasters', Icon: Factory, match: (p: string) => p.startsWith('/roasters') },
+  { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: CoffeeBean, match: (p: string) => p.startsWith('/coffees') },
   { id: 'map',         label: 'Карта',   route: '/dashboard?page=map', Icon: MapTrifold, match: (p: string) => p.includes('page=map') },
 ] as const;
 
 const AUTH_NAV = [
   ...PUBLIC_NAV,
   { id: 'profile',  label: 'Профиль',   route: '/profile',  Icon: User, match: (p: string) => ['/profile', '/reviews', '/check-ins', '/my/'].some(route => p.startsWith(route)) },
-  { id: 'settings', label: 'Настройки', route: '/settings', Icon: Gear, match: (p: string) => p.startsWith('/settings') },
+  { id: 'settings', label: 'Настройки', route: '/settings', Icon: GearSix, match: (p: string) => p.startsWith('/settings') },
 ] as const;
 
 const Header: React.FC = () => {
@@ -168,7 +168,7 @@ const Header: React.FC = () => {
                         <DropdownItem icon={<User size={18} color={mutedColor} />} label="Профиль" hoverBg={hoverBg}
                           textColor={textColor} mutedColor={mutedColor}
                           onClick={() => { navigate('/profile'); setProfileOpen(false); }} />
-                        <DropdownItem icon={<Gear size={18} color={mutedColor} />} label="Настройки" hoverBg={hoverBg}
+                        <DropdownItem icon={<GearSix size={18} color={mutedColor} />} label="Настройки" hoverBg={hoverBg}
                           textColor={textColor} mutedColor={mutedColor}
                           onClick={() => { navigate('/settings'); setProfileOpen(false); }} />
                       </div>
@@ -202,7 +202,7 @@ const Header: React.FC = () => {
       </div>
     </header>
       <nav
-        className={`${isShopDetails || isShopCreation ? 'hidden' : 'flex'} fixed inset-x-0 bottom-0 z-[1200] overflow-x-auto border-t lg:hidden`}
+        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-6 border-t lg:hidden`}
         aria-label="Основная навигация"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: bg, borderColor, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
       >
@@ -213,7 +213,7 @@ const Header: React.FC = () => {
               key={id}
               type="button"
               onClick={() => navigate(route)}
-              className="flex min-h-[64px] min-w-[72px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
+              className="flex min-h-[64px] flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
               style={{ color: active ? gold : mutedColor }}
               aria-current={active ? 'page' : undefined}
             >

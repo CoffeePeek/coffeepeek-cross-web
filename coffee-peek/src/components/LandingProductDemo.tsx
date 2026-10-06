@@ -5,7 +5,7 @@ import { getThemeColors } from '../constants/colors';
 import { StarIcon } from './icons';
 import {
   Compass,
-  ChatCircleText,
+  ChatCenteredText,
   Heart,
   MagnifyingGlass,
 } from '@/components/Icon';
@@ -37,7 +37,7 @@ const CATEGORIES: Category[] = [
     chrome: 'Чек-ин',
     desc: 'Отметь визит, опиши вкус и поставь оценку — рейтинг растёт из реальных чашек.',
     more: 'Чек-ин фиксирует, что ты был. Отзыв — что почувствовал. Звёзды складываются в оценку места, а не в рекламу.',
-    Icon: ChatCircleText,
+    Icon: ChatCenteredText,
   },
   {
     id: 'save',
