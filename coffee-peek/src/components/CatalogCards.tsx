@@ -109,6 +109,7 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
             <FavoriteButton kind="roaster" address={roaster.address} value={roaster.isFavorite}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-0 bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500" />
           </div>
+          {details.data?.about?.trim() && <p className="line-clamp-2 text-sm leading-relaxed" style={{ color: colors.textSecondary }}>{details.data.about.trim()}</p>}
           {!!roaster.tags.length && <div className="flex flex-wrap gap-2">{roaster.tags.map(tag => <span key={tag.slug} title={tag.description ?? undefined} className="rounded-full bg-stone-100 px-3 py-1 text-sm dark:bg-[#1A1412]" style={{ color: colors.textSecondary }}>{tag.name}</span>)}</div>}
         </div>
       </div>
@@ -166,7 +167,6 @@ export function ShopCatalogCard({ shop }: { shop: Shop }) {
     isVisited: shop.isVisited ?? undefined, isFavorite: shop.isFavorite,
   }}>
     {shop.distanceMeters !== null && <p className="flex items-center gap-1.5"><AppIcon name="person-simple-walk" size={18} />{(shop.distanceMeters / 1000).toLocaleString()} км от вас</p>}
-    {shop.isVisited === true && <p>Вы здесь были</p>}
     {!!shop.tags.length && <div ref={tagRow} aria-label="Теги кофейни" className="relative flex gap-2 overflow-hidden whitespace-nowrap">
       {shop.tags.map((tag, index) => <span key={tag.slug} aria-hidden={index >= visibleTags} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-sm dark:bg-[#1A1412] ${index >= visibleTags ? 'pointer-events-none invisible absolute' : ''}`}><AppIcon name={`tag:${tag.slug}`} size={16} />{tag.name}</span>)}
       <span aria-hidden={!hiddenTags.length} title={hiddenTags.map(tag => tag.name).join(', ')} className={`shrink-0 rounded-full bg-stone-100 px-3 py-1 text-sm dark:bg-[#1A1412] ${hiddenTags.length ? '' : 'pointer-events-none invisible absolute'}`}>

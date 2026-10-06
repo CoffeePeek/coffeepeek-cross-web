@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getEquipments, getCoffeeBeans, getRoasters, getBrewMethods, getShopTags, type CoffeeShopFilters } from '../api/coffeeshop';
 import { shopFiltersSchema, normalizeFilters, type ShopFilters } from '../utils/catalogSearch';
 import { useTheme } from '../contexts/ThemeContext';
+import { useToast } from '../contexts/ToastContext';
 import { getThemeColors } from '../constants/colors';
 import { getDeviceLocation } from '../utils/geolocation';
 import ShopFilterPanel from './ShopFilterPanel';
@@ -12,7 +13,9 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
   mode?: 'quick' | 'chips' | 'sidebar'; resultCount?: number; onClose?: () => void;
 }) {
   const { theme } = useTheme();
-  const [locationError, setLocationError] = useState('');
+  const { showToast } = useToast();
+  const deviceLocation = useQuery({ queryKey: ['device-location'],
+    queryFn: () => getDeviceLocation({ requestPermission: true, maximumAge: 0 }), enabled: false, retry: false });
   const current = useRef(filters);
   current.current = filters;
   const draft = filters;
@@ -35,9 +38,9 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
       if (key === 'all') { patch({ isOpen: undefined, isNew: undefined, visitedOnly: undefined, favoritesOnly: undefined, origin: undefined, radiusKm: undefined, type: undefined }); return; }
       if (key === 'nearby') {
         if (draft.origin) { patch({ origin: undefined, radiusKm: undefined }); return; }
-        const location = await getDeviceLocation({ requestPermission: true, maximumAge: 0 });
-        if (location) { setLocationError(''); patch({ origin: { latitude: location.coords.latitude, longitude: location.coords.longitude }, radiusKm: undefined }); }
-        else setLocationError('Геолокация недоступна. Обычный поиск продолжает работать.');
+        const location = (await deviceLocation.refetch()).data;
+        if (location) patch({ origin: { latitude: location.coords.latitude, longitude: location.coords.longitude }, radiusKm: undefined });
+        else showToast('Геолокация недоступна. Обычный поиск продолжает работать.', 'warning');
         return;
       }
       const field = ({ open: 'isOpen', new: 'isNew', visited: 'visitedOnly', favorite: 'favoritesOnly' } as const)[key as 'open'];
@@ -48,7 +51,7 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
     filters: { cityId: draft.city, priceRange: draft.priceRange ? draft.priceRange[0].toUpperCase() + draft.priceRange.slice(1) : undefined, coffeeFocus: draft.type?.replace('-', '_') } as CoffeeShopFilters,
     selectedEquipments: draft.equipments ?? [], selectedBeans: draft.beans ?? [], selectedRoasters: draft.roasters ?? [], selectedBrewMethods: draft.brewMethods ?? [],
     equipments: catalogs.data?.equipments ?? [], coffeeBeans: catalogs.data?.beans ?? [], roasters: catalogs.data?.roasters ?? [], brewMethods: catalogs.data?.methods ?? [],
-    colors: getThemeColors(theme), dark: theme === 'dark', canLocate: typeof navigator !== 'undefined' && !!navigator.geolocation,
+    colors: getThemeColors(theme), dark: theme === 'dark', canLocate: typeof navigator !== 'undefined' && !!navigator.geolocation && deviceLocation.data !== null,
     onApplyFilters: (values: import('./ShopFilterPanel').AppliedFilters) => patch({ equipments: values.equipments, beans: values.beans, roasters: values.roasters, brewMethods: values.brewMethods,
       priceRange: values.priceRange?.toLowerCase() as ShopFilters['priceRange'], type: values.coffeeFocus?.replace('_', '-') as ShopFilters['type'] }),
     resultCount, onClose,
@@ -56,6 +59,5 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
   return <>
     {catalogs.isError && <p role="alert">Не удалось загрузить справочники. <button type="button" onClick={() => void catalogs.refetch()} className="underline">Повторить</button></p>}
     <ShopFilterPanel mode={mode} {...panel} />
-    {locationError && <p role="status">{locationError}</p>}
   </>;
 }

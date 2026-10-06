@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -44,8 +44,17 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
   const form = useForm<{ filters: Record<string, unknown> }>({
     defaultValues: { filters }, resolver: zodResolver(z.object({ filters: filterSchemas[kind] })) as Resolver<{ filters: Record<string, unknown> }>,
   });
-  useEffect(() => { form.reset({ filters }); }, [filters]);
+  const filtersKey = JSON.stringify(filters);
+  useEffect(() => { form.reset({ filters }); }, [filtersKey]);
   const draft = form.watch('filters');
+  const draftKey = JSON.stringify(draft);
+  const apply = useRef(onApply);
+  apply.current = onApply;
+  useEffect(() => {
+    if (kind !== 'coffees' || draftKey === filtersKey) return;
+    const timer = setTimeout(() => { void form.handleSubmit(values => apply.current(normalizeFilters(values.filters)))(); }, 350);
+    return () => clearTimeout(timer);
+  }, [draftKey, filtersKey, kind]);
   const get = (path: string): unknown => path.split('.').reduce<unknown>((value, key) => value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined, draft);
   const put = (path: string, value: unknown) => {
     const [key, nested] = path.split('.');
@@ -54,7 +63,7 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
     if (nested) next[key] = { ...(current[key] as Record<string, unknown> ?? {}), [nested]: value };
     else next[key] = value;
     const normalized = normalizeFilters(next);
-    form.setValue('filters', normalized, { shouldDirty: true });
+    form.setValue('filters', normalized, { shouldDirty: true, shouldValidate: kind === 'coffees' });
   };
   const fieldError = (path: string) => {
     const local = path.split('.').reduce<unknown>((value, key) => value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined, form.formState.errors.filters);
@@ -93,7 +102,7 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
     { name: 'Состав', codes: ['composition'] }, { name: 'Вес, валюта и цена', codes: ['weightGrams', 'currency'] },
     { name: 'Наличие', codes: ['availabilityScope'] },
   ];
-  return <form onSubmit={form.handleSubmit(values => onApply(normalizeFilters(values.filters)))} className="space-y-5 text-sm">
+  return <form onSubmit={kind === 'coffees' ? event => event.preventDefault() : form.handleSubmit(values => onApply(normalizeFilters(values.filters)))} className="space-y-5 text-sm">
     {kind === 'coffees' ? <div className="overflow-hidden rounded-[18px] border bg-white/80 shadow-sm backdrop-blur-[20px] dark:bg-white/[.035]" style={{ borderColor }}>
       {coffeeSections.map(section => <FilterAccordion key={section.name} title={section.name} count={section.codes.reduce((count, code) => count + (Array.isArray(get(code)) ? (get(code) as unknown[]).length : get(code) != null ? 1 : 0), 0)} defaultOpen={section.codes.some(code => get(code) != null)} muted={dark ? '#A39E93' : '#78716C'} textPrimary={optionColors.textPrimary} borderColor={borderColor}>
         <div className="space-y-3 [&_legend]:sr-only">{section.codes.map(code => { const group = groups.find(group => group.code === code); return group ? groupControl(group) : null; })}
@@ -108,7 +117,7 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
       <fieldset className="space-y-3"><legend className="mb-2 font-semibold">Цена напитка</legend>{numberField('budget.minDrinkPrice', 'Напиток: цена от')}{numberField('budget.maxDrinkPrice', 'Напиток: цена до')}{numberField('budget.drinkVolumeMl', 'Объём напитка, мл', 5000)}</fieldset>
       <fieldset className="space-y-3"><legend className="mb-2 font-semibold">Цена пачки кофе</legend>{numberField('budget.minCoffeePrice', 'Пачка: цена от')}{numberField('budget.maxCoffeePrice', 'Пачка: цена до')}{numberField('budget.coffeeWeightGrams', 'Вес пачки, г', 100000)}</fieldset>
     </> : null}
-    <div className="flex flex-wrap gap-2"><button type="submit" className={`${catalogButton} bg-yellow-400 text-stone-950`}>Применить</button><button type="button" className={catalogButton} onClick={() => form.reset({ filters: kind === 'coffees' ? { availableOnly: true } : {} })}>Сбросить</button></div>
+    {kind !== 'coffees' && <div className="flex flex-wrap gap-2"><button type="submit" className={`${catalogButton} bg-yellow-400 text-stone-950`}>Применить</button><button type="button" className={catalogButton} onClick={() => form.reset({ filters: {} })}>Сбросить</button></div>}
     {form.formState.errors.filters?.message && <p role="alert">{String(form.formState.errors.filters.message)}</p>}
   </form>;
 }

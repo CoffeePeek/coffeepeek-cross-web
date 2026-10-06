@@ -88,7 +88,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
   const apply = (filters: Record<string, unknown>) => {
     const next = applyCriteria(state, { filters });
     update(next);
-    if (kind !== 'roasters') { dialog.current?.close(); setMobileOpen(false); }
+    if (kind !== 'roasters' && kind !== 'coffees') { dialog.current?.close(); setMobileOpen(false); }
     if (!user && (filters.favoritesOnly || filters.visitedOnly)) navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, kind)}` } } });
   };
   const filterForm = () => kind === 'shops' ? <ShopCatalogFilters filters={state.filters as ShopFilters} onApply={apply} /> : <CatalogFilters kind={kind} filters={state.filters} groups={groups} errors={errors} onApply={apply} />;
@@ -130,7 +130,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
       })}
     </div></div>
     {kind !== 'roasters' && <dialog ref={dialog} onClose={() => setMobileOpen(false)} className={`max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg rounded-2xl p-5 backdrop:bg-black/60 ${theme === 'dark' ? 'bg-[#2D241F] text-white' : 'bg-white text-stone-900'}`}>
-      <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Фильтры</h2><button type="button" className={catalogButton} onClick={() => dialog.current?.close()} aria-label="Закрыть фильтры">×</button></div>{mobileOpen && filterForm()}
+      <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Фильтры</h2><button type="button" className={catalogButton} onClick={() => dialog.current?.close()} aria-label="Закрыть фильтры">×</button></div>{(mobileOpen || kind === 'coffees') && filterForm()}
     </dialog>}
   </main>;
 }
