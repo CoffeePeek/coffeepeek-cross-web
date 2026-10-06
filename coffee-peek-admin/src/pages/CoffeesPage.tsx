@@ -37,7 +37,7 @@ export function CoffeesPage() {
   const roasterNames = new Map(roasters.data?.map(roaster => [roaster.id, roaster.name]));
   const changePage = (next: number) => setParams({ status: status ?? '', page: String(next) });
 
-  return <section aria-label="Кофе" className="mx-auto max-w-6xl space-y-3 pb-6 text-text-main dark:text-white">
+  return <section aria-label="Кофе" className="min-w-0 w-full space-y-3 pb-6 text-text-main dark:text-white">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <label className="w-44 shrink-0"><span className="sr-only">Статус публикации</span>
         <NativeSelect value={status ?? ''} onChange={event => setParams({ status: event.target.value, page: '1' })}>
