@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RoasterCard } from '../api/discovery';
 
 const codes = z.array(z.string().min(1).max(100)).max(30);
 const price = z.number().finite().min(0).optional();
@@ -23,7 +24,6 @@ export const coffeeFiltersSchema = z.object(coffeeShape).strict().superRefine(ch
 export type CoffeeFilters = z.infer<typeof coffeeFiltersSchema>;
 export const roasterFiltersSchema = z.object({
   tags: codes.optional(), excludeTags: codes.optional(), favoritesOnly: z.boolean().optional(),
-  coffee: z.object(coffeeShape).omit({ roasters: true }).strict().superRefine(checkPrice).optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.tags?.some(tag => value.excludeTags?.includes(tag)))
     ctx.addIssue({ code: 'custom', path: ['excludeTags'], message: 'Тег нельзя одновременно выбрать и исключить' });
@@ -61,6 +61,18 @@ const sorts: Record<CatalogKind, string[]> = {
 };
 export const filterSchemas = { discovery: discoveryFiltersSchema, shops: shopFiltersSchema, roasters: roasterFiltersSchema, coffees: coffeeFiltersSchema };
 export const normalizeQuery = (q: string) => q.trim().replace(/\s+/g, ' ');
+export function filterRoasters(items: RoasterCard[], state: Pick<SearchState, 'q' | 'filters' | 'sort'>, isFavorite: (slug: string) => boolean = () => false): RoasterCard[] {
+  const text = (value: string | null) => normalizeQuery(value ?? '').toLocaleLowerCase('ru-RU').replace(/ё/g, 'е');
+  const q = text(state.q);
+  const filters = state.filters as RoasterFilters;
+  return items.filter(item => text(item.name).includes(q)
+    && (!filters.tags?.length || filters.tags.every(tag => item.tags.some(value => value.slug === tag)))
+    && !filters.excludeTags?.some(tag => item.tags.some(value => value.slug === tag))
+    && (!filters.favoritesOnly || !!item.address.slug && isFavorite(item.address.slug)))
+    .sort((a, b) => (state.sort === 'available_coffees_desc' ? (Number(b.availableCoffeeProducts) || 0) - (Number(a.availableCoffeeProducts) || 0)
+      : state.sort === 'relevance' && q ? Number(text(b.name).startsWith(q)) - Number(text(a.name).startsWith(q)) : 0)
+      || text(a.name).localeCompare(text(b.name), 'ru'));
+}
 export function normalizeFilters(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.keys(value).sort().flatMap(key => {
     const raw = value[key];
@@ -113,10 +125,8 @@ export function validateSearch(state: SearchState, kind: CatalogKind): Record<st
 export function transferDiscovery(state: SearchState, kind: 'shops' | 'roasters'): SearchState {
   const { brew, budget } = state.filters as DiscoveryFilters;
   const shopCriteria = !!brew?.length || budget?.minDrinkPrice !== undefined || budget?.maxDrinkPrice !== undefined || budget?.drinkVolumeMl !== undefined;
-  const coffeeCriteria = !!brew?.length || budget?.minCoffeePrice !== undefined || budget?.maxCoffeePrice !== undefined || budget?.coffeeWeightGrams !== undefined;
   const menu = normalizeFilters({ brew, currency: budget?.currency, minPrice: budget?.minDrinkPrice, maxPrice: budget?.maxDrinkPrice, volumeMl: budget?.drinkVolumeMl });
-  const coffee = normalizeFilters({ brew, currency: budget?.currency, minPrice: budget?.minCoffeePrice, maxPrice: budget?.maxCoffeePrice, weightGrams: budget?.coffeeWeightGrams, availableOnly: true });
-  return applyCriteria(state, { filters: kind === 'shops' ? (shopCriteria ? { menu } : {}) : (coffeeCriteria ? { coffee } : {}), sort: state.q ? 'relevance' : 'name_asc' });
+  return applyCriteria(state, { filters: kind === 'shops' && shopCriteria ? { menu } : {}, sort: state.q ? 'relevance' : 'name_asc' });
 }
 export function safePurchaseUrl(value: string): string | undefined {
   try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined; } catch { return undefined; }

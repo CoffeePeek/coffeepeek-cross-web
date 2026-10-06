@@ -10,7 +10,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { COLORS, getThemeColors } from '../constants/colors';
 import { brand } from '../design-system';
 import { getPhotoUrl } from '../api/coffeeshop';
-import { useRoaster } from '../hooks/queries/useCatalogs';
 import { AppIcon } from './icons';
 
 export const catalogPanel = 'rounded-2xl border border-stone-200 bg-white p-4 dark:border-[#3D2F28] dark:bg-[#2D241F]';
@@ -24,9 +23,9 @@ export function CatalogPhoto({ photo, name }: { photo: Photo | null | undefined;
     ? <img src={photo.urls?.card || photo.fullUrl} alt={name} loading="lazy" className="h-full w-full object-cover" />
     : <ShopPhotoPlaceholder />}</div>;
 }
-export function FavoriteButton({ kind, address, value, className = catalogButton }: { kind: 'coffee_shop' | 'roaster'; address: PublicAddress; value?: boolean | null; className?: string }) {
+export function FavoriteButton({ kind, address, value, className = catalogButton }: { kind: 'coffee_shop' | 'roaster'; address: PublicAddress | undefined; value?: boolean | null; className?: string }) {
   const { favorite, pending, toggle } = useFavorite(kind, address, value);
-  return <button type="button" className={className} style={{ padding: 0, minWidth: 44 }} disabled={pending} aria-pressed={favorite === true}
+  return <button type="button" className={className} style={{ padding: 0, minWidth: 44 }} disabled={!address || pending} aria-pressed={favorite === true}
     aria-label={favorite ? 'Убрать из избранного' : 'Добавить в избранное'} onClick={event => { event.stopPropagation(); toggle(); }}>
     <AppIcon name="heart" filled={favorite === true} size={26} color={favorite ? COLORS.primary : 'currentColor'} style={{ flexShrink: 0 }} /><span className="sr-only">Избранное</span>
   </button>;
@@ -87,50 +86,47 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
-  const details = useRoaster(roaster.address.slug);
-  const address = details.data?.location?.address?.trim();
-  const about = details.data?.about?.trim();
+  const name = roaster.name ?? 'Обжарщик';
+  const address = roaster.address.slug && roaster.address.canonicalPath ? { ...roaster.address, slug: roaster.address.slug, canonicalPath: roaster.address.canonicalPath } : undefined;
+  const photo = (roaster.coverPhoto && getPhotoUrl(roaster.coverPhoto, 'card')) || roaster.photoUrl;
   const accent = theme === 'dark' ? brand.goldWarm : colors.textPrimary;
   const count = (value: number | string | null | undefined) => {
     const number = Number(value);
     return Number.isSafeInteger(number) && number > 0 ? number.toLocaleString('ru-RU') : '—';
   };
   const stats = [
-    { label: 'Кофейни используют', icon: 'coffee', value: roaster.coffeeShopsCount ?? details.data?.coffeeShopsCount },
-    { label: 'Товары в каталоге', icon: 'coffee-bean', value: roaster.coffeeProductsCount ?? details.data?.coffeeProductsCount },
+    { label: 'Кофейни используют', icon: 'coffee', value: roaster.coffeeShopsCount },
+    { label: 'Товары в каталоге', icon: 'coffee-bean', value: roaster.coffeeProductsCount },
   ];
   const catalogPath = `/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [roaster.address.slug], availableOnly: false }))}`;
-  const open = () => navigate(roaster.address.canonicalPath);
+  const open = () => { if (roaster.address.canonicalPath) navigate(roaster.address.canonicalPath); };
   return (
-    <article role="button" tabIndex={0} aria-label={`Открыть обжарщика ${roaster.name}`}
+    <article role={roaster.address.canonicalPath ? 'button' : undefined} tabIndex={roaster.address.canonicalPath ? 0 : undefined} aria-label={`Открыть обжарщика ${name}`}
       onClick={open} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } }}
       className="flex flex-col rounded-2xl border p-3 outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      style={{ background: colors.surface, borderColor: theme === 'light' ? colors.borderHover : colors.border, color: colors.textPrimary, cursor: 'pointer' }}>
+      style={{ background: colors.surface, borderColor: theme === 'light' ? colors.borderHover : colors.border, color: colors.textPrimary, cursor: roaster.address.canonicalPath ? 'pointer' : undefined }}>
       <div className="grid grid-cols-[64px_minmax(0,1fr)_44px] items-start gap-x-3 gap-y-1.5">
-        <div className="row-span-2 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl" style={{ background: roaster.coverPhoto ? COLORS.light.surface : theme === 'dark' ? colors.background : colors.badge }}>
-          {roaster.coverPhoto
-            ? <img src={getPhotoUrl(roaster.coverPhoto, 'card')} alt={roaster.name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
+        <div className="row-span-2 flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl" style={{ background: photo ? COLORS.light.surface : theme === 'dark' ? colors.background : colors.badge }}>
+          {photo
+            ? <img src={photo} alt={name} loading="lazy" decoding="async" className="h-full w-full object-contain" />
             : <AppIcon name="factory" size={28} color={colors.textSecondary} />}
         </div>
         <div className="min-w-0 self-center">
-          <h3 className="break-words text-xl font-bold leading-tight tracking-tight">{roaster.name}</h3>
-          {address && <p className="mt-1 flex items-start gap-1 text-xs leading-snug" style={{ color: colors.textSecondary }}><AppIcon name="map-pin" filled size={14} className="mt-0.5 shrink-0" /><span className="line-clamp-2">{address}</span></p>}
+          <h3 className="break-words text-xl font-bold leading-tight tracking-tight">{name}</h3>
         </div>
-        <FavoriteButton kind="roaster" address={roaster.address} value={roaster.isFavorite}
+        <FavoriteButton kind="roaster" address={address} value={roaster.isFavorite}
           className="row-span-2 flex h-11 w-11 items-center justify-center rounded-full border border-border-light bg-transparent outline-none hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-primary dark:border-[#4A3D35]" />
-        {about && <p className="col-start-2 line-clamp-2 text-[13px] leading-snug" style={{ color: colors.textSecondary }}>{about}</p>}
       </div>
-      <dl aria-label="Статистика обжарщика" aria-busy={details.isPending} className="mb-2.5 mt-3 grid grid-cols-2 gap-2">
+      <dl aria-label="Статистика обжарщика" className="mb-2.5 mt-3 grid grid-cols-2 gap-2">
         {stats.map(stat => <div key={stat.label} className="flex items-center gap-2 rounded-xl border p-2" style={{ background: theme === 'dark' ? colors.background : colors.surfaceAlt, borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: theme === 'dark' ? colors.surface : undefined, color: theme === 'dark' ? accent : colors.textSecondary }}><AppIcon name={stat.icon} size={22} /></span>
           <div className="min-w-0"><dt className="text-xs leading-tight" style={{ color: colors.textSecondary }}>{stat.label}</dt><dd className="mt-0.5 text-[22px] font-semibold leading-none tracking-tight">{count(stat.value)}</dd></div>
         </div>)}
       </dl>
-      {details.isError && <button type="button" className="mb-3 min-h-11 self-start text-sm underline" onClick={event => { event.stopPropagation(); void details.refetch(); }}>Повторить загрузку данных обжарщика</button>}
-      <Link to={catalogPath} onClick={event => event.stopPropagation()} className="mt-auto flex min-h-11 items-center justify-between gap-3 border-t pt-2 outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-primary" style={{ borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
+      {roaster.address.slug && <Link to={catalogPath} onClick={event => event.stopPropagation()} className="mt-auto flex min-h-11 items-center justify-between gap-3 border-t pt-2 outline-none focus-visible:rounded-xl focus-visible:ring-2 focus-visible:ring-primary" style={{ borderColor: theme === 'dark' ? colors.borderHover : colors.border }}>
         <div><span className="text-sm font-semibold" style={{ color: accent }}>Смотреть каталог</span><span className="mt-0.5 block text-xs" style={{ color: colors.textSecondary }}>Кофе этого обжарщика</span></div>
         <AppIcon name="caret-right" size={20} color={theme === 'dark' ? accent : brand.goldWarmHover} className="shrink-0" />
-      </Link>
+      </Link>}
     </article>
   );
 }

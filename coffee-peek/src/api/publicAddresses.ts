@@ -5,7 +5,7 @@ export const addressPrefixes = {
 } as const;
 export type AddressKind = keyof typeof addressPrefixes;
 export interface PublicAddress {
-  slug: string; canonicalPath: string; revision: number; isAlias: boolean;
+  slug: string; canonicalPath: string; revision: number | string; isAlias: boolean;
 }
 export type PublicAddressMetadata = PublicAddress;
 export interface PublicAddressEnvelope<T> { data: T; address: PublicAddress }

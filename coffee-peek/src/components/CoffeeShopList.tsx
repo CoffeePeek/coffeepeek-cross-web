@@ -92,13 +92,12 @@ export default function CoffeeShopList(_props: { onShopSelect: (shopId: string) 
               {(filters.menu || filters.minRating !== undefined) && <FilterChips filters={{ menu: filters.menu, minRating: filters.minRating }} groups={[]} onChange={extra => apply({ ...filters, menu: undefined, minRating: undefined, ...extra })} />}
               {(parsed.error || Object.keys(errors).length > 0) && <div role="alert" className="mb-6"><p>{parsed.error || Object.values(errors).join(' ')}</p><button type="button" className="min-h-11 underline" onClick={reset}>Сбросить фильтры</button></div>}
               {personal && !user && !authLoading && <p>Войдите, чтобы использовать личные фильтры.</p>}
-              {query.isError && <div role="alert" className="mb-6 rounded-2xl border border-red-300 bg-red-500/10 p-4 text-red-700 dark:text-red-300"><p>Не удалось загрузить кофейни.</p>
-                {(query.error as { status?: number }).status === 400 && <><p>Проверьте фильтры. Удалите недоступное значение или сбросьте фильтры.</p><FilterChips filters={filters} groups={[]} onChange={apply} /><button type="button" className="min-h-11 underline" onClick={reset}>Сбросить фильтры</button></>}
-                <button type="button" className="min-h-11 underline" onClick={() => void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())}>Повторить загрузку</button>
+              {query.isError && (query.error as { status?: number }).status === 400 && <div role="alert" className="mb-6 rounded-2xl border border-red-300 bg-red-500/10 p-4 text-red-700 dark:text-red-300">
+                <p>Проверьте фильтры. Удалите недоступное значение или сбросьте фильтры.</p><FilterChips filters={filters} groups={[]} onChange={apply} /><button type="button" className="min-h-11 underline" onClick={reset}>Сбросить фильтры</button>
               </div>}
-              {query.isPending && enabled ? <div className={grid}><ShopCardSkeleton count={8} /></div> : !shops.length ? <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border px-6 py-16 text-center" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
+              {query.isPending && enabled ? <div className={grid}><ShopCardSkeleton count={8} /></div> : shops.length ? <div className={grid}>{shops.map(shop => <ShopCatalogCard key={shop.address.slug} shop={shop} />)}</div> : query.isSuccess && enabled ? <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border px-6 py-16 text-center" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
                 <Mascot pose="search" size={132} /><p className="mt-3 text-sm" style={{ color: colors.textSecondary }}>Ничего не найдено. Попробуйте другой фильтр.</p>
-              </div> : <div className={grid}>{shops.map(shop => <ShopCatalogCard key={shop.address.slug} shop={shop} />)}</div>}
+              </div> : null}
               <div ref={loadMoreRef} className="pb-8">{query.isFetchingNextPage && <div className={grid}><ShopCardSkeleton count={4} /></div>}</div>
             </div>
           </div>

@@ -45,10 +45,11 @@ const SHOP_TYPE_LABELS: Record<string, string> = {
 
 const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors, userLocation, onSelect, children }) => {
   const [hovered, setHovered] = useState(false);
-  const { favorite, pending, toggle } = useFavorite(roaster ? 'roaster' : 'coffee_shop', roaster?.address ?? shop?.publicAddress, roaster ? roaster.isFavorite : shop?.isFavorite);
-  const name = coffee?.name ?? roaster?.name ?? shop!.name;
+  const publicAddress = roaster?.address.slug && roaster.address.canonicalPath ? { ...roaster.address, slug: roaster.address.slug, canonicalPath: roaster.address.canonicalPath } : shop?.publicAddress;
+  const { favorite, pending, toggle } = useFavorite(roaster ? 'roaster' : 'coffee_shop', publicAddress, roaster ? roaster.isFavorite : shop?.isFavorite);
+  const name = coffee?.name ?? roaster?.name ?? shop?.name ?? 'Обжарщик';
   const product = coffee ?? roaster;
-  const photos = product ? (product.coverPhoto ? [getPhotoUrl(product.coverPhoto, 'card')] : []) : extractPhotos(shop!);
+  const photos = product ? [(product.coverPhoto && getPhotoUrl(product.coverPhoto, 'card')) || roaster?.photoUrl].filter((url): url is string => !!url) : extractPhotos(shop!);
   const raw = shop as unknown as Record<string, unknown>;
   const brewMethods = Array.isArray(raw?.brewMethods) ? raw.brewMethods as Array<{ id?: string; name: string }> : [];
   const roasters = coffee ? [{ name: coffee.roaster.name, photoUrl: coffee.roaster.coverPhoto ? getPhotoUrl(coffee.roaster.coverPhoto, 'thumbnail') : null }]
@@ -64,7 +65,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
   const type = shop?.type ? (SHOP_TYPE_LABELS[shop.type] ?? shop.type) : '';
   const showRating = (shop?.rating ?? 0) > 0;
 
-  const open = () => onSelect(product?.address.slug ?? shop!.id);
+  const open = () => { const slug = product?.address.slug ?? shop?.id; if (slug) onSelect(slug); };
 
   return (
     <article

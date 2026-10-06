@@ -1,6 +1,6 @@
 import { httpClient } from './core/httpClient';
 import type { PublicAddress } from './publicAddresses';
-import type { CoffeeFilters, DiscoveryFilters, RoasterFilters, ShopFilters } from '../utils/catalogSearch';
+import type { CoffeeFilters, DiscoveryFilters, ShopFilters } from '../utils/catalogSearch';
 
 export interface Photo { fullUrl: string; urls: { thumbnail: string; card: string; detail: string; fullscreen: string } | null }
 export interface PublicTag { slug: string; name: string; description: string | null; sortOrder: number }
@@ -27,11 +27,12 @@ export interface CoffeeDetails extends Omit<CoffeeCard, 'coverPhoto' | 'matching
   description: string | null; tasteDescriptors: string[]; photos: Photo[]; offers: CoffeeOffer[];
 }
 export interface RoasterCard {
-  coffeeShopsCount?: number | string | null;
-  coffeeProductsCount?: number | string | null;
-  address: PublicAddress; name: string; coverPhoto: Photo | null; tags: PublicTag[]; isFavorite: boolean | null;
-  availableCoffeeProducts: number; matchingCoffeeProducts: number | null;
-  coffeeCatalogUpdatedAtUtc: string | null; matchingCoffee: CoffeeCard | null;
+  address: Omit<PublicAddress, 'slug' | 'canonicalPath'> & { slug: string | null; canonicalPath: string | null };
+  name: string | null; photoUrl: string | null;
+  coverPhoto: { fullUrl: string | null; urls: Photo['urls'] } | null;
+  tags: { slug: string | null; name: string | null; description: string | null; sortOrder: number | string }[];
+  coffeeShopsCount: number | string | null; coffeeProductsCount: number | string | null;
+  availableCoffeeProducts: number | string | null; isFavorite?: boolean | null;
 }
 export interface MatchedMenuItem {
   drinkSlug: string; name: string; brewMethod: 'espresso' | 'filter'; price: number | null;
@@ -54,10 +55,13 @@ const read = async <T>(path: string, body: unknown, signal?: AbortSignal): Promi
   (await httpClient.post<T>(path, body, { requiresAuth: false, signal })).data;
 export const searchDiscovery = (body: DiscoveryRequest, signal?: AbortSignal) => read<DiscoveryResult>('/api/v1/discovery/search', body, signal);
 export const searchShops = (body: SearchRequest<ShopFilters>, signal?: AbortSignal) => read<Page<ShopCard>>('/api/v1/coffee-shops/search', body, signal);
-export const searchRoasters = (body: SearchRequest<RoasterFilters>, signal?: AbortSignal) => read<Page<RoasterCard>>('/api/v1/roasters/search', body, signal);
+export const getRoasterCards = async (signal?: AbortSignal): Promise<RoasterCard[]> => {
+  const { data } = await httpClient.get<RoasterCard[]>('/api/roasters', { requiresAuth: false, signal });
+  if (!Array.isArray(data)) throw new Error('Некорректный список обжарщиков');
+  return data;
+};
 export const searchCoffees = (body: SearchRequest<CoffeeFilters>, signal?: AbortSignal) => read<Page<CoffeeCard>>('/api/v1/coffees/search', body, signal);
 export const getCoffeeFacets = (body: { q: string; filters: CoffeeFilters }, signal?: AbortSignal) => read<Facets>('/api/v1/coffees/facets', body, signal);
-export const getRoasterFacets = (body: { q: string; filters: RoasterFilters }, signal?: AbortSignal) => read<Facets>('/api/v1/roasters/facets', body, signal);
 export const getCoffeeDetails = async (slug: string, signal?: AbortSignal) =>
   (await httpClient.get<CoffeeDetails>(`/api/v1/coffees/${encodeURIComponent(slug)}`, { requiresAuth: false, signal })).data;
 export const getRoasterTags = async (signal?: AbortSignal) =>

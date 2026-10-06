@@ -1,6 +1,3 @@
-let mockDetails: Record<string, unknown> | undefined;
-let mockDetailsError = false;
-jest.mock('../src/hooks/queries/useCatalogs', () => ({ useRoaster: () => ({ data: mockDetails, isError: mockDetailsError }) }));
 jest.mock('../src/hooks/useFavorites', () => ({ useFavorite: () => ({ favorite: null, pending: false, toggle: jest.fn() }) }));
 jest.mock('../src/components/ShopPhotoPlaceholder', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
@@ -32,35 +29,40 @@ test('compact prices group matching offers by exact weight and currency', () => 
 });
 
 test('roaster card uses contract counts, dashes for zero/missing values and a filtered catalog link', () => {
-  const roaster = { address: { slug: 'roast', canonicalPath: '/roasters/roast', revision: 1 }, name: 'Roast', coverPhoto: { fullUrl: '/logo.png', urls: null }, tags: [{ slug: 'online-order', name: 'Онлайн-заказ', description: null, sortOrder: 1 }], isFavorite: false, availableCoffeeProducts: 14, matchingCoffeeProducts: null, coffeeCatalogUpdatedAtUtc: null, matchingCoffee: null } as RoasterCard;
+  const roaster: RoasterCard = { address: { slug: 'roast', canonicalPath: '/roasters/roast', revision: '1', isAlias: false }, name: 'Roast', photoUrl: '/fallback.png', coverPhoto: { fullUrl: null, urls: { thumbnail: '/thumbnail.png', card: '/logo.png', detail: '/detail.png', fullscreen: '/fullscreen.png' } }, tags: [{ slug: 'online-order', name: 'Онлайн-заказ', description: null, sortOrder: '1' }], coffeeShopsCount: null, coffeeProductsCount: null, availableCoffeeProducts: '14' };
   const render = () => renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(RoasterCatalogCard, { roaster })));
-  for (const [count, label] of [[7, '7'], ['12', '12'], [0, '—'], ['0', '—'], [undefined, '—'], [null, '—'], ['string', '—'], [-1, '—'], [1.5, '—']] as const) {
-    mockDetails = { coffeeShopsCount: count, coffeeProductsCount: count, shops: Array.from({ length: 99 }), about: 'Обжариваем кофе с 2010 года.', location: { address: 'Минск, Беларусь' } };
+  for (const [count, label] of [[7, '7'], ['12', '12'], [0, '—'], ['0', '—'], [null, '—'], ['string', '—'], [-1, '—'], [1.5, '—']] as const) {
+    roaster.coffeeShopsCount = count;
+    roaster.coffeeProductsCount = count;
     const html = render();
     expect(html.match(new RegExp(`>${label}</dd>`, 'g'))).toHaveLength(2);
     expect(html).toContain('Кофейни используют');
     expect(html).toContain('Товары в каталоге');
     expect(html).not.toContain('>99</dd>');
     expect(html).not.toContain('>14</dd>');
-    expect(html).toContain('Обжариваем кофе с 2010 года.');
-    expect(html).toContain('Минск, Беларусь');
+    expect(html).toContain('src="/logo.png"');
+    expect(html).not.toContain('/fallback.png');
     expect(html).toContain(`/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: ['roast'], availableOnly: false }))}`);
     expect(html).toContain('object-contain');
-    expect(html.match(/<svg/g)).toHaveLength(5);
+    expect(html.match(/<svg/g)).toHaveLength(4);
     expect(html).toContain('Добавить в избранное');
     expect(html).not.toContain('Проверка не указана');
     expect(html).not.toContain('Светлая');
     expect(html).not.toContain('Декаф');
   }
-  mockDetails = undefined;
-  expect(render().match(/>—<\/dd>/g)).toHaveLength(2);
-  mockDetailsError = true;
-  expect(render()).toContain('Повторить загрузку данных обжарщика');
-  mockDetailsError = false;
   roaster.coffeeShopsCount = 0;
   roaster.coffeeProductsCount = '3';
-  mockDetails = { coffeeShopsCount: 99, coffeeProductsCount: 99 };
   expect(render()).toContain('>—</dd>');
   expect(render()).toContain('>3</dd>');
-  expect(render()).not.toContain('>99</dd>');
+  roaster.coverPhoto = null;
+  expect(render()).toContain('src="/fallback.png"');
+  roaster.name = null;
+  roaster.photoUrl = null;
+  roaster.address.slug = null;
+  roaster.address.canonicalPath = null;
+  const html = render();
+  expect(html).toContain('Обжарщик');
+  expect(html).toContain('disabled=""');
+  expect(html).not.toContain('/coffees?');
+  expect(html).not.toContain('role="button"');
 });

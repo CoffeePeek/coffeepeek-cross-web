@@ -56,8 +56,5 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
       priceRange: values.priceRange?.toLowerCase() as ShopFilters['priceRange'], type: values.coffeeFocus?.replace('_', '-') as ShopFilters['type'] }),
     resultCount, onClose,
   };
-  return <>
-    {catalogs.isError && <p role="alert">Не удалось загрузить справочники. <button type="button" onClick={() => void catalogs.refetch()} className="underline">Повторить</button></p>}
-    <ShopFilterPanel mode={mode} {...panel} />
-  </>;
+  return <ShopFilterPanel mode={mode} {...panel} />;
 }
