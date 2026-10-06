@@ -13,6 +13,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
+import { RoasterTagAssignments } from '../components/RoasterTagAssignments';
 const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
@@ -187,6 +188,7 @@ export const RoasterEditPage: React.FC = () => {
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white text-xl sm:text-2xl min-w-0 flex-1">{roaster.name}</h2>
       </div>
 
+      <RoasterTagAssignments id={id!} />
       <Card className="p-6">
         <form
           onSubmit={(e) => {

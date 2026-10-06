@@ -5,6 +5,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getBySlug } from '../api/publicAddresses';
 import { normalizeResponseData } from '../api/core/interceptors';
 import WobbleRing from './WobbleRing';
+import { getCatalogScope } from '../lib/catalogSession';
+import { useUser } from '../contexts/UserContext';
 
 const Resolution = createContext<{ id: string; data: any; reload: () => Promise<unknown> } | null>(null);
 export const usePublicResolution = () => useContext(Resolution);
@@ -12,9 +14,11 @@ export default function PublicAddressPage({ kind, param, children }: { kind: Add
   const value = useParams()[param] || '';
   const navigate = useNavigate();
   const location = useLocation();
+  const { isLoading: authLoading } = useUser();
   const query = useQuery({
-    queryKey: ['publicAddress', kind, value],
-    queryFn: () => getBySlug<any>(kind, value),
+    queryKey: ['publicAddress', kind, getCatalogScope(), value],
+    queryFn: ({ signal }) => getBySlug<any>(kind, value, signal),
+    enabled: !authLoading,
     staleTime: 0, gcTime: 0, retry: false, refetchOnWindowFocus: true,
   });
   useEffect(() => {

@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { getCatalogScope } from '../../lib/catalogSession';
+import { useUser } from '../../contexts/UserContext';
 import {
   getCities,
   getEquipments,
@@ -97,17 +99,18 @@ export function useRoasters(enabled: boolean = true) {
  * Hook to fetch a single roaster by ID
  */
 export function useRoaster(roasterId: string | null, enabled: boolean = true) {
+  const { isLoading } = useUser();
   return useQuery({
-    queryKey: catalogKeys.roaster(roasterId!),
-    queryFn: async () => {
+    queryKey: [...catalogKeys.roaster(roasterId!), getCatalogScope()],
+    queryFn: async ({ signal }) => {
       if (!roasterId) throw new Error('Roaster ID is required');
-      const response = await getRoasterBySlug(roasterId);
+      const response = await getRoasterBySlug(roasterId, signal);
       if (!response.success) {
         throw new Error(response.message || 'Failed to fetch roaster');
       }
       return response.data;
     },
-    enabled: enabled && !!roasterId,
+    enabled: enabled && !!roasterId && !isLoading,
   });
 }
 

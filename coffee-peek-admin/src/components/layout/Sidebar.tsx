@@ -46,6 +46,10 @@ const NAV_SECTIONS: NavSection[] = [
     { path: '/roasters', label: 'Заявки на обжарщиков', icon: Coffee, moderatorOnly: true },
   ] },
   { id: 'data', label: 'Данные и каталог', collapsible: true, items: [
+    { path: '/coffees', label: 'Кофе', icon: Coffee, moderatorOnly: true },
+    { path: '/coffee-import', label: 'Импорт кофе', icon: Upload, moderatorOnly: true },
+    { path: '/roaster-tags', label: 'Теги обжарщиков', icon: Tags, moderatorOnly: true },
+    { path: '/coffee-filter-values', label: 'Характеристики кофе', icon: Tags, moderatorOnly: true },
     { path: '/published-shops', label: 'Все кофейни', icon: Coffee, adminOnly: true },
     { path: '/import', label: 'Импорт данных', icon: Upload, moderatorOnly: true },
     { path: '/coffee-zones', label: 'Кофейные зоны', icon: Map, moderatorOnly: true },

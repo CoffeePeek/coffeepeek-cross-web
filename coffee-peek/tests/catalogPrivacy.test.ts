@@ -1,0 +1,43 @@
+jest.mock('../src/api/core/apiConfig', () => ({ API_BASE_URL: 'https://api.example', buildUrlWithParams: (path: string) => path, API_ENDPOINTS: { TOKEN: { BASE: '/api/tokens' } } }));
+jest.mock('../src/api/core/interceptors', () => ({ requestInterceptor: (_url: string, options: RequestInit) => options, ensureFreshAccessToken: jest.fn(), isAuthTokenEndpoint: () => false, responseInterceptor: async (r: Response) => r.json(), normalizeResponseData: (data: unknown) => data, TokenManager: { getAccessToken: () => null } }));
+jest.mock('../src/realtime/forceLogout', () => ({ emitSessionInvalidated: jest.fn() }));
+import HttpClient from '../src/api/core/httpClient';
+import { catalogMutationSignal, changeCatalogSession, getCatalogScope } from '../src/lib/catalogSession';
+import { setFavorite, updateFavoriteList } from '../src/api/favorites';
+import { logout } from '../src/api/auth';
+import { ensureFreshAccessToken } from '../src/api/core/interceptors';
+const original = globalThis.fetch;
+afterEach(() => { globalThis.fetch = original; changeCatalogSession(null, true); });
+test('a logout waiting for refresh cannot revoke the newly signed-in account', async () => {
+  changeCatalogSession('A', true);
+  let finish!: (value: boolean) => void;
+  (ensureFreshAccessToken as jest.Mock).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  globalThis.fetch = jest.fn();
+  const pending = logout(); changeCatalogSession('B'); finish(true);
+  await pending; expect(globalThis.fetch).not.toHaveBeenCalled();
+});
+test.each([['GET', 200], ['PUT', 200], ['DELETE', 200], ['GET', 401], ['PUT', 401], ['DELETE', 401]])('late %s HTTP %s for A cannot return data or change B', async (method, status) => {
+  changeCatalogSession('A', true);
+  const pending = catalogMutationSignal();
+  let finish!: (r: Response) => void;
+  globalThis.fetch = jest.fn(() => new Promise<Response>(resolve => { finish = resolve; }));
+  const client = new HttpClient('https://api.example');
+  const request = method === 'GET' ? client.get('/api/v1/favorites', { signal: pending.signal }) : method === 'PUT' ? client.put('/api/v1/favorites/roaster/sample', undefined, { signal: pending.signal }) : client.delete('/api/v1/favorites/roaster/sample', { signal: pending.signal });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  const b = changeCatalogSession('B');
+  expect(pending.signal.aborted).toBe(true);
+  finish(new Response(JSON.stringify({ isSuccess: true, data: [{ kind: 'roaster', address: { slug: 'a-private' } }] }), { status: Number(status) }));
+  await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+  expect(getCatalogScope()).toBe(b);
+  pending.release();
+});
+test('favorites use kind+slug, no userId; rollback preserves another concurrent edit', async () => {
+  globalThis.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ isSuccess: true, data: null })));
+  await setFavorite('roaster', 'sample', true);
+  expect(globalThis.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/v1/favorites/roaster/sample'), expect.objectContaining({ method: 'PUT', body: undefined }));
+  const address = { slug: 'sample', canonicalPath: '/roasters/sample', revision: 1 };
+  const other = { slug: 'other', canonicalPath: '/roasters/other', revision: 1 };
+  const list = updateFavoriteList(updateFavoriteList([], 'roaster', address, true), 'roaster', other, true);
+  expect(updateFavoriteList(list, 'roaster', address, false).map(item => item.address.slug)).toEqual(['other']);
+  expect(updateFavoriteList(list, 'coffee_shop', address, false)).toHaveLength(2);
+});

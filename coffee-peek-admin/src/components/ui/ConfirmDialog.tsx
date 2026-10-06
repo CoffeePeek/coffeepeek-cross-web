@@ -43,6 +43,7 @@ export function ConfirmDialog({
 
   const handleConfirm = async (event: React.MouseEvent) => {
     event.preventDefault();
+    if (loading) return;
     setLoading(true);
     try {
       await onConfirm(withComment ? comment : undefined);
@@ -71,6 +72,7 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
+            disabled={loading}
             onClick={handleConfirm}
             className={cn(
               variant === 'danger' && 'bg-red-600 text-white hover:bg-red-700',

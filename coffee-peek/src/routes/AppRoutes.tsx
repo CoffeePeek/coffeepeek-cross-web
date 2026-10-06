@@ -15,6 +15,8 @@ const LoginPage = lazyWithRetry(() => import('../pages/LoginPage'));
 const RegisterPage = lazyWithRetry(() => import('../pages/RegisterPage'));
 const DashboardPage = lazyWithRetry(() => import('../pages/DashboardPage'));
 const CoffeeShopListPage = lazyWithRetry(() => import('../pages/CoffeeShopListPage'));
+const CatalogSearchPage = lazyWithRetry(() => import('../pages/CatalogSearchPage'));
+const CoffeeDetailPage = lazyWithRetry(() => import('../pages/CoffeeDetailPage'));
 const CoffeeShopDetailPage = lazyWithRetry(() => import('../pages/CoffeeShopPage'));
 const CreateReviewPage = lazyWithRetry(() => import('../pages/CreateReviewPage'));
 const UserProfilePage = lazyWithRetry(() => import('../pages/UserProfilePage'));
@@ -66,6 +68,10 @@ export const AppRoutes: React.FC = () => {
     <ErrorBoundary>
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
+        <Route path="/search" element={<AuthenticatedLayout><CatalogSearchPage kind="discovery" /></AuthenticatedLayout>} />
+        <Route path="/roasters" element={<AuthenticatedLayout><CatalogSearchPage kind="roasters" /></AuthenticatedLayout>} />
+        <Route path="/coffees" element={<AuthenticatedLayout><CatalogSearchPage kind="coffees" /></AuthenticatedLayout>} />
+        <Route path="/coffees/:slug" element={<AuthenticatedLayout><CoffeeDetailPage /></AuthenticatedLayout>} />
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -206,7 +212,7 @@ export const AppRoutes: React.FC = () => {
           path="/roasters/:roasterId"
           element={
             <AuthenticatedLayout>
-              <PublicAddressPage kind="roasters" param="roasterId"><RoasterDetailPage /></PublicAddressPage>
+              <RoasterDetailPage />
             </AuthenticatedLayout>
           }
         />

@@ -20,7 +20,7 @@ import ShopPhotoPlaceholder from '../components/ShopPhotoPlaceholder';
 import { ShopDetailSkeleton } from '../components/skeletons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
-import { useLocalFavorites } from '../hooks/useLocalFavorites';
+import { useFavorite } from '../hooks/useFavorites';
 import { useMyReview } from '../hooks/useMyReview';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -67,7 +67,7 @@ const CoffeeShopPage: React.FC = () => {
   const { myReviewId } = useMyReview(shop);
   const reviews = shop?.reviews ?? EMPTY_REVIEWS;
   const usersCache = useUsersCache(reviews);
-  const { isFavorite, toggleFavorite } = useLocalFavorites();
+  const { favorite, pending: favoritePending, toggle: toggleFavorite } = useFavorite('coffee_shop', shop?.publicAddress, shop?.isFavorite);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -122,7 +122,7 @@ const CoffeeShopPage: React.FC = () => {
   }
 
   const reviewsTotalCount = shop.reviewCount || reviews.length;
-  const shopIsFavorite = isFavorite(shopId);
+  const shopIsFavorite = favorite === true;
   const status = getCurrentStatus(shop);
   const localSchedules = toLocalSchedules(shop.schedules);
   const todaySchedule = localSchedules.find(schedule => schedule.dayOfWeek === getCurrentDayOfWeek());
@@ -144,8 +144,7 @@ const CoffeeShopPage: React.FC = () => {
   };
 
   const handleToggleFavorite = () => {
-    const favorite = toggleFavorite(shopId);
-    showToast(favorite ? 'Добавлено в избранное' : 'Удалено из избранного', 'success');
+    toggleFavorite();
   };
 
   const handleReview = () => {
@@ -192,7 +191,7 @@ const CoffeeShopPage: React.FC = () => {
           <CircleButton label="Назад" onClick={() => navigate(-1)}><ArrowLeft /></CircleButton>
           <div className="flex gap-2">
             <CircleButton label="Предложить изменение" onClick={handleEditShop}><NotePencil /></CircleButton>
-            <CircleButton label={shopIsFavorite ? 'Убрать из избранного' : 'Добавить в избранное'} onClick={handleToggleFavorite} pressed={shopIsFavorite}><Heart weight={shopIsFavorite ? 'fill' : 'regular'} color={shopIsFavorite ? colors.gold : 'currentColor'} /></CircleButton>
+            <CircleButton label={shopIsFavorite ? 'Убрать из избранного' : 'Добавить в избранное'} onClick={handleToggleFavorite} disabled={favoritePending} pressed={shopIsFavorite}><Heart weight={shopIsFavorite ? 'fill' : 'regular'} color={shopIsFavorite ? colors.gold : 'currentColor'} /></CircleButton>
             <CircleButton label="Поделиться" onClick={() => { void handleShare(); }}><ShareNetwork /></CircleButton>
           </div>
         </div>
@@ -208,7 +207,7 @@ const CoffeeShopPage: React.FC = () => {
 
       <main className="mx-auto max-w-[920px] space-y-7 px-4 py-6 sm:px-6 sm:py-8">
         <section>
-          <ShopHeader shop={shop} avgRating={shop.rating || 0} reviewsTotalCount={reviewsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={false} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => setShowReportModal(true)} textMuted={textMuted} borderColor={borderColor} />
+          <ShopHeader shop={shop} avgRating={shop.rating || 0} reviewsTotalCount={reviewsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={favoritePending} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => setShowReportModal(true)} textMuted={textMuted} borderColor={borderColor} />
           <div className="grid grid-cols-3 gap-2.5">
             <div className="rounded-[22px] p-4" style={{ background: isDark ? '#382F1E' : '#FFF9E8', color: colors.text }}><div className="flex items-center gap-2"><Star size={23} weight="fill" color={colors.gold} /><strong className="text-lg sm:text-xl">{(shop.rating || 0).toFixed(1)}</strong></div><p className="mt-1 text-xs" style={{ color: colors.muted }}>{reviewsTotalCount} отзывов</p></div>
             <div className="rounded-[22px] p-4" style={{ background: status?.isOpen ? (isDark ? '#183B2A' : '#DCF7E7') : (isDark ? '#442727' : '#FEE2E2'), color: status?.isOpen ? '#22C55E' : '#EF4444' }}><strong className="block text-sm sm:text-xl">● {status?.isOpen ? 'Открыта' : 'Закрыта'}</strong>{statusTime && <p className="mt-1 text-xs opacity-75">{status?.isOpen ? 'до' : 'с'} {statusTime}</p>}</div>
@@ -245,8 +244,8 @@ const CoffeeShopPage: React.FC = () => {
   );
 };
 
-const CircleButton: React.FC<{ label: string; onClick: () => void; pressed?: boolean; children: React.ReactNode }> = ({ label, onClick, pressed, children }) => (
-  <button type="button" onClick={onClick} aria-label={label} aria-pressed={pressed} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg backdrop-blur [&_svg]:h-7 [&_svg]:w-7 [&_svg]:shrink-0">{children}</button>
+const CircleButton: React.FC<{ label: string; onClick: () => void; pressed?: boolean; disabled?: boolean; children: React.ReactNode }> = ({ label, onClick, pressed, disabled, children }) => (
+  <button type="button" disabled={disabled} onClick={onClick} aria-label={label} aria-pressed={pressed} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg backdrop-blur [&_svg]:h-7 [&_svg]:w-7 [&_svg]:shrink-0">{children}</button>
 );
 
 const SectionTitle: React.FC<{ colors: DetailColors; children: React.ReactNode }> = ({ colors, children }) => (

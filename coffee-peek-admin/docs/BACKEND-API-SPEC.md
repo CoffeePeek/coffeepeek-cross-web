@@ -88,3 +88,16 @@ Published `Review.id` нужен для чтения отзыва и жалоб.
 ## Проверки
 
 В обоих приложениях доступны `npm run typecheck`, `npm test -- --silent`, `npm run build`. Клиент дополнительно запускает `npm run test:ssr`. CI `.github/workflows/frontend-validation.yml` проверяет обе программы. Тесты `coffee-peek-admin/tests/apiContracts.test.ts` покрывают Public DTO list/detail/map, UUID-профиль, cityId обжарщика и преобразование адресов. Проверки фикстур подтверждают контракт фронта; реальный gateway/storage сценарий проверяется отдельно.
+
+## Discovery / каталог кофе — PR #334
+
+Сверено с 8a8bc274213404612e446fb46ae55fd45b8fa8a6 и OpenAPI задачи. Типы/маршруты: src/api/coffeeCatalog.ts; результаты live/mock: ../../docs/DISCOVERY-VERIFICATION.md.
+
+- /api/admin/roaster-tags и /api/admin/coffee-filter-values: GET всех значений, POST создания; /{id} PATCH и DELETE деактивации. Slug либо groupCode+code неизменяемы. Реактивация через PATCH isActive:true.
+- /api/admin/roasters/{id}/tags: GET назначений; PUT {tagIds: GUID[]} полностью заменяет их, возвращает 204. Неактивные теги нельзя назначать повторно.
+- /api/admin/coffees: GET page,pageSize,status. /{id} GET карточки; PATCH {content,countryCodes,protectedFields,status,version}. Content целиком; защита базовых полей PascalCase.
+- /{id}/classification: GET; PATCH {classification,protectedFields,version}, camelCase защита только классификации. /{id}/variants/{variantId}/classification PATCH {brewPurpose,protectFromImport,version}. null наследует назначение продукта. Каждая мутация увеличивает общую версию; PATCH выполняются последовательно.
+- /api/admin/coffees/public-addresses/{id}: PATCH {slug,expectedRevision,reason}, только Admin. /initialize POST для отсутствующего адреса. Admin DTO не предоставляет revision существующего Draft/Archived адреса; клиент её не угадывает.
+- /api/admin/coffee-import/runs?limit=30: read-only список по источникам, Applied/Failed, snapshotId, время, products/variants/added, missingAvailabilityApplied, error.
+
+Base coffee PATCH может вернуть HTTP 409 с coffee_catalog_error; редактор трактует любой 409 как конфликт, сохраняет локальный черновик и требует явного решения перед повторной записью.

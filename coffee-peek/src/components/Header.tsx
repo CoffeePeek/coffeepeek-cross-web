@@ -7,7 +7,10 @@ import { MagnifyingGlass, Gear, MapTrifold, SignOut, CaretDown, User } from '@/c
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
 
 const PUBLIC_NAV = [
-  { id: 'coffeeshops', label: 'Поиск', route: '/shops',              Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/shops') },
+  { id: 'search', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/search') },
+  { id: 'coffeeshops', label: 'Кофейни', route: '/shops', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/shops') || p.startsWith('/coffee-shops') },
+  { id: 'roasters', label: 'Обжарщики', route: '/roasters', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/roasters') },
+  { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: MagnifyingGlass, match: (p: string) => p.startsWith('/coffees') },
   { id: 'map',         label: 'Карта',   route: '/dashboard?page=map', Icon: MapTrifold, match: (p: string) => p.includes('page=map') },
 ] as const;
 
@@ -199,7 +202,7 @@ const Header: React.FC = () => {
       </div>
     </header>
       <nav
-        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-4 border-t lg:hidden`}
+        className={`${isShopDetails || isShopCreation ? 'hidden' : 'flex'} fixed inset-x-0 bottom-0 z-[1200] overflow-x-auto border-t lg:hidden`}
         aria-label="Основная навигация"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: bg, borderColor, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
       >
@@ -210,7 +213,7 @@ const Header: React.FC = () => {
               key={id}
               type="button"
               onClick={() => navigate(route)}
-              className="flex min-h-[64px] flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
+              className="flex min-h-[64px] min-w-[72px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
               style={{ color: active ? gold : mutedColor }}
               aria-current={active ? 'page' : undefined}
             >

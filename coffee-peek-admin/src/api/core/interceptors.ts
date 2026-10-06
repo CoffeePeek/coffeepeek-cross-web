@@ -172,6 +172,7 @@ export async function responseInterceptor<T>(
   response: Response,
   _url: string
 ): Promise<InterceptedResponse<T>> {
+  if (response.status === 204) return { envelope: {} as T };
   const contentType = response.headers.get('content-type');
 
   if (!contentType?.includes('application/json')) {

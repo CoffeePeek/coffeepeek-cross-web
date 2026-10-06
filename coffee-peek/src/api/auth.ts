@@ -1,4 +1,5 @@
 import { queryClient } from '../lib/queryClient';
+import { getCatalogScope } from '../lib/catalogSession';
 import type { PublicAddress } from './publicAddresses';
 /**
  * API модуль для аутентификации и профиля пользователя
@@ -196,15 +197,17 @@ export async function googleLogin(idToken: string): Promise<AuthResponse> {
  * Выход из системы
  */
 export async function logout(): Promise<void> {
+  const scope = getCatalogScope();
   try {
     // DELETE /api/tokens requires an access token. Refresh it first so logout
     // still invalidates the HttpOnly refresh cookie after the access token expires.
     await ensureFreshAccessToken(API_BASE_URL);
+    if (scope !== getCatalogScope()) return;
     await httpClient.delete<void>(API_ENDPOINTS.TOKEN.BASE, {
       requiresAuth: true,
     });
   } finally {
-    TokenManager.clearTokens();
+    if (scope === getCatalogScope()) TokenManager.clearTokens();
   }
 }
 
