@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { CoffeeCard as Coffee, CoffeeOffer, RoasterCard as Roaster, ShopCard as Shop, Photo, FilterGroup, Classification } from '../api/discovery';
 import type { PublicAddress } from '../api/publicAddresses';
@@ -77,16 +77,18 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
   const navigate = useNavigate();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
+  const weightControlId = useId();
+  const [selectedWeights, setSelectedWeights] = useState<Partial<Record<string, number | null>>>({});
   const label = (group: string, value: string) => groups.find(item => item.code === group)?.values.find(item => item.code === value)?.name ?? value;
-  const prices = new Map<string, { weight: number | null; weights: Set<number | null>; min: number; max: number }>();
+  const prices = new Map<string, Map<number | null, { min: number; max: number }>>();
   for (const offer of coffee.matchingOffers) {
-    const previous = prices.get(offer.currency);
-    prices.set(offer.currency, {
-      weight: previous && previous.min <= offer.price ? previous.weight : offer.weightGrams,
-      weights: new Set([...(previous?.weights ?? []), offer.weightGrams]),
+    const weights = prices.get(offer.currency) ?? new Map();
+    const previous = weights.get(offer.weightGrams);
+    weights.set(offer.weightGrams, {
       min: Math.min(previous?.min ?? offer.price, offer.price),
       max: Math.max(previous?.max ?? offer.price, offer.price),
     });
+    prices.set(offer.currency, weights);
   }
   const tastes = coffee.classification.tasteGroups.map(value => label('taste', value));
   return <ShopCard coffee={coffee} colors={colors} onSelect={() => navigate(coffee.address.canonicalPath)}>
@@ -96,11 +98,31 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
       </p>
       {!!tastes.length && <div className="mb-3 flex flex-wrap gap-1.5">{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</div>}
       <div className="mt-auto space-y-2 border-t pt-3" style={{ borderColor: colors.border }}>
-        {[...prices.entries()].map(([currency, price]) => {
-          const weights = [...price.weights].sort((a, b) => (a ?? Infinity) - (b ?? Infinity)).map(weight => weight === null ? 'Вес не указан' : `${weight} г`).join(', ');
-          return <div key={currency} className="flex items-center justify-between gap-2">
-            <p className="flex shrink-0 items-center gap-1.5 text-xl font-bold tracking-tight">{price.weights.size > 1 || price.min < price.max ? 'от ' : ''}{price.min.toLocaleString('ru-RU')}{currency === 'BYN' ? <><BynSign size={22} color="currentColor" /><span className="sr-only">белорусских рублей</span></> : <span className="text-base">{currency}</span>}</p>
-            <span className="min-w-0 truncate rounded-full border px-2.5 py-1 text-xs" style={{ borderColor: colors.border, color: colors.textSecondary }} title={weights} aria-label={`Доступный вес: ${weights}`}>{price.weight === null ? 'Вес не указан' : `${price.weight} г`}{price.weights.size > 1 && ` +${price.weights.size - 1}`}</span>
+        {[...prices.entries()].map(([currency, offersByWeight]) => {
+          const weights = [...offersByWeight.keys()].sort((a, b) => (a ?? Infinity) - (b ?? Infinity));
+          const savedWeight = selectedWeights[currency];
+          const selectedWeight = savedWeight !== undefined && offersByWeight.has(savedWeight) ? savedWeight : weights[0];
+          const price = offersByWeight.get(selectedWeight)!;
+          const weightLabel = (weight: number | null) => weight === null ? 'Вес не указан' : `${weight} г`;
+          const selectWeight = (weight: number | null) => setSelectedWeights(previous => ({ ...previous, [currency]: weight }));
+          const [amount, cents] = price.min.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).split(',');
+          return <div key={currency} className="flex flex-wrap items-center justify-between gap-2">
+            <p aria-live="polite" aria-atomic="true" className="flex shrink-0 items-center gap-1.5 font-bold tracking-tight tabular-nums">
+              {price.min < price.max && <span className="text-sm font-medium">от </span>}
+              <span className="inline-flex items-start gap-0.5"><span className="text-2xl leading-none">{amount}<span className="sr-only">,</span></span><span className="pt-0.5 text-sm leading-none">{cents}</span></span>
+              {currency === 'BYN' ? <><BynSign size={22} color="currentColor" /><span className="sr-only">белорусских рублей</span></> : <span className="text-base">{currency}</span>}
+            </p>
+            {weights.length === 1 ? <span className="ml-auto rounded-full border px-2.5 py-1 text-xs" style={{ borderColor: colors.border, color: colors.textSecondary }}>{weightLabel(selectedWeight)}</span>
+              : weights.length > 4 ? <select aria-label={`Вес упаковки ${coffee.name} (${currency})`} value={selectedWeight ?? 'unknown'} onClick={event => event.stopPropagation()} onChange={event => selectWeight(event.target.value === 'unknown' ? null : Number(event.target.value))}
+                className="ml-auto min-h-11 rounded-full border px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ background: colors.background, borderColor: colors.border, color: colors.textPrimary }}>
+                {weights.map(weight => <option key={weight ?? 'unknown'} value={weight ?? 'unknown'}>{weightLabel(weight)}</option>)}
+              </select>
+              : <div role="radiogroup" aria-label={`Вес упаковки ${coffee.name} (${currency})`} onClick={event => event.stopPropagation()} className="ml-auto grid grid-flow-col auto-cols-fr gap-0.5 rounded-full p-0.5" style={{ background: colors.background, border: `1px solid ${colors.border}` }}>
+                {weights.map(weight => <label key={weight ?? 'unknown'} className="relative cursor-pointer">
+                  <input type="radio" name={`${weightControlId}-${currency}`} value={weight ?? 'unknown'} checked={selectedWeight === weight} onChange={() => selectWeight(weight)} aria-label={weightLabel(weight)} className="peer sr-only" />
+                  <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full px-2 text-xs font-semibold transition-[background-color,box-shadow] hover:bg-primary/10 peer-checked:bg-white peer-checked:text-stone-900 peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-primary dark:peer-checked:bg-stone-600 dark:peer-checked:text-white" style={{ color: selectedWeight === weight ? undefined : colors.textSecondary }}>{weight ?? '—'}</span>
+                </label>)}
+              </div>}
           </div>;
         })}
         {!coffee.matchingOffers.length && <p className="text-sm">Подходящих предложений нет.</p>}

@@ -14,7 +14,7 @@ const offer: CoffeeOffer = { offerKey: '250', weightGrams: 250, price: 32, curre
 test('coffee card uses matching offers, the project ruble sign and a compact footer', () => {
   const coffee = { address: { slug: 'coffee', canonicalPath: '/coffees/coffee', revision: 1 }, name: 'Coffee', roaster: { name: 'Roaster', address: { slug: 'roaster', canonicalPath: '/roasters/roaster', revision: 1 }, coverPhoto: null }, productKind: 'roasted_beans', productForm: 'whole_beans', classification: { defaultBrewPurposes: [], caffeine: null, roastLevel: null, acidity: null, processing: [], fermentation: [], tasteGroups: [], composition: null }, countries: [], coverPhoto: null, matchingOffers: [offer], sortPrice: 32, createdAtUtc: offer.checkedAtUtc, catalogCheckedAtUtc: null, offers: [{ ...offer, weightGrams: 100, price: 7 }] };
   const html = renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeCatalogCard, { coffee: coffee as CoffeeCard, groups: [] })));
-  expect(html).toContain('250 г'); expect(html).not.toContain('100 г'); expect(html).toContain('>32<svg'); expect(html).toContain('viewBox="0 0 945 1170"'); expect(html).not.toContain('BYN'); expect(html).not.toContain('от 32');
+  expect(html).toContain('250 г'); expect(html).not.toContain('100 г'); expect(html.replace(/<[^>]+>/g, '')).toContain('32,00'); expect(html).toContain('viewBox="0 0 945 1170"'); expect(html).not.toContain('BYN'); expect(html).not.toContain('>от ');
   expect(html).not.toContain('Цена сортировки'); expect(html).not.toContain('Выбрать вариант'); expect(html).not.toContain('Характеристики и предложения'); expect(html).not.toContain('Проверка не указана');
   expect(html).toContain('Открыть кофе Coffee'); expect(html).toContain('aspect-[16/9]'); expect(html).not.toContain('Добавить в избранное');
 });
@@ -23,17 +23,40 @@ test('all detail offers keep currencies separate, unknown weight/stock and safe 
   expect(html).toContain('32,00 BYN'); expect(html).toContain('600,00 RUB'); expect(html).toContain('Вес не указан'); expect(html).toContain('Наличие не подтверждено'); expect(html).not.toContain('javascript:'); expect(html).toContain('noopener noreferrer');
 });
 
-test('multiple weights show one minimum price per currency with the corresponding weight', () => {
+test('coffee weight selection changes only that currency price and recovers when an option disappears', () => {
   const coffee = { address: { slug: 'coffee', canonicalPath: '/coffees/coffee', revision: 1 }, name: 'Coffee', roaster: { name: 'Roaster', address: { slug: 'roaster', canonicalPath: '/roasters/roaster', revision: 1 }, coverPhoto: null }, productKind: 'roasted_beans', productForm: 'whole_beans', classification: { defaultBrewPurposes: [], caffeine: null, roastLevel: null, acidity: null, processing: [], fermentation: [], tasteGroups: [], composition: null }, countries: [], coverPhoto: null, matchingOffers: [offer, { ...offer, offerKey: '250-expensive', price: 40 }, { ...offer, offerKey: '100', weightGrams: 100, price: 10 }, { ...offer, offerKey: 'rub', currency: 'RUB', price: 600 }], sortPrice: null, createdAtUtc: offer.checkedAtUtc, catalogCheckedAtUtc: null };
-  const html = renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeCatalogCard, { coffee: coffee as CoffeeCard, groups: [] })));
-  expect(html).toContain('от 10'); expect(html).not.toContain('от 32'); expect(html).toContain('>100 г +1</span>'); expect(html).toContain('Доступный вес: 100 г, 250 г'); expect(html).toContain('600'); expect(html).toContain('RUB');
+  const render = (selectedWeights: Record<string, number | null> = {}) => {
+    const state = jest.spyOn(React, 'useState').mockImplementationOnce(() => [selectedWeights, jest.fn()] as any);
+    try { return renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeCatalogCard, { coffee: coffee as CoffeeCard, groups: [] }))); }
+    finally { state.mockRestore(); }
+  };
+  const html = render();
+  expect(html.replace(/<[^>]+>/g, '')).toContain('10,00'); expect(html).not.toContain('>от '); expect(html).toContain('role="radiogroup"'); expect(html).toContain('aria-label="100 г"'); expect(html).toContain('aria-label="250 г"'); expect(html.match(/type="radio"/g)).toHaveLength(2); expect(html.replace(/<[^>]+>/g, '')).toContain('600,00RUB');
   expect(html.match(/viewBox="0 0 945 1170"/g)).toHaveLength(1);
+  const selectedHtml = render({ BYN: 250 });
+  expect(selectedHtml.replace(/<[^>]+>/g, '')).toContain('от 32,00'); expect(selectedHtml.replace(/<[^>]+>/g, '')).toContain('600,00RUB');
+  coffee.matchingOffers = coffee.matchingOffers.filter(item => item.currency !== 'BYN' || item.weightGrams === 100);
+  const missingHtml = render({ BYN: 250 });
+  expect(missingHtml.replace(/<[^>]+>/g, '')).toContain('10,00'); expect(missingHtml).not.toContain('type="radio"');
   coffee.matchingOffers = [offer, { ...offer, offerKey: '100', weightGrams: 100 }];
-  const equalPriceHtml = renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeCatalogCard, { coffee: coffee as CoffeeCard, groups: [] })));
-  expect(equalPriceHtml).toContain('от 32');
+  expect(render()).not.toContain('>от ');
   coffee.matchingOffers = [offer, { ...offer, offerKey: 'same-weight' }];
-  const sameWeightHtml = renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeCatalogCard, { coffee: coffee as CoffeeCard, groups: [] })));
-  expect(sameWeightHtml).not.toContain('от 32'); expect(sameWeightHtml).not.toContain('г +');
+  const sameWeightHtml = render();
+  expect(sameWeightHtml).not.toContain('>от '); expect(sameWeightHtml).toContain('>250 г</span>'); expect(sameWeightHtml).not.toContain('type="radio"');
+  coffee.matchingOffers = [
+    { ...offer, weightGrams: 500, price: 29.95 },
+    { ...offer, offerKey: '1000', weightGrams: 1000, price: 50 },
+    { ...offer, offerKey: '200', weightGrams: 200, price: 19.95 },
+    { ...offer, offerKey: 'unknown', weightGrams: null, price: 100 },
+  ];
+  expect(render().replace(/<[^>]+>/g, '')).toContain('19,95');
+  expect(render({ BYN: 500 }).replace(/<[^>]+>/g, '')).toContain('29,95');
+  expect(render({ BYN: null }).replace(/<[^>]+>/g, '')).toContain('100,00'); expect(render({ BYN: null })).toContain('aria-label="Вес не указан"');
+  coffee.matchingOffers = [100, 200, 250, 500, 1000].map(weightGrams => ({ ...offer, weightGrams, offerKey: String(weightGrams), price: weightGrams / 10 }));
+  const manyWeightsHtml = render({ BYN: 1000 });
+  expect(manyWeightsHtml).toContain('<select'); expect(manyWeightsHtml).toContain('value="1000" selected=""'); expect(manyWeightsHtml.replace(/<[^>]+>/g, '')).toContain('100,00');
+  coffee.matchingOffers = [];
+  expect(render()).toContain('Подходящих предложений нет.'); expect(render()).not.toContain('role="radiogroup"');
 });
 
 test('roaster card shows its description without the address, inline counts and empty catalog state', () => {
