@@ -5,9 +5,9 @@ import React, { useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCoffeeFilterValues, searchCoffees } from '../api/discovery';
-import { CoffeeCatalogCard, FavoriteButton } from '../components/CatalogCards';
+import { CoffeeCatalogCard, FavoriteButton, catalogButton, catalogPanel, checkedTime } from '../components/CatalogCards';
 import { getCatalogScope } from '../lib/catalogSession';
-import { ShopDetailSkeleton } from '../components/skeletons';
+import { ShopCardSkeleton, ShopDetailSkeleton } from '../components/skeletons';
 import PhotoCarousel from '../components/PhotoCarousel';
 import Mascot from '../components/Mascot';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,12 +16,17 @@ import { useRoaster } from '../hooks/queries/useCatalogs';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { instagramHandle, instagramUrl, toWebsiteHref } from '../utils/shopUtils';
 import { AppIcon } from '../components/icons';
+import Button from '../components/Button';
+import { InfoChip } from '../components/ShopCard';
+import { ShopSidebar } from '../components/coffeeshop/ShopSidebar';
+import { getThemeColors } from '../constants/colors';
 
 const RoasterDetailPage: React.FC = () => {
   const { roasterId } = useParams<{ roasterId: string }>();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const tc = getThemeClasses(theme);
+  const colors = getThemeColors(theme);
 
   const resolution = usePublicResolution();
   const legacy = useRoaster(resolution ? null : roasterId ?? null);
@@ -59,12 +64,9 @@ const RoasterDetailPage: React.FC = () => {
           </div>
           <p className={`text-xl ${textMain} mb-4`}>{(error as { status?: number } | null)?.status === 404 ? 'Обжарщик не найден' : 'Карточка обжарщика временно недоступна'}</p>
           {error && (error as { status?: number }).status !== 404 && <button className="mb-4 min-h-11 underline" onClick={() => void legacy.refetch()}>Повторить</button>}
-          <button
-            onClick={() => navigate('/shops')}
-            className="bg-[#EAB308] hover:bg-[#FACC15] text-[#1A1412] px-6 py-3 rounded-2xl font-bold transition-all"
-          >
+          <Button onClick={() => navigate('/roasters')} className="mx-auto">
             Вернуться назад
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -72,95 +74,99 @@ const RoasterDetailPage: React.FC = () => {
 
   const websiteHref = roaster.contact?.siteLink ? toWebsiteHref(roaster.contact.siteLink) : undefined;
   const websiteLabel = roaster.contact?.siteLink?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const catalogPath = `/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [slug], availableOnly: true }))}`;
+  const hasLocation = !!roaster.location?.address || Number.isFinite(roaster.location?.latitude) && Number.isFinite(roaster.location?.longitude);
+  const stats = [
+    { label: roaster.coffeeProductsCount == null ? 'доступных товаров' : 'товаров в каталоге', value: roaster.coffeeProductsCount ?? assortment.data?.totalItems },
+    { label: 'кофеен с нашим кофе', value: roaster.coffeeShopsCount ?? roaster.shops.length },
+  ];
 
   return (
-    <div className={`min-h-screen ${bgClass} overflow-x-hidden font-body`}>
-      <section className="mx-auto max-w-[920px] sm:px-6 sm:pt-6">
-        <div className="h-[260px] overflow-hidden bg-white sm:h-[340px] sm:rounded-[28px]">
-          <PhotoCarousel images={roaster.photos} shopName={roaster.name} />
+    <main className={`mx-auto max-w-[1200px] space-y-8 px-4 py-6 pb-28 font-body sm:px-6 ${bgClass} ${textMain}`}>
+      <section aria-labelledby="roaster-name" className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="flex min-w-0 items-start gap-4 sm:gap-5">
+          <div className={`flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-32 sm:w-32 ${cardBg} ${borderColor}`}>
+            {roaster.photos.length ? <div className="h-full w-full"><PhotoCarousel images={roaster.photos} shopName={roaster.name} isCardView /></div> : <AppIcon name="factory" size={48} className={textMuted} />}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-3">
+              <h1 id="roaster-name" className="min-w-0 flex-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">{roaster.name}</h1>
+              {roaster.publicAddress && <FavoriteButton kind="roaster" address={roaster.publicAddress} value={roaster.isFavorite} className={`${catalogButton} flex h-11 w-11 shrink-0 items-center justify-center rounded-full`} />}
+            </div>
+            {roaster.location?.address && <p className={`mt-2 flex items-start gap-1.5 text-sm ${textMuted}`}><AppIcon name="pin_drop" size={18} className={`${tc.primary.text} mt-0.5 shrink-0`} /><span className="min-w-0 break-words">{roaster.location.address}</span></p>}
+            {(websiteHref || roaster.contact?.instagramLink) && <div className="mt-3 flex flex-wrap gap-2">
+              {websiteHref && <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="language" size={18} className="shrink-0" /><span className="truncate">{websiteLabel || 'Сайт обжарщика'}</span><AppIcon name="arrow_forward" size={18} className="shrink-0" /></a>}
+              {roaster.contact?.instagramLink && <a href={instagramUrl(roaster.contact.instagramLink)} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="instagram-logo" size={18} className="shrink-0" /><span className="truncate">{instagramHandle(roaster.contact.instagramLink)}</span></a>}
+            </div>}
+            {!!roaster.tags?.length && <div className="mt-3 flex flex-wrap gap-2">{roaster.tags.map(tag => <InfoChip key={tag.slug} colors={colors}>{tag.name}</InfoChip>)}</div>}
+          </div>
         </div>
+        <dl aria-label="Статистика обжарщика" className={`${catalogPanel} grid grid-cols-2`}>
+          {stats.map((stat, index) => <div key={stat.label} className={`px-3 py-2 text-center ${index ? `border-l ${borderColor}` : ''}`}>
+            <dd className="text-2xl font-bold tabular-nums">{stat.value != null && stat.value !== '' && Number.isSafeInteger(Number(stat.value)) && Number(stat.value) >= 0 ? Number(stat.value).toLocaleString('ru-RU') : '—'}</dd>
+            <dt className={`mt-1 text-xs ${textMuted}`}>{stat.label}</dt>
+          </div>)}
+        </dl>
       </section>
 
-      <main className="mx-auto max-w-[920px] space-y-8 px-4 py-7 pb-28 sm:px-6 sm:py-9">
+      {roaster.about && (
         <section>
-          <h1 className={`text-3xl font-bold tracking-tight sm:text-4xl ${textMain}`}>{roaster.name}</h1>
-          {roaster.publicAddress && <FavoriteButton kind="roaster" address={roaster.publicAddress} value={roaster.isFavorite} />}
-          <div className="mt-3 flex flex-wrap gap-2">{roaster.tags?.map(tag => <span key={tag.slug} className="rounded-full border px-3 py-1 text-sm">{tag.name}</span>)}</div>
-          {roaster.coffeeCatalogUpdatedAtUtc && <p className={`mt-3 text-sm ${textMuted}`}>Каталог проверен: {new Date(roaster.coffeeCatalogUpdatedAtUtc).toLocaleString()}</p>}
-          {roaster.location?.address && (
-            <p className={`mt-3 flex items-center gap-2 text-sm ${textMuted}`}>
-              <AppIcon name="pin_drop" size={18} color="#D4A84B" />
-              {roaster.location.address}
-            </p>
-          )}
+          <h2 className={`mb-3 text-xl font-bold ${textMain}`}>Об обжарщике</h2>
+          <p className={`${textMuted} whitespace-pre-line break-words text-base leading-relaxed`}>{roaster.about}</p>
         </section>
+      )}
 
-        {roaster.about && (
-          <section>
-            <h2 className={`mb-3 text-xl font-bold ${textMain}`}>Об обжарщике</h2>
-            <p className={`${textMuted} text-base leading-relaxed sm:text-lg`}>{roaster.about}</p>
-          </section>
-        )}
-
-        {(roaster.contact?.instagramLink || websiteHref) && (
-          <section>
-            <h2 className={`mb-3 text-xl font-bold ${textMain}`}>Ссылки</h2>
-            <div className="flex flex-wrap items-center gap-3">
-              {roaster.contact?.instagramLink && (
-                <a
-                  href={instagramUrl(roaster.contact.instagramLink)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors hover:border-[#D4A84B]/60 ${borderColor} ${textMain}`}
-                >
-                  <AppIcon name="instagram-logo" size={20} color="currentColor" />
-                  {instagramHandle(roaster.contact.instagramLink)}
-                </a>
-              )}
-              {websiteHref && (
-                <a
-                  href={websiteHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 font-semibold transition-colors hover:border-[#D4A84B]/60 ${borderColor} ${textMain}`}
-                >
-                  <AppIcon name="language" size={20} color="currentColor" />
-                  {websiteLabel || 'Сайт'}
-                </a>
-              )}
-            </div>
-          </section>
-        )}
-
-        <section className={textMain}>
-          <h2 className="mb-3 text-2xl font-bold">Кофе в ассортименте</h2>
-          <Link className="inline-flex min-h-11 items-center underline" to={`/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [slug], availableOnly: true }))}`}>Весь кофе обжарщика</Link>
-          {assortment.isPending && <p role="status">Загрузка ассортимента…</p>}
-          {assortment.isError && <p role="alert">Ассортимент временно недоступен. <button className="underline" onClick={() => void assortment.refetch()}>Повторить</button></p>}
-          {assortment.data && <><p className="mb-3">Доступных товаров: {assortment.data.totalItems}</p><div className="grid gap-4 sm:grid-cols-2">{assortment.data.items.map(coffee => <CoffeeCatalogCard key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}</div>{!assortment.data.items.length && <p>Доступного кофе пока нет.</p>}</>}
+      <section className={textMain}>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div><h2 className="text-2xl font-bold">Кофе в ассортименте</h2>{assortment.data && <p className={`mt-1 text-sm ${textMuted}`}>Доступных товаров: {assortment.data.totalItems}</p>}</div>
+          <Link className={`inline-flex min-h-11 items-center gap-2 font-semibold ${tc.primary.text} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`} to={catalogPath}>Весь кофе обжарщика<AppIcon name="arrow_forward" size={18} /></Link>
+        </div>
+        {assortment.isPending && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Загрузка ассортимента"><ShopCardSkeleton count={3} /></div>}
+        {assortment.isError && <div className={catalogPanel} role="alert"><p>Ассортимент временно недоступен.</p><Button variant="secondary" className="mt-3" onClick={() => void assortment.refetch()}>Повторить</Button></div>}
+        {assortment.data && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {assortment.data.items.map(coffee => <CoffeeCatalogCard key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}
+          {!assortment.isError && assortment.data.items.length < 6 && assortment.data.totalItems <= assortment.data.items.length && <div className={`${catalogPanel} flex min-h-64 flex-col items-center justify-center gap-4 py-8 text-center`}>
+            <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${tc.primary.bgLight}`}><AppIcon name="coffee-bean" size={32} className={tc.primary.text} /></div>
+            <h3 className="text-xl font-bold">{assortment.data.items.length ? 'Пока это весь ассортимент' : 'Ассортимент пока пуст'}</h3>
+            <p className={`max-w-xs text-sm leading-relaxed ${textMuted}`}>Следите за обновлениями обжарщика.</p>
+            {websiteHref && <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex items-center gap-2 ${tc.primary.bg} ${tc.text.inverse}`}>Перейти на сайт<AppIcon name="arrow_forward" size={18} /></a>}
+          </div>}
+        </div>}
+        {roaster.coffeeCatalogUpdatedAtUtc && <p className={`mt-3 text-xs ${textMuted}`}>{checkedTime(roaster.coffeeCatalogUpdatedAtUtc)}</p>}
+      </section>
+      <div className={`grid items-start gap-5 ${hasLocation ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
+        {roaster.location && hasLocation && <section>
+          <h2 className="mb-3 text-xl font-bold">Где найти</h2>
+          <ShopSidebar shop={{ name: roaster.name, location: { address: roaster.location.address ?? undefined, latitude: roaster.location.latitude ?? undefined, longitude: roaster.location.longitude ?? undefined } }} textMain={textMain} textMuted={textMuted} cardBg={cardBg} borderColor={borderColor} layout="horizontal" />
+        </section>}
+        <section className={`${catalogPanel} space-y-3`}>
+          <AppIcon name="factory" size={28} className={tc.primary.text} />
+          <h2 className="text-xl font-bold">Больше обжарщиков</h2>
+          <p className={`text-sm leading-relaxed ${textMuted}`}>Найдите новых обжарщиков и их кофе в CoffeePeek.</p>
+          <Button variant="secondary" onClick={() => navigate('/roasters')}>Смотреть всех<AppIcon name="arrow_forward" size={18} /></Button>
         </section>
-        {roaster.shops.length > 0 && (
-          <section>
-            <h2 className={`mb-4 text-2xl font-bold ${textMain}`}>Где используют</h2>
-            <div className="space-y-2.5">
-              {roaster.shops.map((shop) => (
-                <PublicEntityLink
-                  key={shop.id}
-                  kind="shops" entityId={shop.id} address={shop.publicAddress}
-                  className={`flex min-h-[86px] items-center gap-4 rounded-[22px] border p-3 transition-colors hover:border-[#D4A84B]/60 ${cardBg} ${borderColor} ${textMain}`}
-                >
-                  {shop.photoUrl
-                    ? <img src={shop.photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" />
-                    : <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-stone-100 text-xl font-bold text-stone-700">{shop.name.charAt(0)}</span>}
-                  <span className="min-w-0 flex-1 truncate text-lg font-semibold">{shop.name}</span>
-                  <AppIcon name="chevron_right" size={24} color="currentColor" />
-                </PublicEntityLink>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
+      </div>
+      {roaster.shops.length > 0 && (
+        <section>
+          <h2 className={`mb-4 text-2xl font-bold ${textMain}`}>Где используют</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {roaster.shops.map((shop) => (
+              <PublicEntityLink
+                key={shop.id}
+                kind="shops" entityId={shop.id} address={shop.publicAddress}
+                className={`flex min-h-[86px] items-center gap-4 rounded-2xl border p-3 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${cardBg} ${borderColor} ${textMain}`}
+              >
+                {shop.photoUrl
+                  ? <img src={shop.photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-2xl object-cover" />
+                  : <span className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold ${tc.primary.bgLight} ${tc.primary.text}`}>{shop.name.charAt(0)}</span>}
+                <span className="min-w-0 flex-1 truncate text-lg font-semibold">{shop.name}</span>
+                <AppIcon name="chevron_right" size={24} color="currentColor" />
+              </PublicEntityLink>
+            ))}
+          </div>
+        </section>
+      )}
+    </main>
   );
 };
 

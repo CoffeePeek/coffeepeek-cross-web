@@ -11,11 +11,12 @@ import { CaretDown } from '@/components/Icon';
 import { coffeeDetailIcon, createOsmMap, ensureMapPinMascots } from '../../map/osmMap';
 
 interface ShopSidebarProps {
-  shop: DetailedCoffeeShop;
+  shop: Pick<DetailedCoffeeShop, 'name' | 'location' | 'type' | 'schedules'>;
   textMain: string;
   textMuted: string;
   cardBg: string;
   borderColor: string;
+  layout?: 'stacked' | 'horizontal';
 }
 
 export const ShopSidebar: React.FC<ShopSidebarProps> = ({
@@ -24,6 +25,7 @@ export const ShopSidebar: React.FC<ShopSidebarProps> = ({
   textMuted,
   cardBg,
   borderColor,
+  layout = 'stacked',
 }) => {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
@@ -35,10 +37,11 @@ export const ShopSidebar: React.FC<ShopSidebarProps> = ({
 
   const latitude = shop.location?.latitude;
   const longitude = shop.location?.longitude;
+  const hasCoordinates = latitude != null && longitude != null && Number.isFinite(latitude) && Number.isFinite(longitude);
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    if (!latitude || !longitude || !mapRef.current) return;
+    if (!hasCoordinates || !mapRef.current) return;
     const container = mapRef.current;
     let cancelled = false;
 
@@ -71,9 +74,9 @@ export const ShopSidebar: React.FC<ShopSidebarProps> = ({
   }, [latitude, longitude, shop.name, shop.type, isDark]);
 
   return (
-    <div className={`${cardBg} rounded-3xl border ${borderColor} overflow-hidden shadow-sm min-w-0`}>
-      {latitude && longitude && (
-        <div className="h-52 sm:h-64 w-full max-w-full relative z-0 isolate overflow-hidden">
+    <div className={`${cardBg} rounded-3xl border ${borderColor} overflow-hidden shadow-sm min-w-0 ${layout === 'horizontal' && hasCoordinates ? 'sm:grid sm:grid-cols-2 sm:items-stretch' : ''}`}>
+      {hasCoordinates && (
+        <div className={`h-52 w-full max-w-full relative z-0 isolate overflow-hidden ${layout === 'horizontal' ? 'sm:order-2 sm:h-full sm:min-h-44' : 'sm:h-64'}`}>
           <div className="absolute inset-0 w-full h-full">
             <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
           </div>
