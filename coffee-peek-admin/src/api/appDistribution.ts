@@ -44,7 +44,7 @@ export interface AndroidAppRelease {
 }
 
 export interface StoreChannelUpdateRequest {
-  externalUrl: string | null;
+  url: string | null;
   enabled: boolean;
 }
 

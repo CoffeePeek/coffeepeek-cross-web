@@ -58,6 +58,14 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 
 Таблица группирует ресурсы; методы и точные тела каждого запроса задаются соответствующим `src/api` и серверным контроллером. Не все backend-операции имеют экран в админке: например, backfill публичных адресов, настройка версии мобильного приложения и каталог напитков. Отсутствие экрана не означает отсутствие API.
 
+## Ссылки магазинов приложений
+
+Сверено 7 октября 2026 с [UpdateStoreDownloadChannelRequest](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.Contract/Dtos/AppDownloads/UpdateStoreDownloadChannelRequest.cs) и [AdminAppDownloadsController](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.ShopsService/Controllers/AdminAppDownloadsController.cs).
+
+PUT `/api/admin/v1/app-downloads/android/google-play` и PUT `/api/admin/v1/app-downloads/ios/app-store` принимают JSON `{url: string | null, enabled: boolean}`. Поле `externalUrl` относится к **ответу** (`androidGooglePlay.externalUrl`, `iosAppStore.externalUrl`); в запросе оно не задаёт URL.
+
+При `enabled: true` URL обязателен. Непустая ссылка должна быть HTTPS, длиной до 2048 символов, с хостом `play.google.com` для Google Play или `apps.apple.com` для App Store. Отключение без ссылки: `{url: null, enabled: false}`. Нарушение этих правил возвращает HTTP 400 с `VALIDATION_FAILED`.
+
 ## Формат ответа и пагинация
 
 Обычно сервер возвращает `Response<T> {isSuccess,message,data}`; HTTP client превращает его в `ApiResponse<T>`. Отдельные команды создания возвращают верхнеуровневый `entityId`, а не DTO опубликованной сущности. Не объявлять их ответ как карточку ресурса.

@@ -165,7 +165,7 @@ export const AppDistributionPage: React.FC = () => {
 
   const googlePlayMutation = useMutation({
     mutationFn: () => updateAndroidGooglePlay({
-      externalUrl: googlePlayForm.url.trim() || null,
+      url: googlePlayForm.url.trim() || null,
       enabled: googlePlayForm.enabled,
     }),
     onSuccess: async () => {
@@ -177,7 +177,7 @@ export const AppDistributionPage: React.FC = () => {
 
   const appStoreMutation = useMutation({
     mutationFn: () => updateIosAppStore({
-      externalUrl: appStoreForm.url.trim() || null,
+      url: appStoreForm.url.trim() || null,
       enabled: appStoreForm.enabled,
     }),
     onSuccess: async () => {
