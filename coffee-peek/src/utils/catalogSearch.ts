@@ -139,3 +139,15 @@ export function transferDiscovery(state: SearchState, kind: 'shops' | 'roasters'
 export function safePurchaseUrl(value: string): string | undefined {
   try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined; } catch { return undefined; }
 }
+export const countryFlagUrl = (code: string): string | undefined => /^[a-z]{2}$/i.test(code) ? `https://flagcdn.com/${code.toLowerCase()}.svg` : undefined;
+export async function shareCoffee(name: string, canonicalPath: string): Promise<'shared' | 'copied' | 'cancelled'> {
+  const data = { title: name, text: `Кофе «${name}» в CoffeePeek`, url: `https://coffeepeek.by${canonicalPath}` };
+  try {
+    if (navigator.share) { await navigator.share(data); return 'shared'; }
+    await navigator.clipboard.writeText(data.url);
+    return 'copied';
+  } catch (error) {
+    if ((error as { name?: string } | null)?.name === 'AbortError') return 'cancelled';
+    throw error;
+  }
+}

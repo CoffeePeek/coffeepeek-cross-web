@@ -5,6 +5,8 @@ jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: jest.fn() }));
 jest.mock('../src/hooks/useFavorites', () => ({ useFavorite: () => ({ favorite: null, pending: false, toggle: jest.fn() }) }));
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
 jest.mock('../src/contexts/UserContext', () => ({ useUser: () => ({ isLoading: false }) }));
+jest.mock('../src/contexts/ToastContext', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
+jest.mock('../src/components/PhotoLightbox', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/ShopPhotoPlaceholder', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/api/core/httpClient', () => ({ httpClient: {} }));
 jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {} }));
@@ -58,4 +60,27 @@ test('coffee breadcrumbs link to the coffee catalog and the canonical roaster pa
   expect(breadcrumb).toContain('href="/roasters/roast"');
   expect(breadcrumb).toContain('aria-current="page"');
   expect(html).not.toContain('← Каталог кофе');
+});
+
+test('coffee detail keeps product photos, country flags and related coffees in the existing components', () => {
+  const photo = { fullUrl: '/coffee-full.jpg', urls: { thumbnail: '/coffee-thumb.jpg', card: '/coffee-card.jpg', detail: '/coffee-detail.jpg', fullscreen: '/coffee-large.jpg' } };
+  jest.mocked(useQuery).mockImplementation(({ queryKey }: any) => queryKey.includes('coffee-detail')
+    ? { data: { ...coffee, photos: [photo, { ...photo, fullUrl: '/second.jpg' }], offers: [], description: 'Описание кофе', tasteDescriptors: ['Какао'], countries: [{ code: 'BR', nameRu: 'Бразилия', nameEn: 'Brazil' }] }, isPending: false, isError: false } as any
+    : queryKey.includes('similar-coffees')
+      ? { data: { items: [coffee, { ...coffee, name: 'Другой кофе', address: { ...coffee.address, slug: 'other', canonicalPath: '/coffees/other' } }] }, isSuccess: true } as any
+      : { data: [] } as any);
+  const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: ['/coffees/coffee'] }, React.createElement(Routes, {}, React.createElement(Route, { path: '/coffees/:slug', element: React.createElement(CoffeeDetailPage) }))));
+  expect(html).toContain('src="/coffee-detail.jpg"');
+  expect(html).toContain('aria-label="Фото кофе 2"');
+  expect(html).toContain('aria-pressed="true"');
+  expect(html).toContain('src="https://flagcdn.com/br.svg"');
+  expect(html).toContain('Бразилия');
+  expect(html).toContain('aria-label="Поделиться кофе"');
+  expect(html).toContain('Вкусовой профиль');
+  expect(html).toContain('Какао');
+  expect(html).not.toContain('id="coffee-roaster"');
+  expect(html).toContain('Похожие сорта');
+  expect(html).toContain('Открыть кофе Другой кофе');
+  expect(html).not.toContain('Открыть кофе Кофе');
+  expect(html).toContain('href="/roasters/roast"');
 });

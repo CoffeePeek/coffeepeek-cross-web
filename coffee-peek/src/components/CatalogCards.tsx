@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { CoffeeCard as Coffee, CoffeeOffer, RoasterCard as Roaster, ShopCard as Shop, Photo, FilterGroup, Classification } from '../api/discovery';
 import type { PublicAddress } from '../api/publicAddresses';
 import { useFavorite } from '../hooks/useFavorites';
-import { safePurchaseUrl } from '../utils/catalogSearch';
+import { countryFlagUrl, safePurchaseUrl } from '../utils/catalogSearch';
 import ShopPhotoPlaceholder from './ShopPhotoPlaceholder';
 import ShopCard, { InfoChip } from './ShopCard';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,11 +16,11 @@ export const catalogPanel = 'rounded-2xl border border-stone-200 bg-white p-4 da
 export const catalogButton = 'min-h-11 rounded-xl border border-stone-300 px-4 py-2 font-semibold hover:border-yellow-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 disabled:opacity-50 dark:border-[#4A3D35]';
 export function checkedTime(value: string | null | undefined) {
   if (!value || Number.isNaN(Date.parse(value))) return 'Проверка не указана';
-  return `Проверено ${new Date(value).toLocaleString()}`;
+  return `Проверено ${new Date(value).toLocaleString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
 }
-export function CatalogPhoto({ photo, name }: { photo: Photo | null | undefined; name: string }) {
-  return <div className="aspect-[5/3] overflow-hidden rounded-xl">{photo
-    ? <img src={photo.urls?.card || photo.fullUrl} alt={name} loading="lazy" className="h-full w-full object-cover" />
+export function CatalogPhoto({ photo, name, className = 'aspect-[5/3]', size = 'card', loading = 'lazy' }: { photo: Photo | null | undefined; name: string; className?: string; size?: 'card' | 'detail' | 'thumbnail'; loading?: 'eager' | 'lazy' }) {
+  return <div className={`overflow-hidden rounded-xl ${className}`}>{photo
+    ? <img src={photo.urls?.[size] || photo.fullUrl} alt={name} loading={loading} className="h-full w-full object-cover" />
     : <ShopPhotoPlaceholder />}</div>;
 }
 export function FavoriteButton({ kind, address, value, className = catalogButton }: { kind: 'coffee_shop' | 'roaster'; address: PublicAddress | undefined; value?: boolean | null; className?: string }) {
@@ -30,25 +30,46 @@ export function FavoriteButton({ kind, address, value, className = catalogButton
     <AppIcon name="heart" filled={favorite === true} size={26} color={favorite ? COLORS.primary : 'currentColor'} style={{ flexShrink: 0 }} /><span className="sr-only">Избранное</span>
   </button>;
 }
-export function ClassificationBadges({ value, groups }: { value: Classification; groups: FilterGroup[] }) {
+export function ClassificationBadges({ value, groups, layout = 'chips' }: { value: Classification; groups: FilterGroup[]; layout?: 'chips' | 'details' }) {
   const entries = [
-    ['brew', value.defaultBrewPurposes], ['caffeine', value.caffeine], ['roast', value.roastLevel], ['acidity', value.acidity],
-    ['processing', value.processing], ['fermentation', value.fermentation], ['taste', value.tasteGroups], ['composition', value.composition],
+    ['brew', value.defaultBrewPurposes, 'Рекомендуемое приготовление', 'coffee'], ['roast', value.roastLevel, 'Обжарка', 'local_fire_department'],
+    ['processing', value.processing, 'Обработка', 'eco'], ['taste', value.tasteGroups, 'Преобладающий профиль', 'sparkle'],
+    ['caffeine', value.caffeine, 'Кофеин', 'coffee-bean'], ['acidity', value.acidity, 'Кислотность', 'water_drop'],
+    ['fermentation', value.fermentation, 'Ферментация', 'science'], ['composition', value.composition, 'Состав', 'coffee-bean'],
   ] as const;
+  const label = (code: string, value: string) => groups.find(group => group.code === code)?.values.find(option => option.code === value)?.name ?? value;
+  if (layout === 'details') return <dl className="grid grid-cols-2 gap-x-5 gap-y-6 sm:grid-cols-4">{entries.flatMap(([code, raw, caption, icon]) => {
+    const values = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    return values.length ? [<div key={code} className="flex min-w-0 flex-col">
+      <dt className="contents"><span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-stone-100 dark:bg-[#2D241F]"><AppIcon name={code === 'brew' && values.length === 1 ? `brew:${values[0]}` : icon} size={28} aria-hidden /></span><span className="order-last mt-1 text-xs leading-5 text-stone-500 dark:text-stone-400">{caption}</span></dt>
+      <dd className="break-words text-sm font-semibold">{values.map(value => label(code, value)).join(', ')}</dd>
+    </div>] : [];
+  })}</dl>;
   return <div className="flex flex-wrap gap-2">{entries.flatMap(([code, values]) => (Array.isArray(values) ? values : values ? [values] : []).map(value =>
-    <span key={`${code}:${value}`} className="rounded-full bg-stone-100 px-3 py-1 text-sm dark:bg-[#1A1412]">{groups.find(group => group.code === code)?.values.find(option => option.code === value)?.name ?? value}</span>))}</div>;
+    <span key={`${code}:${value}`} className="rounded-full bg-stone-100 px-3 py-1 text-sm dark:bg-[#1A1412]">{label(code, value)}</span>))}</div>;
 }
-export function OfferList({ offers, defaults = [] }: { offers: CoffeeOffer[]; defaults?: string[] }) {
-  return <ul className="space-y-3">{offers.map(offer => {
+export function OfferList({ offers, defaults = [], groups = [] }: { offers: CoffeeOffer[]; defaults?: string[]; groups?: FilterGroup[] }) {
+  const brewLabel = (value: string) => groups.find(group => group.code === 'brew')?.values.find(option => option.code === value)?.name ?? value;
+  return <ul className="grid gap-4 md:grid-cols-2">{offers.map(offer => {
     const href = safePurchaseUrl(offer.sourceUrl);
-    return <li key={offer.offerKey} className="rounded-xl border border-stone-200 p-3 text-sm dark:border-[#4A3D35]">
-      <p className="text-base font-bold">{offer.weightGrams === null ? 'Вес не указан' : `${offer.weightGrams} г`} · {offer.price.toLocaleString()} {offer.currency}</p>
-      <p>{offer.grind ?? 'Помол не указан'} · {offer.brewPurpose ?? (defaults.length ? `Назначение: ${defaults.join(', ')}` : 'Назначение не подтверждено')}</p>
-      <p>{offer.sellerName} · {offer.availabilityScope === 'online' ? 'Онлайн' : 'В магазине'}</p>
-      <p>{({ InStock: 'В наличии по проверке источника', OutOfStock: 'Нет в наличии', Unknown: 'Наличие не подтверждено' })[offer.availability]}</p>
-      <p className="mt-1 text-xs text-stone-600 dark:text-stone-300">{checkedTime(offer.checkedAtUtc)}</p>
-      {offer.availability === 'InStock' && <p className="text-xs text-stone-600 dark:text-stone-300">Проверка источника не гарантирует остаток.</p>}
-      {href && <a className="mt-2 inline-flex min-h-11 items-center font-semibold text-amber-800 underline dark:text-yellow-400" href={href} target="_blank" rel="noopener noreferrer">У продавца ↗</a>}
+    return <li key={offer.offerKey} className={`${catalogPanel} flex flex-col gap-4 sm:p-5`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xl font-semibold">{offer.weightGrams === null ? 'Вес не указан' : `${offer.weightGrams} г`}</p>
+        <p className="flex items-center gap-2 text-xs font-medium" title="Наличие по последней проверке источника">
+          <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${offer.availability === 'InStock' ? 'bg-green-500' : offer.availability === 'OutOfStock' ? 'bg-red-500' : 'bg-stone-400'}`} />
+          {({ InStock: 'В наличии', OutOfStock: 'Нет в наличии', Unknown: 'Наличие не подтверждено' })[offer.availability]}
+        </p>
+      </div>
+      <p className="text-2xl font-bold tabular-nums">{offer.price.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {offer.currency}</p>
+      {href && <a className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-stone-900 transition-colors hover:bg-yellow-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" href={href} target="_blank" rel="noopener noreferrer">У продавца<AppIcon name="arrow_forward" size={18} className="-rotate-45" aria-hidden /></a>}
+      <dl className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-x-4 gap-y-2 text-xs leading-5">
+        <dt className="text-stone-500 dark:text-stone-400">Продавец</dt><dd className="break-words">{offer.sellerName}</dd>
+        <dt className="text-stone-500 dark:text-stone-400">Помол</dt><dd className="break-words">{offer.grind ?? 'Не указан'}</dd>
+        <dt className="text-stone-500 dark:text-stone-400">Приготовление</dt><dd className="break-words">{offer.brewPurpose ? brewLabel(offer.brewPurpose) : defaults.length ? defaults.map(brewLabel).join(', ') : 'Не подтверждено'}</dd>
+        <dt className="text-stone-500 dark:text-stone-400">Источник</dt><dd>{offer.availabilityScope === 'online' ? 'Онлайн' : 'В магазине'}</dd>
+        <dt className="text-stone-500 dark:text-stone-400">Проверено</dt><dd>{checkedTime(offer.checkedAtUtc).replace(/^Проверено /, '')}</dd>
+      </dl>
+      {offer.availability === 'InStock' && <p className="mt-auto text-xs text-stone-500 dark:text-stone-400">Проверка источника не гарантирует остаток.</p>}
     </li>;
   })}</ul>;
 }
@@ -69,7 +90,10 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
   }
   const tastes = coffee.classification.tasteGroups.map(value => label('taste', value));
   return <ShopCard coffee={coffee} colors={colors} onSelect={() => navigate(coffee.address.canonicalPath)}>
-      <p className="mb-2 truncate text-xs leading-5" style={{ color: colors.textSecondary }} title={coffee.countries.map(country => country.nameRu).join(', ')}>{coffee.countries.map(country => country.nameRu).join(', ') || 'Происхождение не указано'}</p>
+      <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs leading-5" style={{ color: colors.textSecondary }} title={coffee.countries.map(country => country.nameRu).join(', ')}>
+        {coffee.countries.map(country => countryFlagUrl(country.code) && <img key={country.code} src={countryFlagUrl(country.code)} alt="" width={20} height={15} loading="lazy" className="h-3.5 w-5 shrink-0 rounded-sm object-cover" onError={event => { event.currentTarget.hidden = true; }} />)}
+        <span className="truncate">{coffee.countries.map(country => country.nameRu).join(', ') || 'Происхождение не указано'}</span>
+      </p>
       {!!tastes.length && <div className="mb-3 flex flex-wrap gap-1.5">{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</div>}
       <div className="mt-auto space-y-2 border-t pt-3" style={{ borderColor: colors.border }}>
         {[...prices.entries()].map(([currency, price]) => {

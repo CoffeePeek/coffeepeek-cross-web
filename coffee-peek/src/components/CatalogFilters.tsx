@@ -3,7 +3,7 @@ import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import type { FacetGroup } from '../api/discovery';
-import { filterSchemas, normalizeFilters, type CatalogKind } from '../utils/catalogSearch';
+import { countryFlagUrl, filterSchemas, normalizeFilters, type CatalogKind } from '../utils/catalogSearch';
 import { catalogButton } from './CatalogCards';
 import { FilterAccordion, OptionRow } from './ShopFilterPanel';
 import { useTheme } from '../contexts/ThemeContext';
@@ -20,7 +20,7 @@ export function FilterChips({ filters, groups, onChange }: { filters: Record<str
   return <div className="my-4 flex flex-wrap gap-2">{entries.flatMap(([path, value]) => (Array.isArray(value) ? value : value === undefined || value === false ? [] : [value]).map(code => {
     const group = groups.find(group => group.code === path || (path === 'tags' && group.code === 'roasterTags'));
     const option = group?.options.find(option => option.code === String(code));
-    return <button type="button" key={`${path}:${code}`} className={`${catalogButton} text-sm`} onClick={() => {
+    return <button type="button" key={`${path}:${code}`} className={`${catalogButton} inline-flex items-center gap-2 text-sm`} onClick={() => {
       const [key, nested] = path.split('.');
       const next = { ...filters };
       const container = nested ? { ...(next[key] as Record<string, unknown>) } : next;
@@ -28,7 +28,7 @@ export function FilterChips({ filters, groups, onChange }: { filters: Record<str
       container[target] = Array.isArray(value) ? value.filter(item => item !== code) : target === 'availableOnly' ? false : undefined;
       if (nested) next[key] = container;
       onChange(normalizeFilters(next));
-    }}>{path === 'excludeTags' ? 'Без тега ' : ''}{option?.name ?? (code === true ? filterNames[path] ?? 'Выбрано' : `${filterNames[path.split('.').at(-1)!] ?? group?.name ?? 'Значение'}: ${code}`)} ×</button>;
+    }}>{path === 'countries' && countryFlagUrl(String(code)) && <img src={countryFlagUrl(String(code))} alt="" width={20} height={15} className="h-3.5 w-5 shrink-0 rounded-sm object-cover" onError={event => { event.currentTarget.hidden = true; }} />}{path === 'excludeTags' ? 'Без тега ' : ''}{option?.name ?? (code === true ? filterNames[path] ?? 'Выбрано' : `${filterNames[path.split('.').at(-1)!] ?? group?.name ?? 'Значение'}: ${code}`)} ×</button>;
   }))}</div>;
 }
 export function CatalogFilters({ kind, filters, groups = [], errors = {}, onApply }: {
@@ -86,7 +86,7 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
     const selected = get(path) as string[] | undefined ?? [];
     const missing = selected.filter(code => !group.options.some(option => option.code === code));
     return <fieldset key={group.code} className="space-y-1"><legend className="mb-2 font-semibold">{group.code === 'roasterTags' ? 'Услуги' : group.name}</legend>
-      {group.options.map(option => kind === 'coffees' ? <div key={option.code} className="border-t first:border-t-0" style={{ borderColor }}><OptionRow label={<span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span>{option.name}</span><span className="shrink-0 text-stone-600 dark:text-stone-300">({option.count})</span></span>} checked={selected.includes(option.code)} onClick={() => put(path, selected.includes(option.code) ? selected.filter(code => code !== option.code) : [...selected, option.code])} {...optionColors} /></div> : <label key={option.code} className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-yellow-600" checked={selected.includes(option.code)}
+      {group.options.map(option => kind === 'coffees' ? <div key={option.code} className="border-t first:border-t-0" style={{ borderColor }}><OptionRow label={<span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className="flex items-center gap-2">{path === 'countries' && countryFlagUrl(option.code) && <img src={countryFlagUrl(option.code)} alt="" width={20} height={15} loading="lazy" className="h-3.5 w-5 shrink-0 rounded-sm object-cover" onError={event => { event.currentTarget.hidden = true; }} />}{option.name}</span><span className="shrink-0 text-stone-600 dark:text-stone-300">({option.count})</span></span>} checked={selected.includes(option.code)} onClick={() => put(path, selected.includes(option.code) ? selected.filter(code => code !== option.code) : [...selected, option.code])} {...optionColors} /></div> : <label key={option.code} className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-yellow-600" checked={selected.includes(option.code)}
         onChange={() => put(path, selected.includes(option.code) ? selected.filter(code => code !== option.code) : [...selected, option.code])} /><span>{option.name} ({option.count})</span></label>)}
       {missing.map(code => <p key={code} role="alert">Значение «{code}» недоступно. <button type="button" className="underline" onClick={() => put(path, selected.filter(value => value !== code))}>Удалить фильтр</button></p>)}{errorNode(path)}
     </fieldset>;

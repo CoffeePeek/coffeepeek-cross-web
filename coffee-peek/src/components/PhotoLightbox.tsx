@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getPhotoUrl, type PhotoMetadataDto, type ShortPhotoMetadataDto } from '../api/coffeeshop';
 import { CaretLeft, CaretRight, X } from '@/components/Icon';
@@ -26,6 +26,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   initialIndex = 0,
   onClose,
 }) => {
+  const dialog = useRef<HTMLDialogElement>(null);
   const urls = images.map(toUrl).filter((url) => url.length > 0);
   const [index, setIndex] = React.useState(() =>
     Math.min(Math.max(initialIndex, 0), Math.max(urls.length - 1, 0))
@@ -40,16 +41,21 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   }, [urls.length]);
 
   useEffect(() => {
+    const element = dialog.current;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    element?.showModal();
+    element?.querySelector<HTMLButtonElement>('button[aria-label="Закрыть"]')?.focus();
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
+      element?.close();
+      previousFocus?.focus();
       document.body.style.overflow = prev;
     };
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowLeft') goPrev();
       if (e.key === 'ArrowRight') goNext();
     };
@@ -62,9 +68,10 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   const current = urls[index];
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[1300] flex items-center justify-center p-3 sm:p-6"
-      role="dialog"
+    <dialog
+      ref={dialog}
+      onCancel={onClose}
+      className="fixed inset-0 z-[1300] m-0 flex h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-transparent p-3 sm:p-6"
       aria-modal="true"
       aria-label={`Фото: ${shopName}`}
     >
@@ -127,7 +134,7 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
           draggable={false}
         />
       </div>
-    </div>,
+    </dialog>,
     document.body
   );
 };

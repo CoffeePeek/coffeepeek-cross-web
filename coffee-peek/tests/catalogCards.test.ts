@@ -20,7 +20,7 @@ test('coffee card uses matching offers, the project ruble sign and a compact foo
 });
 test('all detail offers keep currencies separate, unknown weight/stock and safe links', () => {
   const html = renderToStaticMarkup(React.createElement(OfferList, { offers: [offer, { ...offer, offerKey: 'rub', currency: 'RUB', price: 600, weightGrams: null, availability: 'Unknown', sourceUrl: 'javascript:alert(1)' }] }));
-  expect(html).toContain('32 BYN'); expect(html).toContain('600 RUB'); expect(html).toContain('Вес не указан'); expect(html).toContain('Наличие не подтверждено'); expect(html).not.toContain('javascript:'); expect(html).toContain('noopener noreferrer');
+  expect(html).toContain('32,00 BYN'); expect(html).toContain('600,00 RUB'); expect(html).toContain('Вес не указан'); expect(html).toContain('Наличие не подтверждено'); expect(html).not.toContain('javascript:'); expect(html).toContain('noopener noreferrer');
 });
 
 test('multiple weights show one minimum price per currency with the corresponding weight', () => {

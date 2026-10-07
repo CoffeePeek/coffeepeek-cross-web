@@ -1,5 +1,32 @@
-import { applyCriteria, discoveryRoasters, isDiscoveryFiltering, filterRoasters, readSearchState, writeSearchState, validateSearch, transferDiscovery, normalizeFilters, safePurchaseUrl } from '../src/utils/catalogSearch';
+import { applyCriteria, discoveryRoasters, isDiscoveryFiltering, filterRoasters, readSearchState, writeSearchState, validateSearch, transferDiscovery, normalizeFilters, safePurchaseUrl, countryFlagUrl, shareCoffee } from '../src/utils/catalogSearch';
 import type { RoasterCard } from '../src/api/discovery';
+
+test('coffee sharing uses the canonical URL, supports copying and ignores cancellation', async () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const share = jest.fn().mockResolvedValue(undefined);
+  const writeText = jest.fn().mockResolvedValue(undefined);
+  const browser = { share, clipboard: { writeText } };
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: browser });
+  try {
+    expect(await shareCoffee('Brazil', '/coffees/brazil')).toBe('shared');
+    expect(share).toHaveBeenCalledWith({ title: 'Brazil', text: 'Кофе «Brazil» в CoffeePeek', url: 'https://coffeepeek.by/coffees/brazil' });
+    expect(writeText).not.toHaveBeenCalled();
+    share.mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'));
+    expect(await shareCoffee('Brazil', '/coffees/brazil')).toBe('cancelled');
+    expect(writeText).not.toHaveBeenCalled();
+    Object.defineProperty(browser, 'share', { value: undefined });
+    expect(await shareCoffee('Brazil', '/coffees/brazil')).toBe('copied');
+    expect(writeText).toHaveBeenCalledWith('https://coffeepeek.by/coffees/brazil');
+    writeText.mockRejectedValueOnce(new Error('Clipboard denied'));
+    await expect(shareCoffee('Brazil', '/coffees/brazil')).rejects.toThrow('Clipboard denied');
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'navigator', previous);
+    else Reflect.deleteProperty(globalThis, 'navigator');
+  }
+  expect(countryFlagUrl('BR')).toBe('https://flagcdn.com/br.svg');
+  expect(countryFlagUrl('et')).toBe('https://flagcdn.com/et.svg');
+  for (const code of ['', 'BRA', '../br', 'br?test']) expect(countryFlagUrl(code)).toBeUndefined();
+});
 
 test('URL restores criteria and independent discovery pages; changes reset both', () => {
   const state = { q: '  кофе   Ёж ', filters: { brew: ['filter'], budget: { currency: 'BYN', maxDrinkPrice: 10, maxCoffeePrice: 50, coffeeWeightGrams: 250 } }, sort: 'relevance', page: 1, coffeeShopsPage: 3, roastersPage: 2 };
