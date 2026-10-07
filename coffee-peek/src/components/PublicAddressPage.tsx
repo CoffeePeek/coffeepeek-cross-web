@@ -5,6 +5,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { getBySlug } from '../api/publicAddresses';
 import { normalizeResponseData } from '../api/core/interceptors';
 import WobbleRing from './WobbleRing';
+import { ShopDetailSkeleton } from './skeletons';
 import { getCatalogScope } from '../lib/catalogSession';
 import { useUser } from '../contexts/UserContext';
 
@@ -35,7 +36,9 @@ export default function PublicAddressPage({ kind, param, children }: { kind: Add
     if (target !== location.pathname) navigate(target + location.search, { replace: true, state: location.state });
     return () => { if (created) canonical?.remove(); else if (canonical && previous) canonical.href = previous; };
   }, [query.data, location.pathname, location.search, location.state, navigate, kind]);
-  if (query.isPending) return <div className="flex min-h-[70vh] items-center justify-center"><WobbleRing size={48} /></div>;
+  if (query.isPending) return kind === 'shops' && /^\/(?:shops|coffee-shops)\/[^/]+\/?$/.test(location.pathname)
+    ? <ShopDetailSkeleton />
+    : <div className="flex min-h-[70vh] items-center justify-center"><WobbleRing size={48} /></div>;
   if (query.isError) {
     const status = (query.error as { status?: number }).status;
     return <main className="p-8 text-center"><p>{status === 404 ? 'Не найдено' : status === 400 ? 'Некорректный адрес' : 'Страница временно недоступна'}</p>

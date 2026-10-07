@@ -177,7 +177,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
         <div className="discovery-results" aria-live="polite" aria-busy={query.isFetching || roasters.isFetching}>
           {section !== 'shops' && (localRoasters.length > 0 || roasters.isPending && enabled) && <section aria-label="Обжарщики" className="discovery-roasters">
             {sectionHeading('Обжарщики', localRoasters.length, 'roasters')}
-            <div className="discovery-cards discovery-cards--roasters" role="group" aria-label="Карточки обжарщиков" tabIndex={overview && !desktop ? 0 : undefined}>{roasters.isPending && enabled ? <ShopCardSkeleton count={columns} /> : (overview && desktop ? localRoasters.slice(0, columns) : localRoasters).map((roaster, index) => <RoasterCatalogCard key={roaster.address.slug ?? index} roaster={roaster} />)}</div>
+            <div className="discovery-cards discovery-cards--roasters" role="group" aria-label="Карточки обжарщиков" tabIndex={overview && !desktop ? 0 : undefined}>{roasters.isPending && enabled ? <ShopCardSkeleton variant="roaster" count={columns} /> : (overview && desktop ? localRoasters.slice(0, columns) : localRoasters).map((roaster, index) => <RoasterCatalogCard key={roaster.address.slug ?? index} roaster={roaster} />)}</div>
           </section>}
           {section !== 'roasters' && <section aria-label="Кофейни" className="discovery-shops">
             {sectionHeading('Кофейни', total, 'shops')}

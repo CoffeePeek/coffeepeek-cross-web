@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCoffeeFilterValues, searchCoffees } from '../api/discovery';
 import { CoffeeCatalogCard, FavoriteButton, catalogButton, catalogPanel, checkedTime } from '../components/CatalogCards';
 import { getCatalogScope } from '../lib/catalogSession';
-import { ShopCardSkeleton, ShopDetailSkeleton } from '../components/skeletons';
+import { ShopCardSkeleton, RoasterDetailSkeleton } from '../components/skeletons';
 import PhotoCarousel from '../components/PhotoCarousel';
 import Mascot from '../components/Mascot';
 import { useTheme } from '../contexts/ThemeContext';
@@ -50,8 +50,8 @@ const RoasterDetailPage: React.FC = () => {
   const cardBg = tc.bg.card;
   const borderColor = tc.border.default;
 
-  if (isLoading) {
-    return <ShopDetailSkeleton />;
+  if (isLoading || (!resolution && legacy.isPending)) {
+    return <RoasterDetailSkeleton />;
   }
 
   if (error || !roaster) {
@@ -128,7 +128,7 @@ const RoasterDetailPage: React.FC = () => {
           <div><h2 className="text-2xl font-bold">Кофе в ассортименте</h2>{assortment.data && <p className={`mt-1 text-sm ${textMuted}`}>Доступных товаров: {assortment.data.totalItems}</p>}</div>
           <Link className={`inline-flex min-h-11 items-center gap-2 font-semibold ${tc.primary.text} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`} to={catalogPath}>Весь кофе обжарщика<AppIcon name="arrow_forward" size={18} /></Link>
         </div>
-        {assortment.isPending && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Загрузка ассортимента"><ShopCardSkeleton count={3} /></div>}
+        {assortment.isPending && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Загрузка ассортимента"><ShopCardSkeleton variant="coffee" count={3} /></div>}
         {assortment.isError && <div className={catalogPanel} role="alert"><p>Ассортимент временно недоступен.</p><Button variant="secondary" className="mt-3" onClick={() => void assortment.refetch()}>Повторить</Button></div>}
         {assortment.data && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {assortment.data.items.map(coffee => <CoffeeCatalogCard key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}

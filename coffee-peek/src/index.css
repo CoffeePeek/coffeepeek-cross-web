@@ -397,6 +397,26 @@
   }
 }
 
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+.skeleton-shimmer-dark::after { opacity: .18; }
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer::after { animation: none; }
+}
+
 /* Shared discovery: the same map stays mounted through both panel transitions. */
 .discovery-layout {
   --discovery-map-height: max(520px, calc(var(--app-content-height, 100dvh) - 32px));

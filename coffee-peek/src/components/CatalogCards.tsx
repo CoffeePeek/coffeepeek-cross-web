@@ -113,14 +113,16 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
               {currency === 'BYN' ? <><BynSign size={22} color="currentColor" /><span className="sr-only">белорусских рублей</span></> : <span className="text-base">{currency}</span>}
             </p>
             {weights.length === 1 ? <span className="ml-auto rounded-full border px-2.5 py-1 text-xs" style={{ borderColor: colors.border, color: colors.textSecondary }}>{weightLabel(selectedWeight)}</span>
-              : weights.length > 4 ? <select aria-label={`Вес упаковки ${coffee.name} (${currency})`} value={selectedWeight ?? 'unknown'} onClick={event => event.stopPropagation()} onChange={event => selectWeight(event.target.value === 'unknown' ? null : Number(event.target.value))}
-                className="ml-auto min-h-11 rounded-full border px-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ background: colors.background, borderColor: colors.border, color: colors.textPrimary }}>
-                {weights.map(weight => <option key={weight ?? 'unknown'} value={weight ?? 'unknown'}>{weightLabel(weight)}</option>)}
-              </select>
+              : weights.length > 4 ? <div className="relative ml-auto h-8 rounded-full border focus-within:ring-2 focus-within:ring-primary" style={{ background: colors.background, borderColor: colors.border, color: colors.textPrimary }}>
+                <select aria-label={`Вес упаковки ${coffee.name} (${currency})`} value={selectedWeight ?? 'unknown'} onClick={event => event.stopPropagation()} onChange={event => selectWeight(event.target.value === 'unknown' ? null : Number(event.target.value))}
+                  className="relative -top-[7px] h-11 rounded-full border-0 bg-transparent px-3 text-xs outline-none">
+                  {weights.map(weight => <option key={weight ?? 'unknown'} value={weight ?? 'unknown'}>{weightLabel(weight)}</option>)}
+                </select>
+              </div>
               : <div role="radiogroup" aria-label={`Вес упаковки ${coffee.name} (${currency})`} onClick={event => event.stopPropagation()} className="ml-auto grid grid-flow-col auto-cols-fr gap-0.5 rounded-full p-0.5" style={{ background: colors.background, border: `1px solid ${colors.border}` }}>
-                {weights.map(weight => <label key={weight ?? 'unknown'} className="relative cursor-pointer">
+                {weights.map(weight => <label key={weight ?? 'unknown'} className="group relative cursor-pointer after:absolute after:inset-x-0 after:-inset-y-[7px] after:content-['']">
                   <input type="radio" name={`${weightControlId}-${currency}`} value={weight ?? 'unknown'} checked={selectedWeight === weight} onChange={() => selectWeight(weight)} aria-label={weightLabel(weight)} className="peer sr-only" />
-                  <span className="flex min-h-11 min-w-11 items-center justify-center rounded-full px-2 text-xs font-semibold transition-[background-color,box-shadow] hover:bg-primary/10 peer-checked:bg-white peer-checked:text-stone-900 peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-primary dark:peer-checked:bg-stone-600 dark:peer-checked:text-white" style={{ color: selectedWeight === weight ? undefined : colors.textSecondary }}>{weight ?? '—'}</span>
+                  <span className="flex min-h-[30px] min-w-11 items-center justify-center rounded-full px-2 text-xs font-semibold transition-[background-color,box-shadow] group-hover:bg-primary/10 peer-checked:bg-white peer-checked:text-stone-900 peer-checked:shadow-sm peer-focus-visible:ring-2 peer-focus-visible:ring-primary dark:peer-checked:bg-stone-600 dark:peer-checked:text-white" style={{ color: selectedWeight === weight ? undefined : colors.textSecondary }}>{weight ?? '—'}</span>
                 </label>)}
               </div>}
           </div>;

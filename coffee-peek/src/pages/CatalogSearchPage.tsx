@@ -15,7 +15,7 @@ import ShopCatalogFilters from '../components/ShopCatalogFilters';
 import ShopSearchBar from '../components/ShopSearchBar';
 import Mascot from '../components/Mascot';
 import { CoffeeCatalogCard, RoasterCatalogCard, ShopCatalogCard, CatalogPagination, catalogButton, catalogPanel } from '../components/CatalogCards';
-import { ShopCardSkeleton } from '../components/skeletons';
+import { Shimmer, ShopCardSkeleton } from '../components/skeletons';
 import { useFavorites } from '../hooks/useFavorites';
 import { useLocalCity } from '../hooks/useLocalCity';
 import { useLoadMoreOnScroll } from '../hooks/useLoadMoreOnScroll';
@@ -98,7 +98,11 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
     if (kind !== 'roasters' && kind !== 'coffees') { dialog.current?.close(); setMobileOpen(false); }
     if (!user && (filters.favoritesOnly || filters.visitedOnly)) navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, kind)}` } } });
   };
-  const filterForm = () => kind === 'shops' ? <ShopCatalogFilters filters={state.filters as ShopFilters} onApply={apply} /> : <CatalogFilters kind={kind} filters={state.filters} groups={groups} errors={errors} onApply={apply} />;
+  const filterForm = () => kind === 'coffees' && facets.isPending && enabled
+    ? <div role="status" aria-label="Загрузка фильтров" className="overflow-hidden rounded-[22px] border" style={{ background: colors.surface, borderColor: colors.border }}>
+      {[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="flex h-14 items-center justify-between gap-4 px-4" style={{ borderTop: i ? `1px solid ${colors.border}` : undefined }}><Shimmer width={`${60 + i % 3 * 10}%`} height={16} /><Shimmer width={12} height={12} /></div>)}
+    </div>
+    : kind === 'shops' ? <ShopCatalogFilters filters={state.filters as ShopFilters} onApply={apply} /> : <CatalogFilters kind={kind} filters={state.filters} groups={groups} errors={errors} onApply={apply} />;
   const reset = () => update(applyCriteria(state, { filters: kind === 'coffees' ? { availableOnly: true } : {}, q: '', sort: 'name_asc' }));
   const cards = (items: (CoffeeCard | RoasterCard | ShopCard)[], section: CatalogKind) => <div className="grid grid-cols-1 gap-4 md:grid-cols-2 min-[1180px]:grid-cols-3">{items.map((item, index) => section === 'coffees' ? <CoffeeCatalogCard key={item.address.slug} coffee={item as CoffeeCard} groups={dictionary.data ?? []} />
     : section === 'roasters' ? <RoasterCatalogCard key={item.address.slug ?? index} roaster={item as RoasterCard} /> : <ShopCatalogCard key={item.address.slug} shop={item as ShopCard} />)}</div>;
@@ -128,7 +132,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
       {resultsQuery.isError && (resultsQuery.error as { status?: number })?.status === 400 && <div role="alert" className={catalogPanel}><p>Проверьте фильтры. Сохранённое значение могло быть деактивировано; удалите его явно.</p><button className={catalogButton} onClick={reset}>Сбросить фильтры</button></div>}
       {!scroll && resultsQuery.isFetching && resultsQuery.data && <p role="status">{query.isFetchingNextPage ? 'Загрузка результатов…' : 'Обновление результатов…'}</p>}
       {kind === 'coffees' && facets.data?.priceRange && <p className="text-sm">Диапазон цен для {facets.data.priceRange.weightGrams} г: {facets.data.priceRange.min}–{facets.data.priceRange.max} {facets.data.priceRange.currency}</p>}
-      {(resultsQuery.isPending || (kind === 'discovery' && roasters.isPending)) && enabled && <div className="grid grid-cols-1 gap-4 md:grid-cols-2"><ShopCardSkeleton count={4} /></div>}
+      {(resultsQuery.isPending || (kind === 'discovery' && roasters.isPending)) && enabled && <div className="grid grid-cols-1 gap-4 md:grid-cols-2 min-[1180px]:grid-cols-3" role="status" aria-label="Загрузка результатов"><ShopCardSkeleton variant={kind === 'coffees' ? 'coffee' : kind === 'roasters' ? 'roaster' : 'card'} count={6} /></div>}
       {page && <>{!scroll && <p aria-live="polite">Результатов: {page.totalItems}</p>}{page.items.length ? cards(page.items, kind) : <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border px-6 py-16 text-center" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
         <Mascot pose="search" size={132} /><p className="mt-3 text-sm" style={{ color: colors.textSecondary }}>Ничего не найдено. Попробуйте другой фильтр.</p>
       </div>}{scroll ? <div ref={loadMoreRef} className="h-1" aria-hidden="true" /> : <CatalogPagination label={titles[kind]} page={state.page} totalPages={page.totalPages} onChange={page => update({ ...state, page })} />}</>}

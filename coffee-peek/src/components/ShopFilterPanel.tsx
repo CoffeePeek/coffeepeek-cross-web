@@ -143,7 +143,7 @@ export const OptionRow: React.FC<{
     aria-pressed={checked}
     style={{
       width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-      minHeight: 44, padding: '7px 8px', border: 'none', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+      minHeight: 44, padding: '7px 8px', border: 'none', borderRadius: 0, cursor: 'pointer', textAlign: 'left',
     }}
   >
     {icon}

@@ -5,7 +5,7 @@ import { getCoffeeDetails, getCoffeeFilterValues, searchCoffees } from '../api/d
 import { useTheme } from '../contexts/ThemeContext';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { CatalogPhoto, ClassificationBadges, CoffeeCatalogCard, OfferList, catalogButton, catalogPanel, checkedTime } from '../components/CatalogCards';
-import { ShopCardSkeleton, ShopDetailSkeleton } from '../components/skeletons';
+import { ShopCardSkeleton, CoffeeDetailSkeleton } from '../components/skeletons';
 import { useUser } from '../contexts/UserContext';
 import { getCatalogScope } from '../lib/catalogSession';
 import { getThemeClasses } from '../utils/theme';
@@ -46,7 +46,7 @@ export default function CoffeeDetailPage() {
     const canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = `https://coffeepeek.by${address.canonicalPath}`;
     document.head.append(canonical); return () => canonical.remove();
   }, [query.data, slug, navigate]);
-  if (query.isPending) return <ShopDetailSkeleton />;
+  if (query.isPending) return <CoffeeDetailSkeleton />;
   if (query.isError) return <main className="p-6"><p role="alert">{(query.error as { status?: number }).status === 404 ? 'Кофе не найден' : 'Карточка временно недоступна'}</p><button className={catalogButton} onClick={() => void query.refetch()}>Повторить</button><Link className={catalogButton} to="/coffees">Каталог кофе</Link></main>;
   const coffee = query.data;
   const photoIndex = Math.min(activePhoto, Math.max(0, coffee.photos.length - 1));
@@ -101,7 +101,14 @@ export default function CoffeeDetailPage() {
             <InfoChip colors={colors}><span className="flex flex-wrap items-center gap-2 py-1">{countries}</span></InfoChip>
             <InfoChip colors={colors}><AppIcon name="coffee-bean" size={20} className="mr-2 shrink-0" aria-hidden />{productKind} · {productForm}</InfoChip>
           </div>
-          {coffee.description && <p className={`whitespace-pre-wrap break-words text-base leading-relaxed ${tc.text.secondary}`}>{coffee.description}</p>}
+          {coffee.description && (coffee.description.length > 300 || coffee.description.split('\n').length > 4
+            ? <details key={coffee.address.slug} className="group">
+              <summary className={`inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg text-sm font-semibold underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden ${tc.text.primary}`}>
+                <span className="group-open:hidden">Показать всё</span><span className="hidden group-open:inline">Скрыть</span>
+              </summary>
+              <p className={`whitespace-pre-wrap break-words text-base leading-relaxed ${tc.text.secondary}`}>{coffee.description}</p>
+            </details>
+            : <p className={`whitespace-pre-wrap break-words text-base leading-relaxed ${tc.text.secondary}`}>{coffee.description}</p>)}
         </div>
         <ClassificationBadges value={coffee.classification} groups={dictionary.data ?? []} layout="details" />
         {dictionary.isError && <p role="alert" className={`text-sm ${tc.text.secondary}`}>Названия характеристик временно недоступны. <button className={catalogButton} onClick={() => void dictionary.refetch()}>Повторить</button></p>}
@@ -125,7 +132,7 @@ export default function CoffeeDetailPage() {
     </section>
     <section aria-labelledby="similar-coffees" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="similar-coffees" className="text-xl font-bold">Похожие сорта</h2><Link to={`/coffees?filters=${encodeURIComponent(JSON.stringify(similarFilters))}`} className="inline-flex min-h-11 items-center gap-2 text-sm underline outline-none focus-visible:ring-2 focus-visible:ring-primary">Смотреть все<AppIcon name="arrow_forward" size={18} aria-hidden /></Link></div>
-      {similar.isPending && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="Загрузка похожих сортов"><ShopCardSkeleton count={4} /></div>}
+      {similar.isPending && <div className="relative flex gap-4 overflow-x-auto pb-3 [contain:paint] sm:grid sm:grid-cols-2 lg:grid-cols-4 [&>article]:w-[80%] [&>article]:shrink-0 sm:[&>article]:w-auto" role="status" aria-label="Загрузка похожих сортов"><ShopCardSkeleton variant="coffee" count={4} /></div>}
       {similar.isError && <div className={catalogPanel} role="alert"><p>Похожие сорта временно недоступны.</p><Button variant="secondary" className="mt-3" onClick={() => void similar.refetch()}>Повторить</Button></div>}
       {!!similarCoffees.length && <div role="group" aria-label="Похожие сорта кофе" tabIndex={0} className="relative flex gap-4 overflow-x-auto pb-3 outline-none [contain:paint] focus-visible:ring-2 focus-visible:ring-primary sm:grid sm:grid-cols-2 lg:grid-cols-4 [&>article]:w-[80%] [&>article]:shrink-0 sm:[&>article]:w-auto">{similarCoffees.map(item => <CoffeeCatalogCard key={item.address.slug} coffee={item} groups={dictionary.data ?? []} />)}</div>}
       {similar.isSuccess && !similarCoffees.length && <p className={`text-sm ${tc.text.secondary}`}>Похожих сортов пока нет.</p>}

@@ -7,6 +7,8 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 jest.mock('../src/api/discovery', () => ({}));
 jest.mock('../src/api/coffeeshop', () => ({}));
+jest.mock('../src/api/publicAddresses', () => ({ getBySlug: jest.fn() }));
+jest.mock('../src/api/core/interceptors', () => ({ normalizeResponseData: (data: unknown) => data }));
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
 jest.mock('../src/contexts/UserContext', () => ({ useUser: () => ({ user: null, isLoading: false }) }));
 jest.mock('../src/contexts/ToastContext', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
@@ -21,7 +23,7 @@ jest.mock('../src/utils/lazyWithRetry', () => ({ lazyWithRetry: () => () => null
 jest.mock('../src/components/ShopFilterPanel', () => ({ __esModule: true, default: () => 'Цена' }));
 jest.mock('../src/components/CatalogFilters', () => ({ CatalogFilters: () => null, FilterChips: () => null, activeFilterCount: () => 0, catalogInput: '' }));
 jest.mock('../src/components/Mascot', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/components/skeletons', () => ({ ShopCardSkeleton: () => 'Загрузка' }));
+jest.mock('../src/components/skeletons', () => ({ Shimmer: () => null, ShopCardSkeleton: () => 'Загрузка', ShopDetailSkeleton: () => 'Загрузка кофейни' }));
 jest.mock('../src/components/CatalogCards', () => ({
   ShopCatalogCard: ({ shop }: { shop: { name: string } }) => shop.name,
   CoffeeCatalogCard: () => null, RoasterCatalogCard: ({ roaster }: { roaster: { name: string } }) => roaster.name, CatalogPagination: () => null,
@@ -30,7 +32,8 @@ jest.mock('../src/components/CatalogCards', () => ({
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import PublicAddressPage from '../src/components/PublicAddressPage';
 import CoffeeShopList from '../src/components/CoffeeShopList';
 import CatalogSearchPage from '../src/pages/CatalogSearchPage';
 
@@ -84,4 +87,18 @@ test('the default city restored from the URL keeps the overview map visible', ()
   const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(CoffeeShopList)));
   expect(html).toContain('discovery-layout--overview');
   expect(html).not.toContain('discovery-map--hidden');
+});
+
+test('public shop profiles show their skeleton while resolving; edit routes keep their own loading state', () => {
+  const previous = mockRoasters;
+  mockRoasters = { isPending: true };
+  try {
+    const render = (url: string, path: string) => renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] },
+      React.createElement(Routes, {}, React.createElement(Route, { path, element: React.createElement(PublicAddressPage, { kind: 'shops', param: 'shopId' }) }))));
+    expect(render('/shops/cafe', '/shops/:shopId')).toContain('Загрузка кофейни');
+    expect(render('/coffee-shops/cafe/', '/coffee-shops/:shopId')).toContain('Загрузка кофейни');
+    expect(render('/coffee-shops/cafe/edit', '/coffee-shops/:shopId/edit')).not.toContain('Загрузка кофейни');
+  } finally {
+    mockRoasters = previous;
+  }
 });

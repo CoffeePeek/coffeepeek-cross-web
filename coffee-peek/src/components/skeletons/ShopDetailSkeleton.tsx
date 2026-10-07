@@ -4,79 +4,50 @@ import Shimmer from './Shimmer';
 
 const ShopDetailSkeleton: React.FC = () => {
   const { theme } = useTheme();
-  const isDark = theme === 'dark';
-  
-  const bgClass = isDark ? 'bg-[#1A1412]' : 'bg-[#FCFBFA]';
-  const cardBg = isDark ? 'bg-[#2D241F]' : 'bg-white';
-  const borderColor = isDark ? 'border-[#3D2F28]' : 'border-[#E8E4E1]';
+  const dark = theme === 'dark';
+  const panel = 'rounded-[24px] border p-5';
+  const panelStyle = { background: dark ? '#2B211C' : '#FFFFFF', borderColor: dark ? '#46362F' : '#E7E5E4' };
 
-  return (
-    <div className={`min-h-screen ${bgClass} font-body`}>
-      {/* Галерея фотографий skeleton */}
-      <section className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-12 grid-rows-2 gap-4 h-[500px]">
-          <div className="col-span-12 md:col-span-8 row-span-2 rounded-3xl overflow-hidden">
-            <Shimmer width="100%" height="100%" className="rounded-3xl" />
-          </div>
-          <div className="hidden md:block col-span-4 row-span-1 rounded-3xl overflow-hidden">
-            <Shimmer width="100%" height="100%" className="rounded-3xl" />
-          </div>
-          <div className="hidden md:block col-span-4 row-span-1 rounded-3xl overflow-hidden">
-            <Shimmer width="100%" height="100%" className="rounded-3xl" />
-          </div>
+  return <div role="status" aria-label="Загрузка кофейни" className="min-h-screen overflow-x-hidden pb-28" style={{ background: dark ? '#171210' : '#F8F7F5' }}>
+    <section aria-hidden="true" className="relative mx-auto h-[320px] max-w-7xl overflow-hidden rounded-b-[28px] sm:mt-6 sm:h-[420px] sm:rounded-[28px] lg:h-[520px]">
+      <div className="grid h-full grid-cols-1 md:grid-cols-12 md:grid-rows-2 md:gap-3">
+        <Shimmer height="100%" className="!rounded-none md:col-span-8 md:row-span-2" />
+        <Shimmer height="100%" className="hidden !rounded-none md:col-span-4 md:block" />
+        <Shimmer height="100%" className="hidden !rounded-none md:col-span-4 md:block" />
+      </div>
+      <div className="absolute inset-x-5 top-5 flex justify-between lg:hidden">
+        <Shimmer width={48} height={48} circle />
+        <div className="flex gap-2">{[0, 1, 2].map(i => <Shimmer key={i} width={48} height={48} circle />)}</div>
+      </div>
+      <div className="absolute inset-x-5 bottom-5 space-y-2">
+        <Shimmer width="55%" height={32} />
+        <Shimmer width="40%" height={20} />
+      </div>
+    </section>
+    <main aria-hidden="true" className="mx-auto max-w-[920px] space-y-7 px-4 py-6 sm:px-6 sm:py-8">
+      <section>
+        <div className="mb-6 hidden items-center justify-between gap-4 lg:flex">
+          <Shimmer width="40%" height={32} /><div className="flex gap-2"><Shimmer width={44} height={44} circle /><Shimmer width={120} height={44} circle /></div>
         </div>
+        <div className="grid grid-cols-3 gap-2.5">
+          {[0, 1, 2].map(i => <div key={i} className="space-y-2 rounded-[22px] p-4" style={panelStyle}><Shimmer width="75%" height={24} /><Shimmer height={12} /></div>)}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2"><Shimmer width={90} height={32} circle /><Shimmer width={112} height={32} circle /><Shimmer width={76} height={32} circle /></div>
       </section>
-
-      {/* Основной контент */}
-      <section className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-12 gap-12">
-        {/* Левая колонка */}
-        <div className="col-span-12 lg:col-span-8 space-y-12">
-          {/* Заголовок */}
-          <div>
-            <Shimmer width="60%" height="48px" className="mb-4" />
-            <div className="flex items-center gap-3">
-              <Shimmer width="80px" height="28px" />
-              <Shimmer width="120px" height="28px" />
-              <Shimmer width="100px" height="28px" />
-            </div>
-          </div>
-
-          {/* Описание */}
-          <div className={`${cardBg} p-6 rounded-3xl border ${borderColor}`}>
-            <Shimmer width="200px" height="32px" className="mb-4" />
-            <Shimmer width="100%" height="16px" className="mb-2" />
-            <Shimmer width="95%" height="16px" className="mb-2" />
-            <Shimmer width="90%" height="16px" />
-          </div>
-
-          {/* Детали кофе */}
-          <div className={`${cardBg} p-6 rounded-3xl border ${borderColor}`}>
-            <Shimmer width="200px" height="32px" className="mb-4" />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i}>
-                  <Shimmer width="140px" height="20px" className="mb-3" />
-                  <div className="flex flex-wrap gap-2">
-                    <Shimmer width="80px" height="32px" />
-                    <Shimmer width="100px" height="32px" />
-                    <Shimmer width="90px" height="32px" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Правая колонка */}
-        <div className="col-span-12 lg:col-span-4 space-y-8">
-          <div className={`${cardBg} rounded-3xl border ${borderColor} p-8`}>
-            <Shimmer width="100%" height="80px" className="mb-6" />
-            <Shimmer width="100%" height="200px" />
-          </div>
-        </div>
+      <section className="space-y-3">
+        <Shimmer width={160} height={28} />
+        <div className={`${panel} space-y-3`} style={panelStyle}><Shimmer height={16} /><Shimmer width="95%" height={16} /><Shimmer width="70%" height={16} /></div>
       </section>
+      <section className="space-y-3">
+        <Shimmer width={112} height={28} />
+        <div className={`${panel} space-y-5`} style={panelStyle}>{[0, 1, 2].map(i => <div key={i} className="flex items-center justify-between gap-6"><Shimmer width="45%" height={20} /><Shimmer width={56} height={20} /></div>)}</div>
+      </section>
+      <div className={`${panel} flex items-center gap-4`} style={panelStyle}><Shimmer width={48} height={48} className="!rounded-2xl" /><div className="min-w-0 flex-1"><Shimmer height={20} /></div><Shimmer width={72} height={16} /></div>
+    </main>
+    <div aria-hidden="true" className="fixed inset-x-0 bottom-0 z-[1150] flex items-center gap-2 border-t px-4 py-3 lg:hidden" style={{ ...panelStyle, paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+      <Shimmer width={48} height={48} circle /><div className="flex-1"><Shimmer height={48} circle /></div><div className="flex-1"><Shimmer height={48} circle /></div>
     </div>
-  );
+  </div>;
 };
 
 export default ShopDetailSkeleton;

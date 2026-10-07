@@ -21,7 +21,8 @@ const Shimmer: React.FC<ShimmerProps> = ({
 
   return (
     <div
-      className={`animate-pulse ${circle ? 'rounded-full' : 'rounded-lg'} ${className}`}
+      aria-hidden="true"
+      className={`skeleton-shimmer ${isDark ? 'skeleton-shimmer-dark' : ''} ${circle ? 'rounded-full' : 'rounded-lg'} ${className}`}
       style={{
         width,
         height,

@@ -24,6 +24,14 @@ import type { CoffeeCard } from '../src/api/discovery';
 const address = { slug: 'roast', canonicalPath: '/roasters/roast', revision: 1, isAlias: false };
 const coffee: CoffeeCard = { address: { ...address, slug: 'coffee', canonicalPath: '/coffees/coffee' }, name: 'Кофе', roaster: { name: 'Обжарщик', address, coverPhoto: null }, coverPhoto: null, productKind: 'roasted_beans', productForm: 'whole_beans', classification: { defaultBrewPurposes: [], caffeine: null, roastLevel: null, acidity: null, processing: [], fermentation: [], tasteGroups: [], composition: null }, countries: [], matchingOffers: [], sortPrice: null, createdAtUtc: '', catalogCheckedAtUtc: null };
 
+test('pending coffee and roaster requests show their page skeletons, including a disabled roaster query during session restoration', () => {
+  jest.mocked(useRoaster).mockReturnValue({ isLoading: false, isPending: true } as ReturnType<typeof useRoaster>);
+  jest.mocked(useQuery).mockReturnValue({ isPending: true } as ReturnType<typeof useQuery>);
+  const render = (page: React.ReactElement) => renderToStaticMarkup(React.createElement(MemoryRouter, {}, page));
+  expect(render(React.createElement(RoasterDetailPage))).toContain('aria-label="Загрузка обжарщика"');
+  expect(render(React.createElement(CoffeeDetailPage))).toContain('aria-label="Загрузка кофе"');
+});
+
 test('roaster assortment end state requires a complete successful result and zero counts remain visible', () => {
   jest.mocked(useRoaster).mockReturnValue({ data: { id: 'roast', name: 'Обжарщик', publicAddress: address, photos: [], shops: [], location: { address: 'Минск' }, coffeeProductsCount: 0, coffeeShopsCount: '0' }, isLoading: false, error: null } as ReturnType<typeof useRoaster>);
   const render = (items: CoffeeCard[], totalItems: number, isError = false) => {
@@ -83,4 +91,24 @@ test('coffee detail keeps product photos, country flags and related coffees in t
   expect(html).toContain('Открыть кофе Другой кофе');
   expect(html).not.toContain('Открыть кофе Кофе');
   expect(html).toContain('href="/roasters/roast"');
+});
+
+test('long coffee descriptions use a closed disclosure while short and missing descriptions need no control', () => {
+  const render = (description: string | null) => {
+    jest.mocked(useQuery).mockImplementation(({ queryKey }: any) => queryKey.includes('coffee-detail')
+      ? { data: { ...coffee, photos: [], offers: [], description, tasteDescriptors: [] }, isPending: false, isError: false } as any
+      : { data: [] } as any);
+    return renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CoffeeDetailPage)));
+  };
+  for (const description of ['Описание кофе. '.repeat(30), 'Один\nДва\nТри\nЧетыре\nПять']) {
+    const html = render(description);
+    const disclosure = html.match(/<details\b[^>]*>/)?.[0];
+    expect(disclosure).toBeDefined();
+    expect(disclosure).not.toMatch(/\bopen(?:\s|=|>)/);
+    expect(html).toContain('Показать всё');
+    expect(html).toContain('Скрыть');
+    expect(html).toContain(description);
+  }
+  expect(render('Короткое описание')).not.toContain('<details');
+  expect(render(null)).not.toContain('Показать всё');
 });
