@@ -8,10 +8,12 @@ import { CatalogPhoto, ClassificationBadges, OfferList, catalogButton, checkedTi
 import { ShopDetailSkeleton } from '../components/skeletons';
 import { useUser } from '../contexts/UserContext';
 import { getCatalogScope } from '../lib/catalogSession';
+import { getThemeClasses } from '../utils/theme';
 
 export default function CoffeeDetailPage() {
   const { slug = '' } = useParams();
   const { theme } = useTheme();
+  const tc = getThemeClasses(theme);
   const navigate = useNavigate();
   const { isLoading } = useUser();
   const query = useQuery({ queryKey: ['catalog', getCatalogScope(), 'coffee-detail', slug], queryFn: ({ signal }) => getCoffeeDetails(slug, signal), enabled: !isLoading, retry: false, staleTime: 0 });
@@ -28,8 +30,16 @@ export default function CoffeeDetailPage() {
   if (query.isError) return <main className="p-6"><p role="alert">{(query.error as { status?: number }).status === 404 ? 'Кофе не найден' : 'Карточка временно недоступна'}</p><button className={catalogButton} onClick={() => void query.refetch()}>Повторить</button><Link className={catalogButton} to="/coffees">Каталог кофе</Link></main>;
   const coffee = query.data;
   return <main className={`mx-auto max-w-4xl space-y-5 p-4 pb-28 sm:p-6 ${theme === 'dark' ? 'text-white' : 'text-stone-900'}`}>
-    <Link className={catalogButton} to="/coffees">← Каталог кофе</Link><h1 className="text-3xl font-bold">{coffee.name}</h1>
-    <Link className="inline-flex min-h-11 items-center underline" to={coffee.roaster.address.canonicalPath}>{coffee.roaster.name}</Link>
+    <nav aria-label="Навигационная цепочка" className={`text-sm ${tc.text.secondary}`}>
+      <ol className="flex flex-wrap items-center gap-x-2">
+        <li><Link to="/coffees" className="inline-flex min-h-11 items-center hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Кофе</Link></li>
+        <li aria-hidden="true">/</li>
+        <li className="min-w-0 max-w-full"><Link to={coffee.roaster.address.canonicalPath} className="inline-flex min-h-11 items-center break-words hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{coffee.roaster.name}</Link></li>
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" className="min-w-0 max-w-full break-words">{coffee.name}</li>
+      </ol>
+    </nav>
+    <h1 className="break-words text-3xl font-bold">{coffee.name}</h1>
     {coffee.photos.length ? <div className="grid gap-3 sm:grid-cols-2">{coffee.photos.map(photo => <CatalogPhoto key={photo.fullUrl} photo={photo} name={coffee.name} />)}</div> : <CatalogPhoto photo={null} name={coffee.name} />}
     <p>{coffee.productKind === 'green_beans' ? 'Зелёный кофе' : 'Обжаренный кофе'} · {coffee.productForm === 'ground_only' ? 'Молотый' : 'В зёрнах'}</p>
     <p>{coffee.countries.map(country => country.nameRu).join(', ') || 'Происхождение не подтверждено'}</p>

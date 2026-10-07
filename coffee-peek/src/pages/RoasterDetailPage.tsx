@@ -18,7 +18,6 @@ import { instagramHandle, instagramUrl, toWebsiteHref } from '../utils/shopUtils
 import { AppIcon } from '../components/icons';
 import Button from '../components/Button';
 import { InfoChip } from '../components/ShopCard';
-import { ShopSidebar } from '../components/coffeeshop/ShopSidebar';
 import { getThemeColors } from '../constants/colors';
 
 const RoasterDetailPage: React.FC = () => {
@@ -75,7 +74,6 @@ const RoasterDetailPage: React.FC = () => {
   const websiteHref = roaster.contact?.siteLink ? toWebsiteHref(roaster.contact.siteLink) : undefined;
   const websiteLabel = roaster.contact?.siteLink?.replace(/^https?:\/\//, '').replace(/\/$/, '');
   const catalogPath = `/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [slug], availableOnly: true }))}`;
-  const hasLocation = !!roaster.location?.address || Number.isFinite(roaster.location?.latitude) && Number.isFinite(roaster.location?.longitude);
   const stats = [
     { label: roaster.coffeeProductsCount == null ? 'доступных товаров' : 'товаров в каталоге', value: roaster.coffeeProductsCount ?? assortment.data?.totalItems },
     { label: 'кофеен с нашим кофе', value: roaster.coffeeShopsCount ?? roaster.shops.length },
@@ -83,31 +81,40 @@ const RoasterDetailPage: React.FC = () => {
 
   return (
     <main className={`mx-auto max-w-[1200px] space-y-8 px-4 py-6 pb-28 font-body sm:px-6 ${bgClass} ${textMain}`}>
-      <section aria-labelledby="roaster-name" className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="flex min-w-0 items-start gap-4 sm:gap-5">
-          <div className={`flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-32 sm:w-32 ${cardBg} ${borderColor}`}>
-            {roaster.photos.length ? <div className="h-full w-full"><PhotoCarousel images={roaster.photos} shopName={roaster.name} isCardView /></div> : <AppIcon name="factory" size={48} className={textMuted} />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start gap-3">
-              <h1 id="roaster-name" className="min-w-0 flex-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">{roaster.name}</h1>
-              {roaster.publicAddress && <FavoriteButton kind="roaster" address={roaster.publicAddress} value={roaster.isFavorite} className={`${catalogButton} flex h-11 w-11 shrink-0 items-center justify-center rounded-full`} />}
+      <header className="space-y-3">
+        <nav aria-label="Навигационная цепочка" className={`text-sm ${textMuted}`}>
+          <ol className="flex flex-wrap items-center gap-x-2">
+            <li><Link to="/roasters" className="inline-flex min-h-11 items-center hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Обжарщики</Link></li>
+            <li aria-hidden="true">/</li>
+            <li aria-current="page" className="min-w-0 max-w-full break-words">{roaster.name}</li>
+          </ol>
+        </nav>
+        <section aria-labelledby="roaster-name" className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="flex min-w-0 items-start gap-4 sm:gap-5">
+            <div className={`flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-32 sm:w-32 ${cardBg} ${borderColor}`}>
+              {roaster.photos.length ? <div className="h-full w-full"><PhotoCarousel images={roaster.photos} shopName={roaster.name} isCardView /></div> : <AppIcon name="factory" size={48} className={textMuted} />}
             </div>
-            {roaster.location?.address && <p className={`mt-2 flex items-start gap-1.5 text-sm ${textMuted}`}><AppIcon name="pin_drop" size={18} className={`${tc.primary.text} mt-0.5 shrink-0`} /><span className="min-w-0 break-words">{roaster.location.address}</span></p>}
-            {(websiteHref || roaster.contact?.instagramLink) && <div className="mt-3 flex flex-wrap gap-2">
-              {websiteHref && <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="language" size={18} className="shrink-0" /><span className="truncate">{websiteLabel || 'Сайт обжарщика'}</span><AppIcon name="arrow_forward" size={18} className="shrink-0" /></a>}
-              {roaster.contact?.instagramLink && <a href={instagramUrl(roaster.contact.instagramLink)} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="instagram-logo" size={18} className="shrink-0" /><span className="truncate">{instagramHandle(roaster.contact.instagramLink)}</span></a>}
-            </div>}
-            {!!roaster.tags?.length && <div className="mt-3 flex flex-wrap gap-2">{roaster.tags.map(tag => <InfoChip key={tag.slug} colors={colors}>{tag.name}</InfoChip>)}</div>}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start gap-3">
+                <h1 id="roaster-name" className="min-w-0 flex-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">{roaster.name}</h1>
+                {roaster.publicAddress && <FavoriteButton kind="roaster" address={roaster.publicAddress} value={roaster.isFavorite} className={`${catalogButton} flex h-11 w-11 shrink-0 items-center justify-center rounded-full`} />}
+              </div>
+              {roaster.location?.address && <p className={`mt-2 flex items-start gap-1.5 text-sm ${textMuted}`}><AppIcon name="pin_drop" size={18} className={`${tc.primary.text} mt-0.5 shrink-0`} /><span className="min-w-0 break-words">{roaster.location.address}</span></p>}
+              {(websiteHref || roaster.contact?.instagramLink) && <div className="mt-3 flex flex-wrap gap-2">
+                {websiteHref && <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="language" size={18} className="shrink-0" /><span className="truncate">{websiteLabel || 'Сайт обжарщика'}</span><AppIcon name="arrow_forward" size={18} className="shrink-0" /></a>}
+                {roaster.contact?.instagramLink && <a href={instagramUrl(roaster.contact.instagramLink)} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="instagram-logo" size={18} className="shrink-0" /><span className="truncate">{instagramHandle(roaster.contact.instagramLink)}</span></a>}
+              </div>}
+              {!!roaster.tags?.length && <div className="mt-3 flex flex-wrap gap-2">{roaster.tags.map(tag => <InfoChip key={tag.slug} colors={colors}>{tag.name}</InfoChip>)}</div>}
+            </div>
           </div>
-        </div>
-        <dl aria-label="Статистика обжарщика" className={`${catalogPanel} grid grid-cols-2`}>
-          {stats.map((stat, index) => <div key={stat.label} className={`px-3 py-2 text-center ${index ? `border-l ${borderColor}` : ''}`}>
-            <dd className="text-2xl font-bold tabular-nums">{stat.value != null && stat.value !== '' && Number.isSafeInteger(Number(stat.value)) && Number(stat.value) >= 0 ? Number(stat.value).toLocaleString('ru-RU') : '—'}</dd>
-            <dt className={`mt-1 text-xs ${textMuted}`}>{stat.label}</dt>
-          </div>)}
-        </dl>
-      </section>
+          <dl aria-label="Статистика обжарщика" className={`${catalogPanel} grid grid-cols-2`}>
+            {stats.map((stat, index) => <div key={stat.label} className={`px-3 py-2 text-center ${index ? `border-l ${borderColor}` : ''}`}>
+              <dd className="text-2xl font-bold tabular-nums">{stat.value != null && stat.value !== '' && Number.isSafeInteger(Number(stat.value)) && Number(stat.value) >= 0 ? Number(stat.value).toLocaleString('ru-RU') : '—'}</dd>
+              <dt className={`mt-1 text-xs ${textMuted}`}>{stat.label}</dt>
+            </div>)}
+          </dl>
+        </section>
+      </header>
 
       {roaster.about && (
         <section>
@@ -134,18 +141,6 @@ const RoasterDetailPage: React.FC = () => {
         </div>}
         {roaster.coffeeCatalogUpdatedAtUtc && <p className={`mt-3 text-xs ${textMuted}`}>{checkedTime(roaster.coffeeCatalogUpdatedAtUtc)}</p>}
       </section>
-      <div className={`grid items-start gap-5 ${hasLocation ? 'lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}`}>
-        {roaster.location && hasLocation && <section>
-          <h2 className="mb-3 text-xl font-bold">Где найти</h2>
-          <ShopSidebar shop={{ name: roaster.name, location: { address: roaster.location.address ?? undefined, latitude: roaster.location.latitude ?? undefined, longitude: roaster.location.longitude ?? undefined } }} textMain={textMain} textMuted={textMuted} cardBg={cardBg} borderColor={borderColor} layout="horizontal" />
-        </section>}
-        <section className={`${catalogPanel} space-y-3`}>
-          <AppIcon name="factory" size={28} className={tc.primary.text} />
-          <h2 className="text-xl font-bold">Больше обжарщиков</h2>
-          <p className={`text-sm leading-relaxed ${textMuted}`}>Найдите новых обжарщиков и их кофе в CoffeePeek.</p>
-          <Button variant="secondary" onClick={() => navigate('/roasters')}>Смотреть всех<AppIcon name="arrow_forward" size={18} /></Button>
-        </section>
-      </div>
       {roaster.shops.length > 0 && (
         <section>
           <h2 className={`mb-4 text-2xl font-bold ${textMain}`}>Где используют</h2>
