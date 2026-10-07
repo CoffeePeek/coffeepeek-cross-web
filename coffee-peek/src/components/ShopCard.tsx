@@ -76,7 +76,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
       onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="overflow-hidden rounded-[28px] border outline-none transition-transform focus-visible:ring-2 focus-visible:ring-yellow-500"
+      className={`overflow-hidden rounded-[28px] border outline-none transition-transform focus-visible:ring-2 focus-visible:ring-yellow-500 ${coffee ? 'flex h-full flex-col' : ''}`}
       style={{
         background: colors.surface,
         borderColor: hovered ? `${COLORS.primary}70` : colors.border,
@@ -85,11 +85,11 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
         transform: hovered ? 'translateY(-2px)' : undefined,
       }}
     >
-      <div className="relative aspect-[16/9] overflow-hidden">
+      <div className="relative aspect-[16/9] shrink-0 overflow-hidden" style={{ background: coffee ? `linear-gradient(180deg, ${colors.border}, ${colors.surface} 65%, ${colors.border})` : undefined }}>
         {photos[0] ? (
           <img src={photos[0]} alt={name} loading="lazy" decoding="async" className={`h-full w-full ${coffee || roaster ? 'object-contain' : 'object-cover'} transition-transform duration-500`} style={{ transform: hovered && !roaster ? 'scale(1.035)' : undefined }} />
         ) : roaster ? <div className="flex h-full w-full items-center justify-center" style={{ background: colors.background }}><AppIcon name="factory" size={64} color={colors.textSecondary} /></div> : <ShopPhotoPlaceholder />}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/15" />
+        {!coffee && <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/15" />}
 
         {shop?.isNew && (
           <span className="absolute left-3 top-3 inline-flex h-9 items-center gap-1.5 rounded-full bg-black/70 px-3 text-xs font-bold text-white backdrop-blur-md">
@@ -139,7 +139,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
         )}
       </div>
 
-      <div className="px-4 pb-4 pt-3">
+      <div className={`px-4 pb-4 pt-3 ${coffee ? 'flex flex-1 flex-col' : ''}`}>
         <div className="flex items-start justify-between gap-2">
           <h3 className="min-w-0 flex-1 truncate text-xl font-extrabold tracking-[-0.02em]" style={{ color: colors.textPrimary }}>{name}</h3>
           {openNow !== undefined && (
@@ -173,7 +173,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
             <AppIcon name="caret-right" size={20} color={colors.textSecondary} className="ml-auto shrink-0" />
           </div>
         )}
-        {children && <div className="mt-3 space-y-3" onClick={event => { if ((event.target as HTMLElement).closest('a, button, details')) event.stopPropagation(); }}>{children}</div>}
+        {children && <div className={coffee ? 'mt-1 flex flex-1 flex-col' : 'mt-3 space-y-3'} onClick={event => { if ((event.target as HTMLElement).closest('a, button, details')) event.stopPropagation(); }}>{children}</div>}
       </div>
     </article>
   );

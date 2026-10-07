@@ -158,12 +158,14 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     <main className={`discovery-layout ${overview ? 'discovery-layout--overview' : ''} ${mapExpanded ? 'discovery-layout--expanded' : showFilters && desktop ? 'discovery-layout--filters' : mapHidden ? 'discovery-layout--search' : ''}`} style={{ color: colors.textPrimary }}>
       <div ref={toolbar} className="discovery-toolbar" inert={mapExpanded} aria-hidden={mapExpanded || undefined}>
         <h1 className="sr-only">Поиск кофеен и обжарщиков</h1>
-        <ShopSearchBar className="mb-2" desktopFilters searchQuery={input} onSearchChange={value => { setInput(value); setMapExpanded(false); }} showFilters={showFilters} onFilterToggle={() => { setShowFilters(value => !value); setMapExpanded(false); }} activeFilterCount={activeFilterCount({ ...filters, city: undefined })} colors={colors} dark={theme === 'dark'} placeholder="Поиск кофеен и обжарщиков" ariaLabel="Поиск кофеен и обжарщиков" />
-        <ShopCatalogFilters mode="chips" {...panel} />
-        <div className={`flex items-center justify-end gap-2 ${!filtering && !showFilters ? 'hidden' : ''}`}>
-          {(filtering || showFilters) && <button type="button" onClick={() => { reset(); closeFilters(); }} className="min-h-11 rounded-full px-3 text-sm underline focus-visible:ring-2 focus-visible:ring-primary">Отменить</button>}
-          <button type="button" onClick={() => { window.scrollTo({ top: 0 }); setMapExpanded(true); }} className="flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden" style={{ borderColor: colors.border }}><AppIcon name="map" size={18} />Карта</button>
+        <div className="mb-2 flex items-end gap-2">
+          <ShopSearchBar className="min-w-0 flex-1" desktopFilters searchQuery={input} onSearchChange={value => { setInput(value); setMapExpanded(false); }} showFilters={showFilters} onFilterToggle={() => { setShowFilters(value => !value); setMapExpanded(false); }} activeFilterCount={activeFilterCount({ ...filters, city: undefined })} colors={colors} dark={theme === 'dark'} placeholder="Поиск кофеен и обжарщиков" ariaLabel="Поиск кофеен и обжарщиков" />
+          {(filtering || showFilters) && <button type="button" onClick={() => { reset(); closeFilters(); }} className="mb-4 flex h-14 shrink-0 items-center rounded-full px-3 text-sm underline focus-visible:ring-2 focus-visible:ring-primary lg:mb-1 lg:h-[52px]">Отменить</button>}
         </div>
+        <ShopCatalogFilters mode="chips" {...panel} />
+        {(filtering || showFilters) && <div className="flex items-center justify-end lg:hidden">
+          <button type="button" onClick={() => { window.scrollTo({ top: 0 }); setMapExpanded(true); }} className="flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ borderColor: colors.border }}><AppIcon name="map" size={18} />Карта</button>
+        </div>}
         {(filters.menu || filters.minRating !== undefined) && <FilterChips filters={{ menu: filters.menu, minRating: filters.minRating }} groups={[]} onChange={extra => apply({ ...filters, menu: undefined, minRating: undefined, ...extra })} />}
         {(parsed.error || Object.keys(errors).length > 0) && <div role="alert" className="mb-6"><p>{parsed.error || Object.values(errors).join(' ')}</p><button type="button" className="min-h-11 underline" onClick={reset}>Сбросить фильтры</button></div>}
         {personal && !user && !authLoading && <p>Войдите, чтобы использовать личные фильтры.</p>}

@@ -13,7 +13,7 @@ test('URL restores criteria and independent discovery pages; changes reset both'
   expect(transferDiscovery({ ...restored, filters: { budget: { currency: 'BYN', maxCoffeePrice: 50, coffeeWeightGrams: 250 } } }, 'shops').filters).toEqual({});
 });
 
-test('roasters search the complete list locally, normalize names and apply tags, favorites and sorting', () => {
+test('roasters search and filter the complete list while preserving API order', () => {
   const roaster = (slug: string, name: string | null, availableCoffeeProducts: number | string | null, tags: string[] = []): RoasterCard => ({
     address: { slug, canonicalPath: `/roasters/${slug}`, revision: '1', isAlias: false }, name, photoUrl: null, coverPhoto: null,
     coffeeShopsCount: '2', coffeeProductsCount: '12', availableCoffeeProducts,
@@ -21,12 +21,15 @@ test('roasters search the complete list locally, normalize names and apply tags,
   });
   const items = [roaster('a', 'Кофе Ёж', '12', ['online', 'wholesale']), roaster('b', 'ЁЖ Ростер', 2, ['online']), roaster('c', null, null), roaster('d', 'Другой', 'string')];
   const state = { q: '  еЖ  ', filters: {}, sort: 'relevance' };
-  expect(filterRoasters(items, state).map(item => item.address.slug)).toEqual(['b', 'a']);
+  expect(filterRoasters(items, state).map(item => item.address.slug)).toEqual(['a', 'b']);
   expect(filterRoasters(items, { ...state, filters: { tags: ['online', 'wholesale'] } }).map(item => item.address.slug)).toEqual(['a']);
   expect(filterRoasters(items, { ...state, filters: { excludeTags: ['wholesale'] } }).map(item => item.address.slug)).toEqual(['b']);
   expect(filterRoasters(items, { ...state, filters: { favoritesOnly: true } }, slug => slug === 'a').map(item => item.address.slug)).toEqual(['a']);
   expect(filterRoasters(items, { ...state, filters: { favoritesOnly: true } })).toEqual([]);
-  expect(filterRoasters(items, { q: '', filters: {}, sort: 'available_coffees_desc' }).slice(0, 2).map(item => item.address.slug)).toEqual(['a', 'b']);
+  const serverOrder = [items[1], items[3], items[0], items[2]];
+  for (const sort of ['name_asc', 'relevance', 'available_coffees_desc']) {
+    expect(filterRoasters(serverOrder, { q: '', filters: {}, sort })).toEqual(serverOrder);
+  }
   expect(filterRoasters(items, { ...state, q: 'нет совпадений' })).toEqual([]);
   const all = Array.from({ length: 25 }, (_, index) => roaster(String(index), `Обжарщик ${index}`, 0));
   expect(filterRoasters(all, { q: '', filters: {}, sort: 'name_asc' })).toHaveLength(25);
@@ -39,6 +42,7 @@ test('discovery includes name matches and selected roasters, while shop criteria
   }));
   const state = { q: '', filters: { city: 'minsk' }, sort: 'name_asc' };
   expect(discoveryRoasters(items, state)).toHaveLength(2);
+  expect(discoveryRoasters(items, { ...state, filters: { roasters: ['1', '0'] } }).map(item => item.address.slug)).toEqual(['0', '1']);
   expect(discoveryRoasters(items, { ...state, q: 'еж' }).map(item => item.name)).toEqual(['Кофе Ёж']);
   expect(discoveryRoasters(items, { ...state, q: 'ничего' })).toEqual([]);
   expect(discoveryRoasters(items, { ...state, filters: { isOpen: true } })).toEqual([]);

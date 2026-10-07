@@ -68,10 +68,7 @@ export function filterRoasters(items: RoasterCard[], state: Pick<SearchState, 'q
   return items.filter(item => text(item.name).includes(q)
     && (!filters.tags?.length || filters.tags.every(tag => item.tags.some(value => value.slug === tag)))
     && !filters.excludeTags?.some(tag => item.tags.some(value => value.slug === tag))
-    && (!filters.favoritesOnly || !!item.address.slug && isFavorite(item.address.slug)))
-    .sort((a, b) => (state.sort === 'available_coffees_desc' ? (Number(b.availableCoffeeProducts) || 0) - (Number(a.availableCoffeeProducts) || 0)
-      : state.sort === 'relevance' && q ? Number(text(b.name).startsWith(q)) - Number(text(a.name).startsWith(q)) : 0)
-      || text(a.name).localeCompare(text(b.name), 'ru'));
+    && (!filters.favoritesOnly || !!item.address.slug && isFavorite(item.address.slug)));
 }
 export function isDiscoveryFiltering(q: string, filters: ShopFilters, defaultCity: string): boolean {
   return !!normalizeQuery(q) || Object.entries(normalizeFilters(filters)).some(([key, value]) =>

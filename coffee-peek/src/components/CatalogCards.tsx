@@ -9,7 +9,7 @@ import ShopCard, { InfoChip } from './ShopCard';
 import { useTheme } from '../contexts/ThemeContext';
 import { COLORS, getThemeColors } from '../constants/colors';
 import { getPhotoUrl } from '../api/coffeeshop';
-import { AppIcon } from './icons';
+import { AppIcon, BynSign } from './icons';
 import { useRoaster } from '../hooks/queries/useCatalogs';
 
 export const catalogPanel = 'rounded-2xl border border-stone-200 bg-white p-4 dark:border-[#3D2F28] dark:bg-[#2D241F]';
@@ -57,29 +57,30 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
   const label = (group: string, value: string) => groups.find(item => item.code === group)?.values.find(item => item.code === value)?.name ?? value;
-  const prices = new Map<string, { currency: string; weight: number | null; min: number; max: number }>();
+  const prices = new Map<string, { weight: number | null; weights: Set<number | null>; min: number; max: number }>();
   for (const offer of coffee.matchingOffers) {
-    const key = `${offer.currency}:${offer.weightGrams}`;
-    const previous = prices.get(key);
-    prices.set(key, { currency: offer.currency, weight: offer.weightGrams, min: Math.min(previous?.min ?? offer.price, offer.price), max: Math.max(previous?.max ?? offer.price, offer.price) });
+    const previous = prices.get(offer.currency);
+    prices.set(offer.currency, {
+      weight: previous && previous.min <= offer.price ? previous.weight : offer.weightGrams,
+      weights: new Set([...(previous?.weights ?? []), offer.weightGrams]),
+      min: Math.min(previous?.min ?? offer.price, offer.price),
+      max: Math.max(previous?.max ?? offer.price, offer.price),
+    });
   }
-  const profile = [...coffee.countries.map(country => country.nameRu), ...coffee.classification.processing.map(value => label('processing', value)), ...coffee.classification.fermentation.map(value => label('fermentation', value))];
   const tastes = coffee.classification.tasteGroups.map(value => label('taste', value));
   return <ShopCard coffee={coffee} colors={colors} onSelect={() => navigate(coffee.address.canonicalPath)}>
-      <Link className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-600 hover:underline dark:text-stone-300" to={coffee.roaster.address.canonicalPath}>{coffee.roaster.name}</Link>
-      <p className="text-xs leading-relaxed text-stone-600 dark:text-stone-300">{profile.join(' · ') || 'Происхождение и обработка не подтверждены'}</p>
-      {!!tastes.length && <div className="flex flex-wrap gap-1.5">{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</div>}
-      <div className="mt-auto space-y-2 border-t border-stone-200 pt-3 dark:border-[#3D2F28]">
-        {[...prices.entries()].map(([key, price]) => <div key={key} className="flex items-center justify-between gap-2">
-          <p className="text-xl font-bold tracking-tight">{price.min < price.max ? 'от ' : ''}{price.min.toLocaleString()} <span className="text-base">{price.currency}</span></p>
-          <span className="rounded-full bg-stone-50 px-2.5 py-1 text-xs text-stone-600 dark:bg-[#1A1412] dark:text-stone-300">{price.weight === null ? 'Вес не указан' : `${price.weight} г`}</span>
-        </div>)}
-        {coffee.sortPrice !== null && <p className="text-xs text-stone-600 dark:text-stone-300">Цена сортировки: {coffee.sortPrice.toLocaleString()} {coffee.matchingOffers[0]?.currency}</p>}
+      <p className="mb-2 truncate text-xs leading-5" style={{ color: colors.textSecondary }} title={coffee.countries.map(country => country.nameRu).join(', ')}>{coffee.countries.map(country => country.nameRu).join(', ') || 'Происхождение не указано'}</p>
+      {!!tastes.length && <div className="mb-3 flex flex-wrap gap-1.5">{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</div>}
+      <div className="mt-auto space-y-2 border-t pt-3" style={{ borderColor: colors.border }}>
+        {[...prices.entries()].map(([currency, price]) => {
+          const weights = [...price.weights].sort((a, b) => (a ?? Infinity) - (b ?? Infinity)).map(weight => weight === null ? 'Вес не указан' : `${weight} г`).join(', ');
+          return <div key={currency} className="flex items-center justify-between gap-2">
+            <p className="flex shrink-0 items-center gap-1.5 text-xl font-bold tracking-tight">{price.weights.size > 1 || price.min < price.max ? 'от ' : ''}{price.min.toLocaleString('ru-RU')}{currency === 'BYN' ? <><BynSign size={22} color="currentColor" /><span className="sr-only">белорусских рублей</span></> : <span className="text-base">{currency}</span>}</p>
+            <span className="min-w-0 truncate rounded-full border px-2.5 py-1 text-xs" style={{ borderColor: colors.border, color: colors.textSecondary }} title={weights} aria-label={`Доступный вес: ${weights}`}>{price.weight === null ? 'Вес не указан' : `${price.weight} г`}{price.weights.size > 1 && ` +${price.weights.size - 1}`}</span>
+          </div>;
+        })}
         {!coffee.matchingOffers.length && <p className="text-sm">Подходящих предложений нет.</p>}
-        <Link className="flex min-h-11 items-center justify-center gap-2 rounded-full border border-stone-200 text-sm font-semibold shadow-sm hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 dark:border-[#4A3D35] dark:hover:bg-[#1A1412]" to={coffee.address.canonicalPath}>Выбрать вариант <span aria-hidden="true">↗</span></Link>
       </div>
-      <details className="text-xs text-stone-600 dark:text-stone-300"><summary className="min-h-11 cursor-pointer py-3">Характеристики и предложения ({coffee.matchingOffers.length})</summary><div className="space-y-3 pb-2"><p>{coffee.productKind === 'green_beans' ? 'Зелёный кофе' : 'Обжаренный кофе'} · {coffee.productForm === 'ground_only' ? 'Молотый' : 'В зёрнах'}</p><ClassificationBadges value={coffee.classification} groups={groups} /><OfferList offers={coffee.matchingOffers} defaults={coffee.classification.defaultBrewPurposes} /></div></details>
-      <p className="text-[11px] text-stone-600 dark:text-stone-300">{checkedTime(coffee.catalogCheckedAtUtc)}</p>
   </ShopCard>;
 }
 export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
