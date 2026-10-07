@@ -87,6 +87,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
     queryKey: ['catalog', scope, kind, 'facets', { q: state.q, filters: state.filters }],
     queryFn: ({ signal }) => getCoffeeFacets({ q: state.q, filters: state.filters as CoffeeFilters }, signal),
     enabled: enabled && kind === 'coffees', retry: false, staleTime: 0,
+    placeholderData: (previous, previousQuery) => previousQuery?.queryKey[1] === scope && previousQuery.queryKey[2] === kind ? previous : undefined,
   });
   const dictionary = useQuery({ queryKey: ['catalogs', 'coffee-filter-values'], queryFn: ({ signal }) => getCoffeeFilterValues(signal), enabled: kind === 'coffees', retry: false });
   const groups = facets.data?.groups ?? [];

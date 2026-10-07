@@ -138,17 +138,17 @@ export const OptionRow: React.FC<{
 }> = ({ label, checked, onClick, gold, textPrimary, icon }) => (
   <button
     type="button"
-    className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
+    className="bg-transparent transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500"
     onClick={onClick}
     aria-pressed={checked}
     style={{
       width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-      minHeight: 44, padding: '7px 8px', background: checked ? `${gold}12` : 'transparent', border: 'none', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+      minHeight: 44, padding: '7px 8px', border: 'none', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
     }}
   >
     {icon}
     <span style={{
-      fontFamily: '"Manrope"', fontSize: 13, fontWeight: checked ? 700 : 500,
+      fontFamily: '"Manrope"', fontSize: 13, fontWeight: 500,
       color: textPrimary, minWidth: 0, flex: 1,
     }}>
       {label}

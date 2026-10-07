@@ -2,7 +2,7 @@ let mockRequest: Record<string, unknown> = { isError: true, isPending: false, is
 let mockRoasters: Record<string, unknown> = { isError: true, isPending: false, error: { status: 503 } };
 jest.mock('@tanstack/react-query', () => ({
   useInfiniteQuery: () => mockRequest,
-  useQuery: () => mockRoasters,
+  useQuery: jest.fn(() => mockRoasters),
   useMutationState: () => [],
 }));
 jest.mock('../src/api/discovery', () => ({}));
@@ -28,10 +28,22 @@ jest.mock('../src/components/CatalogCards', () => ({
   catalogButton: '', catalogPanel: '',
 }));
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import CoffeeShopList from '../src/components/CoffeeShopList';
 import CatalogSearchPage from '../src/pages/CatalogSearchPage';
+
+test('coffee facets retain their values during filtering only within the same session and catalog', () => {
+  jest.mocked(useQuery).mockClear();
+  renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(CatalogSearchPage, { kind: 'coffees' })));
+  const options = jest.mocked(useQuery).mock.calls.map(([options]) => options).find(options => options.queryKey?.[3] === 'facets')!;
+  const previous = { totalItems: 1, groups: [{ code: 'taste', options: [{ code: 'chocolate', count: 1 }] }] };
+  const placeholder = options.placeholderData as (data: unknown, query: { queryKey: unknown[] }) => unknown;
+  expect(placeholder(previous, { queryKey: options.queryKey! })).toBe(previous);
+  expect(placeholder(previous, { queryKey: ['catalog', 'another-session', 'coffees', 'facets'] })).toBeUndefined();
+  expect(placeholder(previous, { queryKey: ['catalog', options.queryKey![1], 'shops', 'facets'] })).toBeUndefined();
+});
 
 test('failed catalog loads stay silent; empty results require success and loaded shops stay visible', () => {
   const shops = React.createElement(CoffeeShopList);

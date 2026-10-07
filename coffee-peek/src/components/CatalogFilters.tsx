@@ -81,11 +81,12 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
     </select>{errorNode(path)}</div>;
   const groupControl = (group: FacetGroup) => {
     const path = group.code === 'roasterTags' ? 'tags' : group.code;
+    if (!group.options.length && get(path) == null) return null;
     if (group.selection === 'single') return selectField(path, group.name, group.options, path.endsWith('weightGrams'));
     const selected = get(path) as string[] | undefined ?? [];
     const missing = selected.filter(code => !group.options.some(option => option.code === code));
     return <fieldset key={group.code} className="space-y-1"><legend className="mb-2 font-semibold">{group.code === 'roasterTags' ? 'Услуги' : group.name}</legend>
-      {group.options.map(option => kind === 'coffees' ? <OptionRow key={option.code} label={<span className="flex items-center justify-between gap-2"><span>{option.name}</span><span className="text-stone-600 dark:text-stone-300">({option.count})</span></span>} checked={selected.includes(option.code)} onClick={() => put(path, selected.includes(option.code) ? selected.filter(code => code !== option.code) : [...selected, option.code])} {...optionColors} /> : <label key={option.code} className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-yellow-600" checked={selected.includes(option.code)}
+      {group.options.map(option => kind === 'coffees' ? <div key={option.code} className="border-t first:border-t-0" style={{ borderColor }}><OptionRow label={<span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span>{option.name}</span><span className="shrink-0 text-stone-600 dark:text-stone-300">({option.count})</span></span>} checked={selected.includes(option.code)} onClick={() => put(path, selected.includes(option.code) ? selected.filter(code => code !== option.code) : [...selected, option.code])} {...optionColors} /></div> : <label key={option.code} className="flex min-h-11 items-center gap-2"><input type="checkbox" className="h-4 w-4 accent-yellow-600" checked={selected.includes(option.code)}
         onChange={() => put(path, selected.includes(option.code) ? selected.filter(code => code !== option.code) : [...selected, option.code])} /><span>{option.name} ({option.count})</span></label>)}
       {missing.map(code => <p key={code} role="alert">Значение «{code}» недоступно. <button type="button" className="underline" onClick={() => put(path, selected.filter(value => value !== code))}>Удалить фильтр</button></p>)}{errorNode(path)}
     </fieldset>;
@@ -104,13 +105,13 @@ export function CatalogFilters({ kind, filters, groups = [], errors = {}, onAppl
   ];
   return <form onSubmit={kind === 'coffees' ? event => event.preventDefault() : form.handleSubmit(values => onApply(normalizeFilters(values.filters)))} className="space-y-5 text-sm">
     {kind === 'coffees' ? <div className="overflow-hidden rounded-[18px] border bg-white/80 shadow-sm backdrop-blur-[20px] dark:bg-white/[.035]" style={{ borderColor }}>
-      {coffeeSections.map(section => <FilterAccordion key={section.name} title={section.name} count={section.codes.reduce((count, code) => count + (Array.isArray(get(code)) ? (get(code) as unknown[]).length : get(code) != null ? 1 : 0), 0)} defaultOpen={section.codes.some(code => get(code) != null)} muted={dark ? '#A39E93' : '#78716C'} textPrimary={optionColors.textPrimary} borderColor={borderColor}>
-        <div className="space-y-3 [&_legend]:sr-only">{section.codes.map(code => { const group = groups.find(group => group.code === code); return group ? groupControl(group) : null; })}
+      {coffeeSections.map(section => <div key={section.name} hidden={!section.codes.includes('availabilityScope') && !section.codes.some(code => groups.some(group => group.code === code && group.options.length > 0) || get(code) != null)}><FilterAccordion title={section.name} count={section.codes.reduce((count, code) => count + (Array.isArray(get(code)) ? (get(code) as unknown[]).length : get(code) != null ? 1 : 0), 0)} defaultOpen={section.codes.some(code => get(code) != null)} muted={dark ? '#A39E93' : '#78716C'} textPrimary={optionColors.textPrimary} borderColor={borderColor}>
+        <div className="space-y-3 [&_legend]:sr-only">{section.codes.map(code => groupControl(groups.find(group => group.code === code) ?? { code, name: section.name, selection: Array.isArray(get(code)) ? 'or' : 'single', options: [] }))}
           {section.codes.includes('acidity') && <button type="button" className={catalogButton} onClick={() => put('acidity', ['low', 'balanced'])}>Неяркая кислотность</button>}
           {section.codes.includes('currency') && budgetFields('')}
           {section.codes.includes('availabilityScope') && <OptionRow label="Только в наличии" checked={get('availableOnly') !== false} onClick={() => put('availableOnly', get('availableOnly') === false)} {...optionColors} />}
         </div>
-      </FilterAccordion>)}
+      </FilterAccordion></div>)}
     </div> : kind === 'discovery' ? <>
       <fieldset><legend className="font-semibold">Приготовление</legend>{[{ code: 'espresso', name: 'Эспрессо' }, { code: 'filter', name: 'Фильтр' }].map(option => <label key={option.code} className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={(get('brew') as string[] ?? []).includes(option.code)} onChange={event => put('brew', event.target.checked ? [...(get('brew') as string[] ?? []), option.code] : (get('brew') as string[]).filter(value => value !== option.code))} />{option.name}</label>)}</fieldset>
       {selectField('budget.currency', 'Валюта бюджета', [{ code: 'BYN', name: 'BYN' }, { code: 'RUB', name: 'RUB' }])}
