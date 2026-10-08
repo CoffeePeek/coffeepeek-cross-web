@@ -43,7 +43,6 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const parsed = useMemo(() => {
     try {
       const restored = new URLSearchParams(params);
-      if (restored.get('page') === 'map') restored.delete('page');
       if (usesDefaultCity && defaultCity) restored.set('city', defaultCity);
       return { state: readSearchState(restored, 'shops'), error: '' };
     } catch {

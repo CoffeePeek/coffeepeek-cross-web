@@ -1,6 +1,6 @@
 import PublicAddressPage from '../components/PublicAddressPage';
 import React, { Suspense, useEffect, useRef } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import WobbleRing from '../components/WobbleRing';
@@ -13,7 +13,6 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 const LandingPage = lazyWithRetry(() => import('../pages/LandingPage'));
 const LoginPage = lazyWithRetry(() => import('../pages/LoginPage'));
 const RegisterPage = lazyWithRetry(() => import('../pages/RegisterPage'));
-const DashboardPage = lazyWithRetry(() => import('../pages/DashboardPage'));
 const CoffeeShopListPage = lazyWithRetry(() => import('../pages/CoffeeShopListPage'));
 const CatalogSearchPage = lazyWithRetry(() => import('../pages/CatalogSearchPage'));
 const CoffeeDetailPage = lazyWithRetry(() => import('../pages/CoffeeDetailPage'));
@@ -25,7 +24,6 @@ const DeleteAccountPage = lazyWithRetry(() => import('../pages/DeleteAccountPage
 const CreateCoffeeShopPage = lazyWithRetry(() => import('../pages/CreateCoffeeShopPage'));
 const CreateRoasterPage = lazyWithRetry(() => import('../pages/CreateRoasterPage'));
 const RoasterDetailPage = lazyWithRetry(() => import('../pages/RoasterDetailPage'));
-const CreateCheckInPage = lazyWithRetry(() => import('../pages/CreateCheckInPage'));
 const SettingsPage = lazyWithRetry(() => import('../pages/SettingsPage'));
 const ErrorPage = lazyWithRetry(() => import('../pages/ErrorPage'));
 const PrivacyPolicyPage = lazyWithRetry(() => import('../pages/PrivacyPolicyPage'));
@@ -36,9 +34,28 @@ const ForgotPasswordPage = lazyWithRetry(() => import('../pages/ForgotPasswordPa
 const ResetPasswordPage = lazyWithRetry(() => import('../pages/ResetPasswordPage'));
 const FeedPage = lazyWithRetry(() => import('../pages/FeedPage'));
 const CheckInsPage = lazyWithRetry(() => import('../pages/CheckInsPage'));
-const DownloadPage = lazyWithRetry(() => import('../pages/DownloadPage'));
 const EditCoffeeShopPage = lazyWithRetry(() => import('../pages/EditCoffeeShopPage'));
 const MyContributionsPage = lazyWithRetry(() => import('../pages/MyContributionsPage'));
+
+const LegacyDashboardRedirect = () => {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const page = params.get('page');
+  params.delete('page');
+  const target = page === 'map' ? '/map' : page === 'home' || page === 'feed' ? '/feed' : page === 'settings' ? '/settings' : '/search';
+  const remaining = params.toString();
+  return <Navigate to={`${target}${remaining ? `?${remaining}` : ''}`} replace />;
+};
+
+const LegacyCheckInRedirect = ({ base }: { base: 'shops' | 'coffee-shops' }) => {
+  const { shopId } = useParams<{ shopId: string }>();
+  return <Navigate to={`/${base}/${encodeURIComponent(shopId ?? '')}/check-ins/new`} replace />;
+};
+
+const LegacyCityRedirect = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/shops?citySlug=${encodeURIComponent(slug ?? '')}`} replace />;
+};
 
 const LoadingFallback = () => {
   const { theme } = useTheme();
@@ -69,6 +86,7 @@ export const AppRoutes: React.FC = () => {
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
         <Route path="/search" element={<AuthenticatedLayout><CoffeeShopListPage /></AuthenticatedLayout>} />
+        <Route path="/map" element={<AuthenticatedLayout><CoffeeShopListPage initialMapExpanded /></AuthenticatedLayout>} />
         <Route path="/roasters" element={<AuthenticatedLayout><CoffeeShopListPage initialSection="roasters" /></AuthenticatedLayout>} />
         <Route path="/coffees" element={<AuthenticatedLayout><CatalogSearchPage kind="coffees" /></AuthenticatedLayout>} />
         <Route path="/coffees/:slug" element={<AuthenticatedLayout><CoffeeDetailPage /></AuthenticatedLayout>} />
@@ -85,27 +103,20 @@ export const AppRoutes: React.FC = () => {
         <Route path="/profile/delete" element={<DeleteAccountPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/download" element={<DownloadPage />} />
+        <Route path="/download" element={<Navigate to="/settings" replace />} />
 
         <Route path="/coffee-shops/:shopId" element={<AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CoffeeShopDetailPage /></PublicAddressPage></AuthenticatedLayout>} />
-        <Route path="/cities/:slug" element={<AuthenticatedLayout><PublicAddressPage kind="cities" param="slug" /></AuthenticatedLayout>} />
-        <Route path="/coffee-zones/:slug" element={<AuthenticatedLayout><PublicAddressPage kind="zones" param="slug" /></AuthenticatedLayout>} />
+        <Route path="/cities/:slug" element={<LegacyCityRedirect />} />
+        <Route path="/coffee-zones/:slug" element={<Navigate to="/map" replace />} />
         <Route path="/coffee-shops/:shopId/check-ins/new" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/coffee-shops/:shopId/check-ins/:checkInId/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/coffee-shops/:shopId/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><EditCoffeeShopPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
-        <Route path="/coffee-shops/:shopId/checkin" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CreateCheckInPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
+        <Route path="/coffee-shops/:shopId/checkin" element={<LegacyCheckInRedirect base="coffee-shops" />} />
         <Route path="/feed" element={<AuthenticatedLayout><FeedPage /></AuthenticatedLayout>} />
         <Route path="/check-ins/:checkInId/edit" element={<ProtectedRoute><AuthenticatedLayout><CheckInEditorPage /></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/my/reviews" element={<Navigate to="/check-ins" replace />} />
         {/* Protected routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <AuthenticatedLayout>
-              <DashboardPage />
-            </AuthenticatedLayout>
-          }
-        />
+        <Route path="/dashboard" element={<LegacyDashboardRedirect />} />
 
         <Route
           path="/shops"
@@ -219,16 +230,7 @@ export const AppRoutes: React.FC = () => {
           }
         />
 
-        <Route
-          path="/shops/:shopId/checkin"
-          element={
-            <ProtectedRoute>
-              <AuthenticatedLayout>
-                <PublicAddressPage kind="shops" param="shopId"><CreateCheckInPage /></PublicAddressPage>
-              </AuthenticatedLayout>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/shops/:shopId/checkin" element={<LegacyCheckInRedirect base="shops" />} />
 
         <Route
           path="/settings"
@@ -264,7 +266,6 @@ export const AppRoutes: React.FC = () => {
         {/* Legacy redirects */}
         <Route path="/coffeeshops" element={<Navigate to="/shops" replace />} />
         <Route path="/shop-change-requests" element={<Navigate to="/my/edits" replace />} />
-        <Route path="/map" element={<Navigate to="/dashboard?page=map" replace />} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/error" replace />} />

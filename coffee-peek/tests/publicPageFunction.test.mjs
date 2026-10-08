@@ -41,18 +41,27 @@ test('shop details are directly in data; menu, photos and structured metadata re
     assert.equal(calls.length, 1);
   });
 });
-for (const kind of ['shops', 'roasters', 'users', 'cities', 'zones']) {
+for (const kind of ['shops', 'roasters', 'users']) {
   test(`${kind}: response shape supplies canonical path and alias redirect`, async () => {
     const metadata = { ...address, isAlias: true };
     const entity = { name: 'Coffee', userName: 'Petr', address: metadata };
     const body = kind === 'users' ? { data: { userName: 'Petr' }, address: metadata }
-      : ['cities', 'zones'].includes(kind) ? entity : { isSuccess: true, data: entity };
+      : { isSuccess: true, data: entity };
     await withMock(body, async calls => {
       const response = await handler.fetch(new Request(`https://coffeepeek.by/api/public-page?page=address&kind=${kind}&segment=old&path=/old`));
       assert.equal(response.status, 301);
       assert.equal(response.headers.get('Location'), address.canonicalPath);
       assert.equal(response.headers.get('Cache-Control'), 'no-store');
       assert.equal(calls.length, 1);
+    });
+  });
+}
+for (const kind of ['cities', 'zones']) {
+  test(`${kind}: removed public page does not fetch a catalog entity`, async () => {
+    await withMock(null, async calls => {
+      const result = await renderPublicPage(new Request(`https://coffeepeek.by/api/public-page?page=address&kind=${kind}&segment=old`));
+      assert.equal(result.status, 400);
+      assert.equal(calls.length, 0);
     });
   });
 }

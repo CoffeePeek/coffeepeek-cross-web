@@ -30,7 +30,7 @@ const LandingPage: React.FC = () => {
   ];
   const footerLinks: Record<string, string> = {
     Кофейни: '/shops',
-    Карта: '/dashboard?page=map',
+    Карта: '/map',
     Условия: LEGAL_ROUTES.terms,
     Политика: LEGAL_ROUTES.privacy,
   };

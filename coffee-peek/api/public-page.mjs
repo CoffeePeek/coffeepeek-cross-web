@@ -170,13 +170,13 @@ export async function renderPublicPage(request) {
     return { html, status: 200 };
   }
 
-  const prefixes = { shops: '/api/CoffeeShops', roasters: '/api/Roasters', users: '/api/Users', cities: '/api/Catalogs/cities', zones: '/api/Catalogs/coffee-zones' };
+  const prefixes = { shops: '/api/CoffeeShops', roasters: '/api/Roasters', users: '/api/Users' };
   const kind = page === 'shop' ? 'shops' : url.searchParams.get('kind');
   const segment = page === 'shop' ? url.searchParams.get('shopId') || '' : url.searchParams.get('segment') || '';
   if (!prefixes[kind]) return { html: '', status: 400 };
   const path = url.searchParams.get('path') || `/coffee-shops/${encodeURIComponent(segment)}`;
-  const result = await fetchJson(`${prefixes[kind]}/by-slug/${encodeURIComponent(segment)}`, kind === 'users' || kind === 'cities' || kind === 'zones');
-  const data = kind === 'cities' || kind === 'zones' ? result.body : result.body?.data;
+  const result = await fetchJson(`${prefixes[kind]}/by-slug/${encodeURIComponent(segment)}`, kind === 'users');
+  const data = result.body?.data;
   const address = kind === 'users' ? result.body?.address : data?.address;
   if (!result.ok || !data || !address) {
     const status = result.ok ? 503 : result.status;

@@ -7,6 +7,21 @@
       "source": "/downloads/:path*",
       "destination": "https://api.coffeepeek.by/downloads/:path*",
       "permanent": false
+    },
+    {
+      "source": "/download",
+      "destination": "/settings",
+      "permanent": true
+    },
+    {
+      "source": "/cities/:slug",
+      "destination": "/shops?citySlug=:slug",
+      "permanent": true
+    },
+    {
+      "source": "/coffee-zones/:slug",
+      "destination": "/map",
+      "permanent": true
     }
   ],
   "rewrites": [
@@ -16,8 +31,6 @@
     {"source": "/coffee-shops/:shopId", "destination": "/api/public-page?page=address&kind=shops&segment=:shopId&path=/coffee-shops/:shopId"},
     {"source": "/roasters/:roasterId", "destination": "/api/public-page?page=address&kind=roasters&segment=:roasterId&path=/roasters/:roasterId"},
     {"source": "/users/:userId", "destination": "/api/public-page?page=address&kind=users&segment=:userId&path=/users/:userId"},
-    {"source": "/cities/:slug", "destination": "/api/public-page?page=address&kind=cities&segment=:slug&path=/cities/:slug"},
-    {"source": "/coffee-zones/:slug", "destination": "/api/public-page?page=address&kind=zones&segment=:slug&path=/coffee-zones/:slug"},
     { "source": "/", "destination": "/api/public-page?page=home" },
     { "source": "/shops", "destination": "/api/public-page?page=shops" },
     { "source": "/shops/:shopId", "destination": "/api/public-page?page=shop&shopId=:shopId" },

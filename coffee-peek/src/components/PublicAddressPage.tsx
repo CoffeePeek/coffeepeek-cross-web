@@ -11,7 +11,7 @@ import { useUser } from '../contexts/UserContext';
 
 const Resolution = createContext<{ id: string; data: any; reload: () => Promise<unknown> } | null>(null);
 export const usePublicResolution = () => useContext(Resolution);
-export default function PublicAddressPage({ kind, param, children }: { kind: AddressKind; param: string; children?: React.ReactNode }) {
+export default function PublicAddressPage({ kind, param, children }: { kind: AddressKind; param: string; children: React.ReactNode }) {
   const value = useParams()[param] || '';
   const navigate = useNavigate();
   const location = useLocation();
@@ -51,9 +51,6 @@ export default function PublicAddressPage({ kind, param, children }: { kind: Add
   if (!query.data) return null;
   const { address, data } = query.data;
   return <Resolution.Provider value={{ id: address.slug, data: normalizeResponseData({ ...data, address }), reload: query.refetch }}>
-    {children || <main className="mx-auto max-w-3xl p-8"><h1 className="text-3xl font-bold">{data?.name}</h1><p className="mt-4">{data?.description}</p>
-      {kind === 'cities' && address && <a href={`/shops?citySlug=${encodeURIComponent(address.slug)}`}>Кофейни города</a>}
-      {kind === 'zones' && <><p>Кофеен: {data?.shopCount}</p><a href={`/dashboard?page=map&lat=${data?.latitude}&lon=${data?.longitude}`}>На карте</a></>}
-    </main>}
+    {children}
   </Resolution.Provider>;
 }

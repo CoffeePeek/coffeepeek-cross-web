@@ -20,7 +20,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { AppIcon, StarIcon } from '../components/icons';
 import CheckInPhotos from '../components/CheckInPhotos';
 import CheckInStatus from '../components/CheckInStatus';
-import { PhotoThumb } from '../components/CheckInForm';
+import CheckInPhotoThumb from '../components/CheckInPhotoThumb';
 import { buildCheckInRequest, todayInputValue, formatCheckInDate } from '../utils/checkInForm';
 import { getErrorMessage } from '../utils/errorHandler';
 
@@ -305,7 +305,7 @@ export default function CheckInEditorPage() {
                 <p className="font-bold">Фотографии · {selectedFiles.length}/5</p>
                 {selectedFiles.length < 5 && <label htmlFor="photo-upload" className="mt-3 flex min-h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center" style={{ borderColor: colors.borderSubtle, color: colors.textMuted }}><AppIcon name="add_a_photo" size={32} /><span>Добавить фотографии визита</span></label>}
                 <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif" multiple onChange={handleFileSelect} className="hidden" />
-                <div className="mt-3 flex gap-3 overflow-x-auto">{selectedFiles.map((file, index) => <PhotoThumb key={`${file.name}-${file.size}-${index}`} file={file} onRemove={() => removeFile(index)} />)}</div>
+                <div className="mt-3 flex gap-3 overflow-x-auto">{selectedFiles.map((file, index) => <CheckInPhotoThumb key={`${file.name}-${file.size}-${index}`} file={file} onRemove={() => removeFile(index)} />)}</div>
                 {uploadingPhotos && <p className="mt-3">Загрузка фотографий…</p>}
               </>}
             </section>

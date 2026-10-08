@@ -9,10 +9,6 @@ test.each(['shops', 'roasters'] as const)('%s details have data.address and no e
   expect(await getBySlug(kind, 'old')).toEqual({ data: { name: 'Coffee', address }, address });
   expect(getRaw).toHaveBeenCalledTimes(1);
 });
-test.each(['cities', 'zones'] as const)('%s is an unwrapped DTO', async kind => {
-  getRaw.mockResolvedValue({ name: 'Coffee', address });
-  expect(await getBySlug(kind, 'coffee')).toEqual({ data: { name: 'Coffee', address }, address });
-});
 test('user has a separate address and slug path is encoded', async () => {
   getRaw.mockResolvedValue({ data: { userName: 'Petr' }, address });
   expect((await getBySlug('users', 'кофе /?')).address).toEqual(address);
