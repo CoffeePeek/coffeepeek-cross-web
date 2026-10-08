@@ -88,43 +88,51 @@ export const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="block text-stone-300 text-xs font-medium mb-1.5 font-body">
+              <label htmlFor="admin-email" className="block text-stone-300 text-xs font-medium mb-1.5 font-body">
                 Email
               </label>
               <Input
+                id="admin-email"
                 {...register('email')}
                 type="email"
                 autoComplete="email"
-                placeholder="admin@coffepeek.ru"
-                className="w-full bg-[#1A1412] border border-border-dark rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-stone-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors font-body"
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'admin-email-error' : undefined}
+                placeholder="admin@coffeepeek.ru"
+                className="w-full bg-[#1A1412] border border-border-dark rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-stone-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors font-body"
               />
               {errors.email && (
-                <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>
+                <p id="admin-email-error" className="text-red-400 text-xs mt-1">{errors.email.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-stone-300 text-xs font-medium mb-1.5 font-body">
+              <label htmlFor="admin-password" className="block text-stone-300 text-xs font-medium mb-1.5 font-body">
                 Пароль
               </label>
               <div className="relative">
                 <Input
+                  id="admin-password"
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
+                  aria-invalid={Boolean(errors.password)}
+                  aria-describedby={errors.password ? 'admin-password-error' : undefined}
                   placeholder="••••••••"
-                  className="w-full bg-[#1A1412] border border-border-dark rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-stone-600 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors font-body"
+                  className="w-full bg-[#1A1412] border border-border-dark rounded-lg px-3 py-2.5 pr-10 text-sm text-white placeholder:text-stone-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors font-body"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300"
+                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                  aria-pressed={showPassword}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-stone-400 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <EyeIcon open={showPassword} />
                 </button>
               </div>
               {errors.password && (
-                <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>
+                <p id="admin-password-error" className="text-red-400 text-xs mt-1">{errors.password.message}</p>
               )}
             </div>
 
@@ -140,7 +148,7 @@ export const LoginPage: React.FC = () => {
           </form>
         </div>
 
-        <p className="text-center text-stone-600 text-xs mt-6 font-body">
+        <p className="text-center text-stone-400 text-xs mt-6 font-body">
           Только для сотрудников CoffeePeek
         </p>
       </div>

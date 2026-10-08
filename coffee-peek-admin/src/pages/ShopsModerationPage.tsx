@@ -15,6 +15,7 @@ import { useToast } from '../contexts/ToastContext';
 import { Badge, statusToBadgeVariant, statusLabels } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { LoadError } from '../components/ui/LoadError';
 import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
@@ -80,7 +81,7 @@ export const ShopsModerationPage: React.FC = () => {
   const [pendingAction, setPendingAction] = useState<{ id: string; type: 'approve' | 'reject' } | null>(null);
   const [localSearch, setLocalSearch] = useState(search);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['admin', 'moderation', 'shops', { status, page, search }],
     queryFn: () =>
       getModerationShops({
@@ -201,6 +202,7 @@ export const ShopsModerationPage: React.FC = () => {
         <form onSubmit={handleSearch} className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
           <Input
             type="text"
+            aria-label="Поиск кофеен по названию"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Поиск по названию..."
@@ -212,9 +214,10 @@ export const ShopsModerationPage: React.FC = () => {
         </form>
       </div>
 
-      <Card>
+      {isError && <LoadError message={data ? 'Не удалось обновить заявки. Показаны последние загруженные данные.' : 'Не удалось загрузить заявки на кофейни.'} onRetry={() => void refetch()} retrying={isFetching} />}
+      {(!isError || data) && <Card>
         <DataTable columns={columns} data={items} loading={isLoading} emptyText="Кофейни не найдены" getRowId={(shop) => shop.id} />
-      </Card>
+      </Card>}
       {data && <Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} />}
 
       <ConfirmDialog

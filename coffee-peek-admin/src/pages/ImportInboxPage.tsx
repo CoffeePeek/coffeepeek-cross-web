@@ -1,7 +1,7 @@
 import { Input } from '@/src/components/ui/Input';
 import { NativeSelect } from '@/src/components/ui/NativeSelect';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { decideImportCandidate, getImportCandidates, ImportCandidate } from '../api/import';
@@ -138,7 +138,6 @@ const SortButton: React.FC<{
 export const ImportInboxPage: React.FC<{
   selectedId?: string;
 }> = ({ selectedId }) => {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { showToast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -246,12 +245,6 @@ export const ImportInboxPage: React.FC<{
     },
     scrollRef,
   );
-
-  const openCandidate = (itemId: string) => {
-    const next = new URLSearchParams(searchParams);
-    next.set('panel', 'list');
-    navigate({ pathname: `/import/${itemId}`, search: next.toString() });
-  };
 
   const patchParams = (patch: Record<string, string>, resetPage = true) => {
     const next = new URLSearchParams(searchParams);
@@ -416,7 +409,7 @@ export const ImportInboxPage: React.FC<{
     {
       id: 'selection',
       header: () => <Input type="checkbox" checked={allSelectableChecked} ref={(element) => { if (element) element.indeterminate = someSelectableChecked && !allSelectableChecked; }} onChange={toggleAllVisible} disabled={!selectableItems.length} aria-label="Выбрать все загруженные" />,
-      cell: ({ row }) => <div onClick={(event) => event.stopPropagation()}><Input type="checkbox" checked={selectedIds.has(row.original.id)} disabled={!isSelectable(row.original)} onChange={(event) => toggleOne(row.original.id, event.target.checked)} aria-label={`Выбрать ${displayShopName(row.original.name, row.original.brand)}`} /></div>,
+      cell: ({ row }) => <Input type="checkbox" checked={selectedIds.has(row.original.id)} disabled={!isSelectable(row.original)} onChange={(event) => toggleOne(row.original.id, event.target.checked)} aria-label={`Выбрать ${displayShopName(row.original.name, row.original.brand)}`} />,
       meta: { headerClassName: 'w-10 pl-4 pr-1', className: 'w-10 pl-4 pr-1' },
     },
     {
@@ -432,7 +425,6 @@ export const ImportInboxPage: React.FC<{
               <Link
                 to={{ pathname: `/import/${candidate.id}`, search: candidateSearch.toString() }}
                 className="font-medium text-text-main hover:text-primary dark:text-white"
-                onClick={(event) => event.stopPropagation()}
               >
                 {displayShopName(candidate.name, candidate.brand)}
               </Link>
@@ -494,7 +486,6 @@ export const ImportInboxPage: React.FC<{
             emptyText="Ничего не найдено"
             tableClassName="text-sm"
             getRowId={(item) => item.id}
-            onRowClick={(item) => openCandidate(item.id)}
             getRowClassName={(item) => [
               selectedIds.has(item.id) ? 'bg-primary/5 dark:bg-primary/10' : '',
               selectedId === item.id ? 'bg-primary/10 dark:bg-primary/15' : '',

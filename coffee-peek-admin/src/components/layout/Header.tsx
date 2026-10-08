@@ -6,14 +6,14 @@ import { Button } from '../ui/Button';
 interface HeaderProps {
   title: string;
   onToggleSidebar: () => void;
-  sidebarCollapsed: boolean;
+  sidebarExpanded: boolean;
   hideBorder?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   title,
   onToggleSidebar,
-  sidebarCollapsed,
+  sidebarExpanded,
   hideBorder,
 }) => {
   const { isDark, toggleTheme } = useTheme();
@@ -29,12 +29,14 @@ export const Header: React.FC<HeaderProps> = ({
         type="button"
         variant="ghost"
         size="icon"
+        id="admin-menu-toggle"
         onClick={onToggleSidebar}
         className="-ml-1 shrink-0"
-        aria-label={sidebarCollapsed ? 'Открыть меню' : 'Закрыть меню'}
-        aria-expanded={sidebarCollapsed}
+        aria-label={sidebarExpanded ? 'Закрыть меню' : 'Открыть меню'}
+        aria-expanded={sidebarExpanded}
+        aria-controls="admin-sidebar"
       >
-        {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {sidebarExpanded ? <Menu className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
       </Button>
 
       <h1 className="text-sm font-semibold text-text-main dark:text-white font-display flex-1 truncate min-w-0">

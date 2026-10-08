@@ -1,6 +1,5 @@
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef, type RowData } from '@tanstack/react-table';
 import { Fragment, type ReactNode } from 'react';
-import { cn } from '../../lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './Table';
 
 declare module '@tanstack/react-table' {
@@ -19,7 +18,6 @@ interface DataTableProps<TData> {
   tableClassName?: string;
   getRowId?: (row: TData, index: number) => string;
   getRowClassName?: (row: TData) => string | undefined;
-  onRowClick?: (row: TData) => void;
   expandedRowId?: string | null;
   renderExpandedRow?: (row: TData) => ReactNode;
 }
@@ -33,7 +31,6 @@ export function DataTable<TData>({
   tableClassName,
   getRowId,
   getRowClassName,
-  onRowClick,
   expandedRowId,
   renderExpandedRow,
 }: DataTableProps<TData>) {
@@ -62,10 +59,7 @@ export function DataTable<TData>({
           </TableRow>
         )) : table.getRowModel().rows.length ? table.getRowModel().rows.map((row) => (
           <Fragment key={row.id}>
-            <TableRow
-              className={cn(onRowClick && 'cursor-pointer', getRowClassName?.(row.original))}
-              onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-            >
+            <TableRow className={getRowClassName?.(row.original)}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id} className={cell.column.columnDef.meta?.className}>
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

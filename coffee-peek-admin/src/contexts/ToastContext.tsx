@@ -33,7 +33,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     (message: string, type: ToastType = 'info') => {
       const id = crypto.randomUUID();
       setToasts((prev) => [...prev, { id, type, message }]);
-      setTimeout(() => removeToast(id), 4000);
+      setTimeout(() => removeToast(id), type === 'error' ? 8000 : 5000);
     },
     [removeToast]
   );
@@ -64,12 +64,17 @@ const ToastContainer: React.FC<{ toasts: Toast[]; onRemove: (id: string) => void
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          role={toast.type === 'error' ? 'alert' : 'status'}
+          aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+          aria-atomic="true"
           className={`${toastColors[toast.type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 w-full sm:min-w-[280px] sm:max-w-sm pointer-events-auto`}
         >
           <span className="flex-1 text-sm font-body">{toast.message}</span>
           <button
+            type="button"
+            aria-label="Закрыть уведомление"
             onClick={() => onRemove(toast.id)}
-            className="text-white/70 hover:text-white text-lg leading-none"
+            className="rounded text-white hover:text-white text-lg leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             ×
           </button>

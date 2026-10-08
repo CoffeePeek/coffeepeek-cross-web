@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -36,6 +36,11 @@ export const AppLayout: React.FC = () => {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const { pathname } = useLocation();
 
+  const closeMobileMenu = useCallback(() => {
+    setMobileOpen(false);
+    window.requestAnimationFrame(() => document.getElementById('admin-menu-toggle')?.focus());
+  }, []);
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
@@ -45,11 +50,21 @@ export const AppLayout: React.FC = () => {
   }, [isDesktop]);
 
   useEffect(() => {
-    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    document.body.style.overflow = mobileOpen && !isDesktop ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [mobileOpen]);
+  }, [isDesktop, mobileOpen]);
+
+  useEffect(() => {
+    if (!mobileOpen || isDesktop) return;
+    document.querySelector<HTMLElement>('#admin-sidebar nav a')?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeMobileMenu();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [closeMobileMenu, isDesktop, mobileOpen]);
 
   const isImportWorkspace =
     pathname === '/import' ||
@@ -75,22 +90,23 @@ export const AppLayout: React.FC = () => {
           type="button"
           aria-label="Закрыть меню"
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobileMenu}
         />
       )}
 
       <Sidebar
         collapsed={collapsed}
         mobileOpen={mobileOpen}
-        onNavigate={() => setMobileOpen(false)}
+        isDesktop={isDesktop}
+        onNavigate={() => { if (!isDesktop) closeMobileMenu(); }}
         onToggle={handleMenuClick}
       />
 
-      <div className="flex-1 flex flex-col min-w-0 w-full">
+      <div className="flex-1 flex flex-col min-w-0 w-full" inert={mobileOpen && !isDesktop}>
         <Header
           title={title}
           onToggleSidebar={handleMenuClick}
-          sidebarCollapsed={isDesktop ? collapsed : mobileOpen}
+          sidebarExpanded={isDesktop ? !collapsed : mobileOpen}
           hideBorder={isImportWorkspace}
         />
         <main

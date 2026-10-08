@@ -1,22 +1,21 @@
 import { Input } from '@/src/components/ui/Input';
 import { NativeSelect } from '@/src/components/ui/NativeSelect';
 import { DataTable } from '@/src/components/ui/DataTable';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { getPublishedShopById } from '../api/admin';
 import {
   getShopChangeRequests,
   type ShopChangeRequestDto,
-  type ShopChangeRequestPageDto,
   type ShopChangeSection,
   type ShopChangeStatus,
 } from '../api/shopChangeRequests';
 import { getUserPublicProfile } from '../api/users';
-import { useToast } from '../contexts/ToastContext';
 import { Badge } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
+import { LoadError } from '../components/ui/LoadError';
 import { Button } from '../components/ui/Button';
 import { Pagination } from '../components/ui/Pagination';
 
@@ -87,7 +86,6 @@ function useEntityLabels(items: ShopChangeRequestDto[]) {
 }
 
 export const ShopChangeRequestsPage: React.FC = () => {
-  const { showToast } = useToast();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('page')) || 1);
   const status = (params.get('status') ?? '') as ShopChangeStatus | '';
@@ -96,29 +94,17 @@ export const ShopChangeRequestsPage: React.FC = () => {
   const submittedByUserId = params.get('submittedByUserId') ?? '';
   const [shopIdDraft, setShopIdDraft] = useState(shopId);
   const [userIdDraft, setUserIdDraft] = useState(submittedByUserId);
-  const [data, setData] = useState<ShopChangeRequestPageDto | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    getShopChangeRequests({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
+    queryKey: ['admin', 'shop-change-requests', { page, status, section, shopId, submittedByUserId }],
+    queryFn: () => getShopChangeRequests({
       page,
       pageSize: 20,
       status: status || undefined,
       section: section || undefined,
       shopId: shopId.trim() || undefined,
       submittedByUserId: submittedByUserId.trim() || undefined,
-    })
-      .then((response) => active && setData(response.data))
-      .catch((error) =>
-        showToast(error instanceof Error ? error.message : 'Не удалось загрузить заявки', 'error')
-      )
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [page, section, shopId, status, submittedByUserId, showToast]);
+    }).then((response) => response.data),
+  });
 
   const { shopNames, userNames } = useEntityLabels(data?.items ?? []);
   const columns: ColumnDef<ShopChangeRequestDto>[] = [
@@ -162,6 +148,7 @@ export const ShopChangeRequestsPage: React.FC = () => {
           className="grid gap-3 md:grid-cols-2 xl:grid-cols-5"
         >
           <NativeSelect
+            aria-label="Статус заявки"
             value={status}
             onChange={(e) => update({ status: e.target.value, page: '1' })}
             className="rounded-lg border border-border-light bg-white px-3 py-2 dark:border-border-dark dark:bg-surface-dark"
@@ -172,6 +159,7 @@ export const ShopChangeRequestsPage: React.FC = () => {
             <option value="Rejected">Отклонено</option>
           </NativeSelect>
           <NativeSelect
+            aria-label="Раздел заявки"
             value={section}
             onChange={(e) => update({ section: e.target.value, page: '1' })}
             className="rounded-lg border border-border-light bg-white px-3 py-2 dark:border-border-dark dark:bg-surface-dark"
@@ -184,12 +172,14 @@ export const ShopChangeRequestsPage: React.FC = () => {
             ))}
           </NativeSelect>
           <Input
+            aria-label="ID кофейни"
             value={shopIdDraft}
             onChange={(e) => setShopIdDraft(e.target.value)}
             placeholder="ID кофейни"
             className="rounded-lg border border-border-light bg-white px-3 py-2 dark:border-border-dark dark:bg-surface-dark"
           />
           <Input
+            aria-label="ID пользователя"
             value={userIdDraft}
             onChange={(e) => setUserIdDraft(e.target.value)}
             placeholder="ID пользователя"
@@ -199,15 +189,16 @@ export const ShopChangeRequestsPage: React.FC = () => {
         </form>
       </Card>
 
-      <Card>
-        <DataTable columns={columns} data={data?.items ?? []} loading={loading} emptyText="Заявок не найдено" getRowId={(request) => request.id} />
-      </Card>
+      {isError && <LoadError message={data ? 'Не удалось обновить правки кофеен. Показаны последние загруженные данные.' : 'Не удалось загрузить правки кофеен.'} onRetry={() => void refetch()} retrying={isFetching} />}
+      {(!isError || data) && <Card>
+        <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} emptyText="Заявок не найдено" getRowId={(request) => request.id} />
+      </Card>}
 
-      <Pagination
+      {data && <Pagination
         page={page}
         totalPages={data?.totalPages ?? 1}
         onPageChange={(next) => update({ page: String(next) })}
-      />
+      />}
     </div>
   );
 };

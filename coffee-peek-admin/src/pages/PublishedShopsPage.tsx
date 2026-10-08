@@ -7,6 +7,7 @@ import { getPublishedShops, setPublishedShopVisibility, CoffeeShopStatus, type P
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { LoadError } from '../components/ui/LoadError';
 import { Pagination } from '../components/ui/Pagination';
 import { useToast } from '../contexts/ToastContext';
 import {
@@ -65,7 +66,7 @@ export const PublishedShopsPage: React.FC = () => {
   const { showToast } = useToast();
   const qc = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['admin', 'published-shops', { page, search, status, importedFromFile, sortKey, sortDirection }],
     queryFn: () =>
       getPublishedShops({
@@ -187,6 +188,7 @@ export const PublishedShopsPage: React.FC = () => {
         >
           <Input
             type="text"
+            aria-label="Поиск кофеен по названию"
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Название..."
@@ -198,10 +200,11 @@ export const PublishedShopsPage: React.FC = () => {
         </form>
       </div>
 
-      <Card>
+      {isError && <LoadError message={data ? 'Не удалось обновить список кофеен. Показаны последние загруженные данные.' : 'Не удалось загрузить список кофеен.'} onRetry={() => void refetch()} retrying={isFetching} />}
+      {(!isError || data) && <Card>
         <DataTable columns={columns} data={sortedItems} loading={isLoading} emptyText="Кофейни не найдены" getRowId={(shop) => shop.id} />
         {data && data.totalPages > 1 && <div className="border-t border-border-light px-5 py-3 dark:border-border-dark"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}
-      </Card>
+      </Card>}
     </div>
   );
 };

@@ -125,11 +125,12 @@ function roleLabel(roles: string[]) {
 interface SidebarProps {
   collapsed: boolean;
   mobileOpen: boolean;
+  isDesktop: boolean;
   onNavigate: () => void;
   onToggle: () => void;
 }
 
-export const Sidebar = ({ collapsed, mobileOpen, onNavigate, onToggle }: SidebarProps) => {
+export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle }: SidebarProps) => {
   const { user, isAdmin, isModerator, isOwner, logout } = useUser();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -181,14 +182,14 @@ export const Sidebar = ({ collapsed, mobileOpen, onNavigate, onToggle }: Sidebar
   };
 
   return (
-    <aside className={cn(
-      'fixed inset-y-0 left-0 z-50 flex w-[min(272px,88vw)] flex-col border-r border-white/10 bg-stone-950 text-white shadow-xl transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 lg:transition-[width]',
+    <aside id="admin-sidebar" inert={!isDesktop && !mobileOpen} className={cn(
+      'fixed inset-y-0 left-0 z-50 flex w-[min(272px,88vw)] flex-col border-r border-white/10 bg-stone-950 text-white shadow-xl transition-transform duration-200 motion-reduce:transition-none lg:static lg:z-auto lg:translate-x-0 lg:transition-[width]',
       mobileOpen ? 'translate-x-0' : '-translate-x-full',
       collapsed ? 'lg:w-16' : 'lg:w-64',
     )}>
       <div className={cn('flex h-16 shrink-0 items-center border-b border-white/10', showLabels ? 'gap-3 px-4' : 'justify-center px-2')}>
         <LogoMark size={34} variant="dark" className="rounded-full ring-1 ring-white/10" />
-        {showLabels && <div className="min-w-0 flex-1"><p className="truncate font-display text-sm font-semibold">CoffeePeek</p><p className="text-xs text-stone-500">Admin Console</p></div>}
+        {showLabels && <div className="min-w-0 flex-1"><p className="truncate font-display text-sm font-semibold">CoffeePeek</p><p className="text-xs text-stone-400">Admin Console</p></div>}
         {showLabels && <Button variant="ghost" size="icon" className="hidden text-stone-400 hover:bg-white/10 hover:text-white lg:inline-flex" onClick={onToggle} aria-label="Свернуть меню"><ChevronLeft className="h-4 w-4" /></Button>}
       </div>
 
@@ -201,12 +202,12 @@ export const Sidebar = ({ collapsed, mobileOpen, onNavigate, onToggle }: Sidebar
           return (
             <section key={section.id}>
               {showLabels && (section.collapsible ? (
-                <button type="button" className="mb-1 flex h-8 w-full items-center justify-between gap-2 rounded-md px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-500 hover:text-stone-300" onClick={() => setOpenSections((current) => ({ ...current, [section.id]: !open }))} aria-expanded={open}>
+                <button type="button" className="mb-1 flex h-8 w-full items-center justify-between gap-2 rounded-md px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-400 hover:text-stone-200" onClick={() => setOpenSections((current) => ({ ...current, [section.id]: !open }))} aria-expanded={open}>
                   {section.label}
                   {hiddenCount > 0 && <CountBadge count={hiddenCount} />}
                   <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-180')} />
                 </button>
-              ) : <h2 className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-500">{section.label}</h2>)}
+              ) : <h2 className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-400">{section.label}</h2>)}
               {open && <div className="space-y-1">{section.items.map(renderLink)}</div>}
             </section>
           );
@@ -216,7 +217,7 @@ export const Sidebar = ({ collapsed, mobileOpen, onNavigate, onToggle }: Sidebar
       <div className={cn('border-t border-white/10', showLabels ? 'p-3' : 'p-2')}>
         <div className={cn('flex items-center rounded-lg bg-white/5', showLabels ? 'gap-3 p-2' : 'justify-center p-1')}>
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-800 text-stone-300"><UserRound className="h-4 w-4" /></span>
-          {showLabels && user && <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{user.email}</p><p className="truncate text-[11px] text-stone-500">{roleLabel(user.roles)}</p></div>}
+          {showLabels && user && <div className="min-w-0 flex-1"><p className="truncate text-xs font-medium">{user.email}</p><p className="truncate text-[11px] text-stone-400">{roleLabel(user.roles)}</p></div>}
           {showLabels && <Button variant="ghost" size="icon" className="h-8 w-8 text-stone-500 hover:bg-red-500/10 hover:text-red-300" onClick={handleLogout} disabled={loggingOut} aria-label="Выйти"><LogOut className="h-4 w-4" /></Button>}
         </div>
         {!showLabels && <Button variant="ghost" size="icon" className="mx-auto mt-2 text-stone-500 hover:bg-red-500/10 hover:text-red-300" onClick={handleLogout} disabled={loggingOut} aria-label="Выйти"><LogOut className="h-4 w-4" /></Button>}
