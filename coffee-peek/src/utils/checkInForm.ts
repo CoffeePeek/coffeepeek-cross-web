@@ -59,14 +59,35 @@ export function buildCheckInRequest(draft: CheckInDraft, now = new Date()): Crea
   };
 }
 
-export function formatCheckInDate(item: { visitedAt?: string | null; createdAtUtc: string }): string {
+export function formatCheckInDate(item: { visitedAt?: string | null; createdAtUtc: string }, now = new Date()): string {
+  const created = parseCheckInDate(item.createdAtUtc);
+  const elapsed = created ? now.getTime() - created.getTime() : -1;
+  if (elapsed >= 0 && elapsed < 24 * 60 * 60 * 1000) {
+    const minutes = Math.floor(elapsed / 60000);
+    if (minutes === 0) return 'Только что';
+    if (minutes < 60) return `${minutes} ${pluralTime(minutes, ['минуту', 'минуты', 'минут'])} назад`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} ${pluralTime(hours, ['час', 'часа', 'часов'])} назад`;
+  }
   for (const value of [item.visitedAt, item.createdAtUtc]) {
-    if (!value) continue;
-    // The server's CreatedAt is UTC, including older responses without a zone suffix.
-    const iso = /T/.test(value) && !/(Z|[+-]\d{2}:\d{2})$/i.test(value) ? `${value}Z` : value;
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime()) || date.getFullYear() < 1990) continue;
+    const date = parseCheckInDate(value);
+    if (!date) continue;
     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   }
   return 'Дата не указана';
+}
+
+function parseCheckInDate(value?: string | null): Date | null {
+  if (!value) return null;
+  // Older server responses omit the zone suffix, but timestamps are still UTC.
+  const iso = /T/.test(value) && !/(Z|[+-]\d{2}:\d{2})$/i.test(value) ? `${value}Z` : value;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) || date.getFullYear() < 1990 ? null : date;
+}
+
+function pluralTime(value: number, forms: [string, string, string]): string {
+  const lastTwo = value % 100;
+  if (lastTwo >= 11 && lastTwo <= 14) return forms[2];
+  const last = value % 10;
+  return last === 1 ? forms[0] : last >= 2 && last <= 4 ? forms[1] : forms[2];
 }

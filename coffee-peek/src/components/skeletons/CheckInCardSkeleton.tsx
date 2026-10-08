@@ -18,10 +18,11 @@ const CheckInCardSkeleton: React.FC<CheckInCardSkeletonProps> = ({ count = 3 }) 
       {Array.from({ length: count }).map((_, index) => (
         <div
           key={index}
-          className={`${cardBg} p-8 rounded-3xl border ${borderColor} hover:shadow-lg transition-all`}
+          aria-hidden="true"
+          className={`${cardBg} p-4 sm:p-5 rounded-[20px] border ${borderColor}`}
         >
           <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-4 flex-1">
+            <div className="flex items-center gap-3 flex-1">
               {/* Аватар */}
               <Shimmer width="48px" height="48px" circle />
               
@@ -32,20 +33,19 @@ const CheckInCardSkeleton: React.FC<CheckInCardSkeletonProps> = ({ count = 3 }) 
               </div>
             </div>
             
-            {/* Рейтинг */}
-            <div className="flex items-center gap-2">
-              <Shimmer width="100px" height="24px" />
-              <Shimmer width="40px" height="24px" />
-            </div>
+            <Shimmer width="24px" height="8px" />
           </div>
           
           {/* Заголовок чекина */}
           <Shimmer width="60%" height="20px" className="mb-2" />
+          <Shimmer width="140px" height="20px" className="mb-3" />
+          <Shimmer width="100%" height="56px" className="mb-4 rounded-2xl" />
           
           {/* Текст чекина */}
           <Shimmer width="100%" height="16px" className="mb-2" />
           <Shimmer width="90%" height="16px" className="mb-2" />
           <Shimmer width="80%" height="16px" />
+          <Shimmer width="52px" height="24px" className="mt-5" />
         </div>
       ))}
     </>

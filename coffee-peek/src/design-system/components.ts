@@ -99,6 +99,24 @@ export const card = {
   },
 } as const;
 
+export const checkInCard = {
+  borderRadius: 20,
+  borderWidth: borderWidth.thin,
+  padding: 16,
+  paddingDesktop: 20,
+  avatarSize: 48,
+  authorFontSize: 14,
+  dateFontSize: 12,
+  dateFontSizeDesktop: 14,
+  shopFontSize: 20,
+  starSize: 20,
+  bodyFontSize: 16,
+  bodyLineHeight: 1.55,
+  drink: { minHeight: 56, borderRadius: 16, photoSize: 44, photoBorderRadius: 12, fontSize: 14 },
+  photos: { borderRadius: 12, gap: 4, singleAspectRatio: '3:2', collageAspectRatio: '5:3', fourAspectRatio: '5:4' },
+  reaction: { iconSize: 26, minHeight: 44, color: '#EF4444', fontSize: 14 },
+} as const;
+
 export const toast = {
   minWidth: 320,
   maxWidth: 448,
@@ -200,6 +218,7 @@ export const components = {
   input,
   select,
   card,
+  checkInCard,
   toast,
   header,
   badge,

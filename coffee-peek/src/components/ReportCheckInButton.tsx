@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { DotsThree, WarningCircle, X } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
@@ -9,7 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 import { getErrorMessage } from '../utils/errorHandler';
 
-export default function ReportCheckInButton({ checkInId }: { checkInId: string }) {
+export default function ReportCheckInButton({ checkInId, actions }: { checkInId: string; actions?: (close: () => void) => ReactNode }) {
   const { user } = useUser();
   const { theme } = useTheme();
   const classes = getThemeClasses(theme);
@@ -55,15 +55,15 @@ export default function ReportCheckInButton({ checkInId }: { checkInId: string }
     };
   }, [open]);
 
-  if (!user) return null;
+  if (!user && !actions) return null;
   const close = () => { if (!mutation.isPending) setOpen(false); };
   return (
     <div ref={menu} className={`relative shrink-0 text-sm ${classes.text.primary}`}>
-      <button ref={trigger} type="button" aria-label="Действия с чекином" aria-expanded={menuOpen} aria-controls={`${id}-menu`} className={`flex h-11 w-11 items-center justify-center rounded-full ${classes.text.secondary} hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308]`} onClick={() => setMenuOpen(!menuOpen)}>
-        <DotsThree size={26} weight="bold" />
+      <button ref={trigger} type="button" aria-label="Действия с чекином" aria-expanded={menuOpen} aria-controls={`${id}-menu`} className={`flex h-11 w-11 items-center justify-center rounded-full p-0 ${classes.text.secondary} hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308]`} onClick={() => setMenuOpen(!menuOpen)}>
+        <DotsThree size={26} weight="bold" className="shrink-0" />
       </button>
       {menuOpen && <div id={`${id}-menu`} className={`absolute right-0 top-12 z-20 w-52 rounded-2xl border p-1.5 shadow-lg ${classes.bg.card} ${classes.border.default}`}>
-        <button type="button" autoFocus disabled={sent} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50" onClick={() => { setMenuOpen(false); mutation.reset(); setOpen(true); }}><WarningCircle size={18} />{sent ? 'Жалоба отправлена' : 'Пожаловаться'}</button>
+        {actions ? actions(() => { setMenuOpen(false); trigger.current?.focus(); }) : <button type="button" autoFocus disabled={sent} className="flex min-h-11 w-full items-center gap-2 rounded-xl px-3 text-left hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50" onClick={() => { setMenuOpen(false); mutation.reset(); setOpen(true); }}><WarningCircle size={18} />{sent ? 'Жалоба отправлена' : 'Пожаловаться'}</button>}
       </div>}
       {open && createPortal(
         <dialog ref={dialog} aria-labelledby={`${id}-title`} aria-describedby={`${id}-description`} onCancel={event => { event.preventDefault(); close(); }} onClick={event => { if (event.target === event.currentTarget) close(); }} className={`fixed inset-x-0 bottom-0 top-auto m-0 max-h-[90dvh] w-full max-w-none overflow-y-auto rounded-t-[28px] border p-0 backdrop:bg-black/55 sm:inset-0 sm:m-auto sm:w-[calc(100%-2rem)] sm:max-w-[460px] sm:rounded-[28px] ${classes.bg.card} ${classes.text.primary} ${classes.border.default}`}>
