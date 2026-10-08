@@ -21,7 +21,7 @@ import { Button } from '../ui/Button';
 
 const QUEUE_LABELS: Record<AdminModerationQueueName, string> = {
   shops: 'Кофейни',
-  reviews: 'Отзывы',
+  checkIns: 'Чекины',
   roasters: 'Обжарщики',
   changeRequests: 'Правки кофеен',
   issueReports: 'Жалобы',
@@ -342,7 +342,6 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
           ) : shopsTs.data ? (
             <>
               <Bars label="Новые кофейни" points={shopsTs.data.newShops} />
-              <Bars label="Новые отзывы" points={shopsTs.data.newReviews} />
               <Bars label="Чекины" points={shopsTs.data.newCheckIns} />
             </>
           ) : null}
@@ -351,13 +350,13 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
 
       {/* Shops insights */}
       <Card className="p-4">
-        <SectionTitle>Кофейни и отзывы</SectionTitle>
+        <SectionTitle>Кофейни и чекины</SectionTitle>
         {!overview.shopsAvailable || shops.isError ? (
           <Unavailable />
         ) : shops.data && ratings ? (
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Metric label="Средний рейтинг" value={ratings.averageRating.toFixed(2)} hint={`${ratings.totalReviews} отзывов`} />
+              <Metric label="Средний рейтинг" value={ratings.averageRating.toFixed(2)} hint={`${ratings.totalCheckIns} чекинов`} />
               <Metric label="Место" value={ratings.averagePlace.toFixed(2)} />
               <Metric label="Сервис" value={ratings.averageService.toFixed(2)} />
               <Metric label="Кофе" value={ratings.averageCoffee.toFixed(2)} />
@@ -375,7 +374,6 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <TopShops title="Топ по чекинам (30 дн)" shops={shops.data.topShopsByCheckIns30Days} />
-              <TopShops title="Топ по отзывам" shops={shops.data.topShopsByReviews} />
             </div>
             <div>
               <p className="text-xs text-text-muted dark:text-stone-400 font-body uppercase tracking-wide mb-2">
@@ -399,8 +397,6 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
           <div className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <Metric label="Самая старая заявка" value={fmtHours(moderation.data.oldestPendingHours)} />
-              <Metric label="Отзывов промодерировано" value={moderation.data.sla.reviewsModerated30Days} hint="за 30 дн" />
-              <Metric label="Среднее время (отзывы)" value={fmtHours(moderation.data.sla.avgReviewModerationHours)} />
             </div>
             <DataTable columns={queueColumns} data={moderation.data.queues} />
             {moderation.data.topModerators30Days.length > 0 && (

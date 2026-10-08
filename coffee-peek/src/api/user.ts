@@ -19,7 +19,6 @@ export interface PublicUserProfile {
   avatarUrl?: string;
   about?: string;
   createdAtUtc?: string;
-  reviewCount?: number;
   checkInCount?: number;
 }
 
@@ -55,7 +54,6 @@ export async function getUserPublicProfile(
         avatarUrl: userData.avatarUrl,
         about: userData.about,
         createdAtUtc: userData.createdAtUtc,
-        reviewCount: userData.reviewCount,
         addedShopsCount: userData.addedShopsCount,
         checkInCount: userData.checkInCount,
       },

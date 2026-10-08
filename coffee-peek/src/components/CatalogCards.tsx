@@ -234,7 +234,7 @@ export function ShopCatalogCard({ shop }: { shop: Shop }) {
   return <ShopCard colors={getThemeColors(theme)} onSelect={() => navigate(shop.address.canonicalPath)} shop={{
     id: shop.address.slug, name: shop.name, publicAddress: shop.address, canonicalPath: shop.address.canonicalPath,
     address: shop.addressLine, shopPhotos: shop.coverPhoto ? [shop.coverPhoto.urls?.card || shop.coverPhoto.fullUrl] : [],
-    rating: shop.rating, reviewCount: shop.reviewCount, isOpen: shop.isOpen ?? undefined,
+    rating: shop.rating, checkInCount: shop.checkInCount, isOpen: shop.isOpen ?? undefined,
     isVisited: shop.isVisited ?? undefined, isFavorite: shop.isFavorite,
   }}>
     {shop.distanceMeters !== null && <p className="flex items-center gap-1.5"><AppIcon name="person-simple-walk" size={18} />{(shop.distanceMeters / 1000).toLocaleString()} км от вас</p>}

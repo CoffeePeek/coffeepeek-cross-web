@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { COLORS } from '../constants/colors';
-import { MagnifyingGlass, GearSix, SignOut, CaretDown, User } from '@/components/Icon';
+import { ChatCenteredText, MagnifyingGlass, GearSix, SignOut, CaretDown, User } from '@/components/Icon';
 import { CoffeeBean } from '@phosphor-icons/react';
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
 
 const PUBLIC_NAV = [
+  { id: 'feed', label: 'Лента', route: '/feed', Icon: ChatCenteredText, match: (p: string) => p.startsWith('/feed') },
   { id: 'discovery', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => ['/shops', '/coffee-shops', '/search', '/roasters', '/dashboard', '/map', '/cities', '/coffee-zones'].some(route => p.startsWith(route)) },
   { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: CoffeeBean, match: (p: string) => p.startsWith('/coffees') },
 ] as const;
@@ -38,7 +39,7 @@ const Header: React.FC = () => {
   const allNav = [...PUBLIC_NAV];
 
   const currentPath = location.pathname + location.search;
-  const isShopDetails = /^\/shops\/[^/]+$/.test(location.pathname);
+  const isShopDetails = /^\/(?:shops|coffee-shops)\/[^/]+$/.test(location.pathname);
   const isShopCreation = location.pathname === '/coffee-shops/new';
   const currentId = (user ? AUTH_NAV : PUBLIC_NAV).find(n => n.match(currentPath))?.id ?? '';
 
@@ -200,7 +201,7 @@ const Header: React.FC = () => {
       </div>
     </header>
       <nav
-        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-4 border-t lg:hidden`}
+        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-5 border-t lg:hidden`}
         aria-label="Основная навигация"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: bg, borderColor, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
       >

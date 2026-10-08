@@ -40,8 +40,8 @@ const NAV_SECTIONS: NavSection[] = [
   { id: 'moderation', label: 'Модерация', collapsible: true, items: [
     { path: '/shop-change-requests', label: 'Правки кофеен', icon: History, moderatorOnly: true },
     { path: '/shops', label: 'Заявки на кофейни', icon: Coffee, moderatorOnly: true },
-    { path: '/reviews', label: 'Отзывы на проверке', icon: MessageSquareText, moderatorOnly: true },
-    { path: '/review-reports', label: 'Жалобы на отзывы', icon: Flag, adminOnly: true },
+    { path: '/check-ins', label: 'Чекины на проверке', icon: MessageSquareText, moderatorOnly: true },
+    { path: '/check-in-reports', label: 'Жалобы на чекины', icon: Flag, adminOnly: true },
     { path: '/shop-reports', label: 'Жалобы на данные', icon: Flag, moderatorOnly: true },
     { path: '/roasters', label: 'Заявки на обжарщиков', icon: Coffee, moderatorOnly: true },
   ] },
@@ -69,7 +69,7 @@ const pathActive = (pathname: string, path: string) => pathname === path || path
 
 const QUEUE_PATHS: Record<AdminModerationQueueName, string> = {
   shops: '/shops',
-  reviews: '/reviews',
+  checkIns: '/check-ins',
   roasters: '/roasters',
   changeRequests: '/shop-change-requests',
   issueReports: '/shop-reports',

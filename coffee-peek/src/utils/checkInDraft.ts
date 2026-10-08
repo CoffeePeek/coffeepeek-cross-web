@@ -11,7 +11,6 @@ export function createEmptyCheckInDraft(shopId: string, now = new Date()): Check
     coffeeShopId: shopId,
     drinkSlug: '',
     customDrinkName: '',
-    header: '',
     note: '',
     isPublic: false,
     visitedDate: todayInputValue(now),

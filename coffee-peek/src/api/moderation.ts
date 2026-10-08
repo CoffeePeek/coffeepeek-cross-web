@@ -1,5 +1,5 @@
 /**
- * API модуль для отправки кофеен и отзывов
+ * API модуль для отправки кофеен и чекинов
  */
 
 import { httpClient } from './core/httpClient';

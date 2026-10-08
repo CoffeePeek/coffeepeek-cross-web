@@ -1,3 +1,4 @@
+import ModerationPhotos from '../components/ModerationPhotos';
 import { PublishedShopLink } from '../components/PublishedShopLink';
 import { Input } from '@/src/components/ui/Input';
 import { DataTable } from '@/src/components/ui/DataTable';
@@ -5,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
-import { getModerationReviews, approveReview, rejectReview, ModerationStatus, AdminReview } from '../api/admin';
+import { getModerationCheckIns, approveCheckIn, rejectCheckIn, ModerationStatus, ModerationCheckIn } from '../api/admin';
 import { useToast } from '../contexts/ToastContext';
 import { Badge, statusToBadgeVariant, statusLabels } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
@@ -23,29 +24,29 @@ const STATUS_OPTIONS: { value: ModerationStatus | ''; label: string }[] = [
   { value: 'Rejected', label: 'Отклонённые' },
 ];
 
-function displayDrinkName(review: AdminReview): string {
-  if (review.drinkSlug === 'other' && review.customDrinkName) return review.customDrinkName;
+function displayDrinkName(checkIn: ModerationCheckIn): string {
+  if (checkIn.drinkSlug === 'other' && checkIn.customDrinkName) return checkIn.customDrinkName;
   const isEnglish = typeof document !== 'undefined' && document.documentElement.lang.toLowerCase().startsWith('en');
-  return (isEnglish ? review.drinkNameEn || review.drinkNameRu : review.drinkNameRu || review.drinkNameEn)
-    || review.customDrinkName
+  return (isEnglish ? checkIn.drinkNameEn || checkIn.drinkNameRu : checkIn.drinkNameRu || checkIn.drinkNameEn)
+    || checkIn.customDrinkName
     || (isEnglish ? 'Not specified' : 'Не указан');
 }
 
-export const ReviewsModerationPage: React.FC = () => {
+export const CheckInsModerationPage: React.FC = () => {
   const { showToast } = useToast();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const status = (searchParams.get('status') ?? '') as ModerationStatus | '';
+  const status = (searchParams.get('status') ?? 'Pending') as ModerationStatus | '';
   const page = parseInt(searchParams.get('page') ?? '1');
   const search = searchParams.get('search') ?? '';
   const [localSearch, setLocalSearch] = useState(search);
   const [pendingAction, setPendingAction] = useState<{ id: string; type: 'approve' | 'reject' } | null>(null);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'moderation', 'reviews', { status, page, search }],
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['admin', 'moderation', 'checkIns', { status, page, search }],
     queryFn: () =>
-      getModerationReviews({
+      getModerationCheckIns({
         status: status || undefined,
         page,
         pageSize: PAGE_SIZE,
@@ -55,10 +56,10 @@ export const ReviewsModerationPage: React.FC = () => {
 
   const approveMutation = useMutation({
     mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
-      approveReview(id, comment ? { comment } : undefined),
+      approveCheckIn(id, comment ? { comment } : undefined),
     onSuccess: () => {
-      showToast('Отзыв одобрен', 'success');
-      qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'reviews'] });
+      showToast('Чекин одобрен', 'success');
+      qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'checkIns'] });
       setPendingAction(null);
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
@@ -66,10 +67,10 @@ export const ReviewsModerationPage: React.FC = () => {
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
-      rejectReview(id, comment ? { comment } : undefined),
+      rejectCheckIn(id, comment ? { comment } : undefined),
     onSuccess: () => {
-      showToast('Отзыв отклонён', 'success');
-      qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'reviews'] });
+      showToast('Чекин отклонён', 'success');
+      qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'checkIns'] });
       setPendingAction(null);
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
@@ -77,19 +78,25 @@ export const ReviewsModerationPage: React.FC = () => {
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(searchParams);
-    if (value) next.set(key, value); else next.delete(key);
+    if (value || key === 'status') next.set(key, value); else next.delete(key);
     if (key !== 'page') next.delete('page');
     setSearchParams(next);
   };
 
-  const columns: ColumnDef<AdminReview>[] = [
-    { accessorKey: 'header', header: 'Отзыв', cell: ({ row }) => <div className="max-w-[360px]"><p className="font-medium text-text-main dark:text-white">{row.original.header}</p><p className="text-xs text-text-muted">Напиток: {displayDrinkName(row.original)}</p><p className="line-clamp-2 text-xs text-text-muted">{row.original.comment}</p></div> },
-    { accessorKey: 'shopName', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400">{row.original.shopName}</PublishedShopLink> },
-    { id: 'author', header: 'Автор', cell: ({ row }) => row.original.authorName ?? row.original.authorEmail },
-    { id: 'ratings', header: 'Оценки', cell: ({ row }) => `К ${row.original.ratingCoffee} · С ${row.original.ratingService} · М ${row.original.ratingPlace}` },
-    { accessorKey: 'status', header: 'Статус', cell: ({ row }) => <Badge variant={statusToBadgeVariant(row.original.status)}>{statusLabels[row.original.status]}</Badge> },
-    { accessorKey: 'createdAtUtc', header: 'Дата', cell: ({ row }) => new Date(row.original.createdAtUtc).toLocaleDateString('ru') },
-    { id: 'actions', cell: ({ row }) => row.original.status === 'Pending' ? <div className="flex gap-2"><Button variant="success" size="sm" onClick={() => setPendingAction({ id: row.original.id, type: 'approve' })}>Одобрить</Button><Button variant="danger" size="sm" onClick={() => setPendingAction({ id: row.original.id, type: 'reject' })}>Отклонить</Button></div> : null },
+  const openAction = (id: string, type: 'approve' | 'reject') => {
+    approveMutation.reset();
+    rejectMutation.reset();
+    setPendingAction({ id, type });
+  };
+
+  const columns: ColumnDef<ModerationCheckIn>[] = [
+    { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text}</p><p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos} /></div> },
+    { accessorKey: 'shopName', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400">{row.original.shopId}</PublishedShopLink> },
+    { id: 'author', header: 'Автор', cell: ({ row }) => row.original.userName },
+    { id: 'ratings', header: 'Оценки', cell: ({ row }) => `К ${row.original.rating.coffee} · С ${row.original.rating.service} · М ${row.original.rating.place}` },
+    { accessorKey: 'moderationStatus', header: 'Статус', cell: ({ row }) => <Badge variant={statusToBadgeVariant(row.original.moderationStatus)}>{statusLabels[row.original.moderationStatus]}</Badge> },
+    { accessorKey: 'visitedAtUtc', header: 'Дата', cell: ({ row }) => new Date(row.original.visitedAtUtc).toLocaleDateString('ru') },
+    { id: 'actions', cell: ({ row }) => row.original.moderationStatus === 'Pending' ? <div className="flex gap-2"><Button variant="success" size="sm" onClick={() => openAction(row.original.id, 'approve')}>Одобрить</Button><Button variant="danger" size="sm" onClick={() => openAction(row.original.id, 'reject')}>Отклонить</Button></div> : null },
   ];
 
   // After acting on the last item of page N>1 the page becomes empty — step back instead of stranding the user.
@@ -105,10 +112,10 @@ export const ReviewsModerationPage: React.FC = () => {
     <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <div>
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">
-          Отзывы на проверке
+          Чекины на проверке
         </h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          {data ? `Отзывы пользователей, ожидающие решения · Всего: ${data.totalCount}` : 'Загрузка...'}
+          {data ? `Чекины пользователей, ожидающие решения · Всего: ${data.totalCount}` : 'Загрузка...'}
         </p>
       </div>
 
@@ -132,6 +139,7 @@ export const ReviewsModerationPage: React.FC = () => {
         >
           <Input
             type="text"
+            maxLength={100}
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Поиск по тексту..."
@@ -143,35 +151,40 @@ export const ReviewsModerationPage: React.FC = () => {
         </form>
       </div>
 
+      {error && <p role="alert" className="text-red-500">{getErrorMessage(error, "Не удалось загрузить чекины")} <button type="button" onClick={() => void refetch()}>Повторить</button></p>}
       <Card>
-        <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} emptyText="Отзывы не найдены" getRowId={(review) => review.id} />
+        <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} emptyText="Чекины не найдены" getRowId={(checkIn) => checkIn.id} />
         {data && <div className="border-t border-border-light px-5 py-3 dark:border-border-dark"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}
       </Card>
 
       <ConfirmDialog
         isOpen={pendingAction?.type === 'approve'}
-        title="Одобрить отзыв?"
-        message="Отзыв будет опубликован и виден всем пользователям."
+        title="Одобрить чекин?"
+        message="Чекин будет опубликован и виден всем пользователям."
         confirmLabel="Одобрить"
         variant="success"
         withComment
         commentLabel="Комментарий (необязательно)"
+        error={approveMutation.error ? getErrorMessage(approveMutation.error, 'Не удалось сохранить решение') : undefined}
         onConfirm={async (comment) => {
-          if (pendingAction) await approveMutation.mutateAsync({ id: pendingAction.id, comment });
+          try { if (pendingAction) await approveMutation.mutateAsync({ id: pendingAction.id, comment }); }
+          catch { /* Mutation error is displayed in the dialog. */ }
         }}
         onCancel={() => setPendingAction(null)}
       />
 
       <ConfirmDialog
         isOpen={pendingAction?.type === 'reject'}
-        title="Отклонить отзыв?"
+        title="Отклонить чекин?"
         message="Укажите причину отклонения."
         confirmLabel="Отклонить"
         variant="danger"
         withComment
-        commentLabel="Причина отклонения"
+        commentLabel="Причина отклонения (2–1000 символов)"
+        error={rejectMutation.error ? getErrorMessage(rejectMutation.error, "Не удалось сохранить решение") : undefined}
         onConfirm={async (comment) => {
-          if (pendingAction) await rejectMutation.mutateAsync({ id: pendingAction.id, comment });
+          try { if (pendingAction) await rejectMutation.mutateAsync({ id: pendingAction.id, comment }); }
+          catch { /* Mutation error is displayed in the dialog. */ }
         }}
         onCancel={() => setPendingAction(null)}
       />

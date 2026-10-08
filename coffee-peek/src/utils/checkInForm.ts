@@ -1,14 +1,13 @@
 import { drinkSelection } from './consumedDrinks';
 import type { CreateCheckInRequest, RatingDto } from '../api/coffeeshop';
 
-export const CHECK_IN_LIMITS = { headerMin: 3, headerMax: 100, noteMin: 10, noteMax: 500 };
+export const CHECK_IN_LIMITS = { noteMin: 1, noteMax: 1000 };
 
 export interface CheckInDraft {
   drinkSlug?: string;
   customDrinkName?: string;
   coffeeShopId: string;
   isPublic: boolean;
-  header: string;
   note: string;
   visitedDate: string;
   rating: RatingDto;
@@ -29,23 +28,15 @@ export function buildCheckInRequest(draft: CheckInDraft, now = new Date()): Crea
     throw new CheckInValidationError((error as Error).message);
   }
   const note = draft.note.trim();
-  const header = draft.header.trim();
   if ([draft.rating.coffee, draft.rating.service, draft.rating.place].some(
         (value) => !Number.isInteger(value) || value < 1 || value > 5
       )) {
     throw new CheckInValidationError('Укажите оценки кофе, сервиса и атмосферы от 1 до 5');
   }
-  if (note.length > CHECK_IN_LIMITS.noteMax) {
-    throw new CheckInValidationError('Описание должно содержать не больше 500 символов');
+  if (note.length < CHECK_IN_LIMITS.noteMin || note.length > CHECK_IN_LIMITS.noteMax) {
+    throw new CheckInValidationError('Текст чекина должен содержать от 1 до 1000 символов');
   }
-  if (draft.isPublic) {
-    if (header.length < CHECK_IN_LIMITS.headerMin || header.length > CHECK_IN_LIMITS.headerMax) {
-      throw new CheckInValidationError('Для публичного чекина нужен заголовок от 3 до 100 символов');
-    }
-    if (note.length < CHECK_IN_LIMITS.noteMin) {
-      throw new CheckInValidationError('Для публичного чекина нужно описание от 10 до 500 символов');
-    }
-  }
+  if (!draft.coffeeShopId.trim()) throw new CheckInValidationError('Выберите кофейню');
 
   const date = draft.visitedDate || todayInputValue(now);
   const visitedAt = new Date(`${date}T00:00:00`);
@@ -59,18 +50,17 @@ export function buildCheckInRequest(draft: CheckInDraft, now = new Date()): Crea
 
   return {
     ...selection,
-    shop: draft.coffeeShopId,
-    isPublic: draft.isPublic,
+    coffeeShopSlug: draft.coffeeShopId,
+    visibility: draft.isPublic ? 'Public' : 'Private',
     visitedAt: visitedAt.toISOString(),
-    header: draft.isPublic ? header : null,
-    note: note || null,
+    text: note,
     photos: [],
     rating: draft.rating,
   };
 }
 
-export function formatCheckInDate(item: { visitedAt?: string | null; createdAt: string }): string {
-  for (const value of [item.visitedAt, item.createdAt]) {
+export function formatCheckInDate(item: { visitedAt?: string | null; createdAtUtc: string }): string {
+  for (const value of [item.visitedAt, item.createdAtUtc]) {
     if (!value) continue;
     // The server's CreatedAt is UTC, including older responses without a zone suffix.
     const iso = /T/.test(value) && !/(Z|[+-]\d{2}:\d{2})$/i.test(value) ? `${value}Z` : value;

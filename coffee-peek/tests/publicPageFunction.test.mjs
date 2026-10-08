@@ -3,7 +3,7 @@ import test from 'node:test';
 import handler, { renderPublicPage } from '../api/public-page.mjs';
 const shell = '<html><head><title>CoffeePeek</title></head><body><div id="root"></div></body></html>';
 const address = { slug: '1801', canonicalPath: '/coffee-shops/1801', revision: 1, isAlias: false };
-const shop = { address, name: '1801 кофе', description: 'Спешелти кофейня', rating: 4.9, reviewCount: 20,
+const shop = { address, name: '1801 кофе', description: 'Спешелти кофейня', rating: 4.9, checkInCount: 20,
   location: { address: 'пр. Независимости 95', latitude: 53.9, longitude: 27.6 },
   photos: [{ fullUrl: 'https://media.example/shop.jpg' }],
   menu: { currency: 'BYN', items: [{ nameRu: 'Капучино', availability: 'Present', price: 7 }] },
@@ -69,11 +69,11 @@ for (const status of [400, 404, 429, 503]) {
 }
 test('canonical user renders the user envelope without internal IDs', async () => {
   const userAddress = { ...address, canonicalPath: '/users/petr', slug: 'petr' };
-  await withMock({ data: { userName: 'Petr', reviewCount: 12 }, address: userAddress }, async () => {
+  await withMock({ data: { userName: 'Petr', checkInCount: 12 }, address: userAddress }, async () => {
     const result = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=address&kind=users&segment=petr&path=/users/petr'));
     assert.equal(result.status, 200);
     assert.match(result.html, /Petr/);
-    assert.match(result.html, /Отзывов: 12/);
+    assert.match(result.html, /Чекинов: 12/);
   });
 });
 test('replacement patterns in names remain literal', async () => {

@@ -1,4 +1,4 @@
-import { displayDrinkName, drinkSelection, reviewDrinkSelection, savedDrinkName } from '../src/utils/consumedDrinks';
+import { displayDrinkName, drinkSelection, savedDrinkName } from '../src/utils/consumedDrinks';
 import { buildCheckInRequest } from '../src/utils/checkInForm';
 
 test('optional selections omit fields; catalog drinks never send a custom name', () => {
@@ -23,17 +23,8 @@ test('historical display uses snapshot names without the catalog', () => {
   expect(displayDrinkName({ drinkSlug: null, drinkNameRu: null, drinkNameEn: null }, 'en')).toBe('Not specified');
 });
 
-test('review edits preserve unchanged inactive drinks, clear removals and submit replacements', () => {
-  const original = { drinkSlug: 'inactive' };
-  expect(reviewDrinkSelection('inactive', '', original)).toEqual({});
-  expect(reviewDrinkSelection('', '', original)).toEqual({ clearDrink: true });
-  expect(reviewDrinkSelection('cappuccino', '', original)).toEqual({ drinkSlug: 'cappuccino' });
-  expect(reviewDrinkSelection('other', ' Тоник ', { drinkSlug: 'other', customDrinkName: 'Тоник' })).toEqual({});
-  expect(reviewDrinkSelection('', '')).toEqual({});
-});
-
 test('private and public check-ins carry the same validated drink selection', () => {
   for (const isPublic of [false, true]) {
-    expect(buildCheckInRequest({ coffeeShopId: 'shop', isPublic, header: 'Заголовок', note: 'Описание посещения', visitedDate: '2026-09-01', rating: { coffee: 5, service: 5, place: 5 }, drinkSlug: 'other', customDrinkName: ' Тоник ' }, new Date('2026-09-02T12:00:00Z'))).toMatchObject({ drinkSlug: 'other', customDrinkName: 'Тоник' });
+    expect(buildCheckInRequest({ coffeeShopId: 'shop', isPublic, note: 'Описание посещения', visitedDate: '2026-09-01', rating: { coffee: 5, service: 5, place: 5 }, drinkSlug: 'other', customDrinkName: ' Тоник ' }, new Date('2026-09-02T12:00:00Z'))).toMatchObject({ drinkSlug: 'other', customDrinkName: 'Тоник' });
   }
 });

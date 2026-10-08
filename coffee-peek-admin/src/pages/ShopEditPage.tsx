@@ -372,7 +372,7 @@ export const ShopEditPage: React.FC = () => {
                         </p>
                       )}
                       <p className="mt-2 text-xs text-text-muted dark:text-stone-400 font-body">
-                        Отзывов: {authorProfile.reviewCount ?? 0} · Отметок: {authorProfile.checkInCount ?? 0}
+                        Чекинов: {authorProfile.checkInCount ?? 0}
                       </p>
                     </div>
                   </div>

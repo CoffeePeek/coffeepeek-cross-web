@@ -4,7 +4,6 @@ import type { ApiResponse } from './core/types';
 
 export interface PublicStats {
   totalCoffeeShops: number;
-  totalReviews: number;
   totalCheckIns: number;
   averageRating: number;
 }

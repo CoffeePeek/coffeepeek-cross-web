@@ -17,7 +17,7 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 
 ## Публичные адреса и административные ID
 
-У кофейни, обжарщика и пользователя публичный адрес использует **slug**. Публичные чтения по UUID не поддерживаются. Административные DTO используют **UUID**; ID отзывов, заявок, фотографий и чек-инов также остаются UUID.
+У кофейни, обжарщика и пользователя публичный адрес использует **slug**. Публичные чтения по UUID не поддерживаются. Административные DTO используют **UUID**; ID заявок, фотографий и чекинов также остаются UUID.
 
 | Метод | Путь | Данные / доступ |
 |---|---|---|
@@ -38,11 +38,11 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 | Блок | Основные пути | Контракты |
 |---|---|---|
 | Модерация кофеен | `/api/ModerationShops`, `/{id}`, `/status` | Список с пагинацией/фильтрами, detail по UUID, JSON-редактирование заявки, approve/reject с комментарием |
-| Модерация отзывов | `/api/ModerationReviews` | Список с пагинацией/фильтрами и смена статуса; изменение текста автора — отдельный PUT `/{moderationReviewId}` |
+| Модерация чекинов | `/api/v1/moderation/check-ins`, `/{submissionId}` | Список и снимок заявки; PUT базового пути принимает решение по ID заявки и её ревизии |
 | Модерация обжарщиков | `/api/ModerationRoasters`, `/{id}`, `/status` | Список/detail, approve/reject |
 | Предложения правок | `/api/ShopChangeRequests`, `/{id}`, `/{id}/status` | List/detail/решение; административный detail содержит сведения для модератора |
 | Жалобы на данные | `/api/admin/shop-reports`, `/{id}/status` | Пагинация и решение |
-| Жалобы на отзывы | `/api/admin/review-reports`, `/{id}`, `/{id}/resolve` | Список, отзыв для проверки, решение; конфликт состояния — 409 |
+| Жалобы на чекины | `/api/admin/check-in-reports`, `/{id}`, `/{id}/resolution` | Список, чекин для проверки, решение `{deleteCheckIn}`; конфликт состояния — 409 |
 | Опубликованные кофейни | `/api/admin/shops`, `/{id}` | Список/detail/создание/обновление/удаление по UUID; Admin |
 | Управление кофейней | `/api/admin/shops/{id}/visibility`, `/owner`, `/focus`, `/tags`, `/photos` | Видимость, владелец, профиль кофе, теги и фотографии; Admin |
 | Меню | `/api/admin/shops/{id}/menu`, `/menu/photos`, `/menu/parse` | Чтение, изменение, загрузка фото, разбор меню |
@@ -74,28 +74,32 @@ PUT `/api/admin/v1/app-downloads/android/google-play` и PUT `/api/admin/v1/app-
 
 JSON-тела и query/header параметры сверять с API-функцией ресурса. Редактирование заявки на кофейню не использует FormData: фотографии сначала загружаются в object storage, после чего JSON содержит метаданные.
 
-## Отзывы и фотографии
+## Чекины и фотографии — контракт от 8 октября 2026
 
-Published `Review.id` нужен для чтения отзыва и жалоб. Для изменения исходной заявки нужен **`Review.moderationReviewId`**. PUT `/api/ModerationReviews/{moderationReviewId}` принимает:
+Отзывы заменены публичными и личными чекинами. Клиентская карточка содержит `shop` и `author` как nullable публичные адреса, `username`, `shopName`, `text`, вложенный `rating`, `visitedAt`, `createdAtUtc`, `visibility`, `moderationState`, `contentRevision`, `rejectionReason`, плоские поля напитка, фотографии, `helpfulCount` и `isHelpfulByCurrentUser`. Служебных `shopId`/`userId` в ней нет.
 
-```json
-{
-  "header": "Необязательный заголовок",
-  "comment": "Текст",
-  "rating": {"coffee": 5, "service": 4, "place": 5},
-  "photos": []
-}
-```
+- POST `/api/v1/check-ins`: `{coffeeShopSlug,text,rating,visibility?,drinkSlug?,customDrinkName?,photos?,visitedAt?}`. По умолчанию `Private`. Текст после trim — 1–1000 символов, оценки — целые 1–5, до пяти фото. Дата с часовым поясом; лимиты создания — один чекин за три часа и три за сутки UTC.
+- GET/PUT/DELETE `/api/v1/check-ins/{id}`: чтение, изменение автором, удаление. PUT заменяет `{text,rating,drinkSlug?,customDrinkName?}`; отсутствие напитка очищает его. Кофейня, дата и фотографии сохраняются. Изменение публичного чекина создаёт новую ревизию модерации.
+- PUT `/{id}/visibility`: `{visibility: "Private" | "Public"}`. Личный чекин сразу исключается из публичной выдачи. Состояния модерации: `NotSubmitted`, `Pending`, `Approved`, `Rejected`.
+- GET `/api/v1/check-ins/mine`: Bearer, `pageNumber`, `pageSize`, `from?`, `to?`; диапазон посещений `[from,to)`, ответ `{items,totalCount}` и заголовки пагинации.
+- GET `/api/v1/check-ins`: одобренные публичные карточки, `{items,nextCursor}`. GET `/api/v1/feed`: `{items:[{publishedAtUtc,checkIn}],nextCursor}`. Оба принимают `citySlug?`, `coffeeShopSlug?`, `authorSlug?`, `pageSize`, `cursor?`; курсоры несовместимы. При смене фильтров и обновлении ленты начинается первая страница. Повторные посещения остаются отдельными карточками.
+- PUT/DELETE `/{id}/helpful`: Bearer, без тела, `{isHelpful,helpfulCount}`; автор не голосует за себя. POST `/{id}/reports`: Bearer, `{text}` длиной 1–2000 после trim.
 
-Дополнительно поддерживаются `drinkSlug`, `customDrinkName`, `clearDrink`. Не передавать туда опубликованный ID или плоские `ratingCoffee/ratingService/ratingPlace`.
+POST `/api/Photos/check-in` принимает массив `{sizeBytes,fileName,contentType}`, возвращает `{photoId,uploadUrl,storageKey}`. Presigned PUT использует `Content-Type` и `x-amz-tagging: is_permanent=False`. В создание прикрепляется `{fileName,contentType,storageKey,size}`; не `sizeBytes` и не `photoId`. Форматы: JPEG, PNG, GIF, WebP, BMP, AVIF. Для отображения используется только `photos[].url`; личные и ожидающие фотографии загружаются с Bearer как Blob. URL из `storageKey` не конструируется.
 
-В обновлении `photos` отсутствует/null — сохранить старые; `[]` — убрать все; непустой массив — заменить. Существующие storage keys переиспользуют сохранённые серверные метаданные; новые проверяются Media по автору и подтверждаются через событие после сохранения. Обновление снова отправляет отзыв на модерацию. `visitedAt` в API отзыва не предусмотрен; даты посещения относятся к чек-инам.
+Модерация доступна Moderator/Admin. GET `/api/v1/moderation/check-ins` принимает `page`, `pageSize`, `status?`, `search?` до 100 символов, `userId?`. Без статуса возвращаются все заявки; очередь запрашивает `Pending`. Ответ `{items,totalItems,totalPages,currentPage,pageSize}`. В DTO `id` — **ID заявки**, `checkInId` — ID чекина; также есть `contentRevision`, `userId`, `userName`, `shopId`, `visitedAtUtc`, `createdAt`, `text`, `rating`, напиток, `rejectedReason`, `moderationStatus` и фото.
 
-Фото меню/кофейни/обжарщика загружаются через `/api/Photos/{kind}` и presigned PUT в storage. PUT повторяет оба подписанных заголовка: `Content-Type` и `x-amz-tagging: is_permanent=False`. Не пропускать tagging и не использовать storage URL как маршрут API.
+PUT базового пути модерации принимает `{submissionId,moderationStatus,comment,rejectReason}` со строковым статусом `Approved`/`Rejected`. Причина отклонения обязательна, 2–1000 символов; непустой `comment` имеет приоритет. Ответ содержит новый статус в `data`, предыдущий в `oldEntity`. Снимок заявки не редактируется; публикация применяется через событие. Фотографии читаются с Bearer по `photos[].fullUrl`, содержащему маршрут `moderation-photos` и `revision`.
+
+Жалобы доступны только Admin. GET `/api/admin/check-in-reports`: `status=Pending` по умолчанию, допустимы `Dismissed`/`CheckInDeleted`, статуса `All` нет; `page`, `pageSize`, ответ `{items,totalCount,page,pageSize}`. Detail `/{reportId}` возвращает `{report,checkIn}`; `checkIn:null` для исторической жалобы — штатный случай «Чекин недоступен». PUT `/{reportId}/resolution` принимает `{deleteCheckIn:boolean}`. Противоположное уже принятому решение возвращает 409.
+
+Кофейня теперь содержит `checkInCount`, `checkIns`, `userCheckIns`; профиль — `checkInCount`, публичная статистика — `totalCoffeeShops`, `totalCheckIns`, `averageRating`. Рейтинг кофейни учитывает последнее подходящее публичное посещение каждого автора. Обзор админки использует `totalCheckIns`, `newCheckInsToday`, `pendingModerationCheckIns`; временные ряды — `newCheckIns`.
 
 ## Проверки
 
 В обоих приложениях доступны `npm run typecheck`, `npm test -- --silent`, `npm run build`. Клиент дополнительно запускает `npm run test:ssr`. CI `.github/workflows/frontend-validation.yml` проверяет обе программы. Тесты `coffee-peek-admin/tests/apiContracts.test.ts` покрывают Public DTO list/detail/map, UUID-профиль, cityId обжарщика и преобразование адресов. Проверки фикстур подтверждают контракт фронта; реальный gateway/storage сценарий проверяется отдельно.
+
+Для браузерных сценариев чекинов запустите dev-серверы клиента и админки, затем `npm run test:check-ins` в админке. Скрипт использует порты 5173/5174; другие адреса задаются через `COFFEE_CUSTOMER_ORIGIN` и `COFFEE_ADMIN_ORIGIN`. Все API-запросы перехватываются фикстурами. Проверяются личные фото, presign/PUT/прикрепление, сохранение напитка, видимость, удаление, полезность, жалобы, курсоры ленты и решения по заявкам; скриншоты сохраняются в `test-results/check-ins`.
 
 ## Discovery / каталог кофе — PR #334
 

@@ -1,13 +1,10 @@
-import { displayDrinkName } from '../utils/consumedDrinks';
-import { usePublicNavigate } from '../hooks/usePublicNavigate';
+import CheckInCard from '../components/CheckInCard';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getPhotoUrl } from '../api/coffeeshop';
-import type { CheckInDto, ShortPhotoMetadataDto } from '../api/coffeeshop';
+import type { CheckInDto } from '../api/coffeeshop';
 import Mascot from '../components/Mascot';
-import PhotoLightbox from '../components/PhotoLightbox';
 import WobbleRing from '../components/WobbleRing';
-import { AppIcon, StarIcon } from '../components/icons';
+import { AppIcon } from '../components/icons';
 import { COLORS, getThemeColors } from '../constants/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useCheckIns, useCheckInsByDateRange } from '../hooks/queries/useCheckIns';
@@ -17,14 +14,12 @@ import { getErrorMessage } from '../utils/errorHandler';
 const PAGE_SIZE = 10;
 const WEEKDAYS = ['П', 'В', 'С', 'Ч', 'П', 'С', 'В'];
 
-const visitDate = (item: CheckInDto) => new Date(item.visitedAt || item.createdAt);
+const visitDate = (item: CheckInDto) => new Date(item.visitedAt || item.createdAtUtc);
 const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-const formatDate = (item: CheckInDto) => visitDate(item).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
 const CheckInsPage: React.FC = () => {
-  usePageTitle('Чекины');
+  usePageTitle('Мои чекины');
   const navigate = useNavigate();
-  const openPublic = usePublicNavigate();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
   const gold = COLORS.primary;
@@ -32,7 +27,6 @@ const CheckInsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [selectedDate, setSelectedDate] = useState('');
-  const [gallery, setGallery] = useState<{ images: ShortPhotoMetadataDto[]; shopName: string; initialIndex: number } | null>(null);
 
   const range = useMemo(() => ({
     from: month.toISOString(),
@@ -67,7 +61,7 @@ const CheckInsPage: React.FC = () => {
           <button type="button" onClick={() => navigate(-1)} aria-label="Назад" className="flex h-12 w-12 items-center justify-center rounded-full border shadow-sm" style={{ borderColor: colors.border, background: colors.surface, color: colors.textPrimary }}>
             <AppIcon name="chevron_left" size={24} color="currentColor" />
           </button>
-          <h1 className="text-center text-2xl font-extrabold sm:text-3xl" style={{ color: colors.textPrimary }}>Чекины</h1>
+          <h1 className="text-center text-2xl font-extrabold sm:text-3xl" style={{ color: colors.textPrimary }}>Мои чекины</h1>
         </header>
 
         <div role="tablist" aria-label="Режим просмотра чекинов" className="mb-6 grid grid-cols-2 rounded-full p-1" style={{ background: colors.surface, border: `1px solid ${colors.border}` }}>
@@ -96,7 +90,7 @@ const CheckInsPage: React.FC = () => {
           <>
             {view === 'calendar' && <h2 className="mb-4 mt-7 text-2xl font-extrabold" style={{ color: colors.textPrimary }}>{visitDate(items[0]).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</h2>}
             <div className="space-y-4" style={{ opacity: feed.isFetching || calendar.isFetching ? 0.7 : 1 }}>
-              {items.map(item => <CheckInCard key={item.id} item={item} colors={colors} onShopOpen={() => openPublic('shops', item.shop)} onPhotoOpen={(images, initialIndex) => setGallery({ images, initialIndex, shopName: item.shopName || 'Кофейня' })} />)}
+              {items.map(item => <CheckInCard key={item.id} item={item} own />)}
             </div>
           </>
         )}
@@ -109,60 +103,16 @@ const CheckInsPage: React.FC = () => {
           </div>
         )}
       </div>
-      {gallery && <PhotoLightbox {...gallery} onClose={() => setGallery(null)} />}
     </main>
   );
 };
 
 type ThemeColors = ReturnType<typeof getThemeColors>;
 
-const CheckInCard: React.FC<{ item: CheckInDto; colors: ThemeColors; onShopOpen: () => void; onPhotoOpen: (images: ShortPhotoMetadataDto[], initialIndex: number) => void }> = ({ item, colors, onShopOpen, onPhotoOpen }) => {
-  const rating = item.rating;
-  const average = rating ? (rating.place + rating.service + rating.coffee) / 3 : null;
-  const photos = [...(item.photos ?? [])].sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0)).filter(photo => getPhotoUrl(photo, 'thumbnail'));
-  return (
-    <article className="rounded-[28px] border p-5 sm:p-6" style={{ borderColor: colors.border, background: colors.surface }}>
-      <button type="button" onClick={onShopOpen} className="flex w-full items-center gap-4 text-left">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border" style={{ borderColor: `${COLORS.primary}70`, background: `${COLORS.primary}12`, color: COLORS.primary }}><AppIcon name="location_on" size={27} color="currentColor" /></span>
-        <span className="min-w-0"><strong className="block truncate text-lg sm:text-xl" style={{ color: colors.textPrimary }}>{item.shopName || 'Кофейня'}</strong><span className="mt-0.5 block text-sm" style={{ color: colors.textSecondary }}>{formatDate(item)}</span></span>
-      </button>
-
-      {rating && (
-        <>
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            {([['Аура', rating.place, 'auto_awesome'], ['Сервис', rating.service, 'groups'], ['Кофе', rating.coffee, 'coffee']] as const).map(([label, value, icon]) => (
-              <div key={label} className="flex min-h-20 items-center justify-center gap-2 rounded-2xl px-2" style={{ background: colors.background }}>
-                <AppIcon name={icon} size={22} color={COLORS.primary} />
-                <span><span className="block text-xs" style={{ color: colors.textSecondary }}>{label}</span><strong style={{ color: colors.textPrimary }}>{value}</strong></span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 flex items-center gap-2">
-            <span className="flex">{[1, 2, 3, 4, 5].map(star => <StarIcon key={star} filled={average !== null && star <= average} size={25} color={COLORS.primary} />)}</span>
-            <strong className="text-xl" style={{ color: colors.textPrimary }}>{average?.toFixed(1)}</strong>
-          </div>
-        </>
-      )}
-
-      <p className="my-2 text-sm">Напиток: {displayDrinkName(item)}</p>
-      {item.note && <p className="mt-5 whitespace-pre-line text-base leading-relaxed" style={{ color: colors.textSecondary }}>{item.note}</p>}
-      {photos.length > 0 && (
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-1">
-          {photos.map((photo, index) => (
-            <button key={photo.id ?? photo.storageKey} type="button" onClick={() => onPhotoOpen(photos, index)} aria-label={`Открыть фото ${index + 1} из чекина`} className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border-0 p-0">
-              <img src={getPhotoUrl(photo, 'thumbnail')} alt="" loading="lazy" className="h-full w-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
-    </article>
-  );
-};
-
 const CheckInCalendar: React.FC<{ month: Date; items: CheckInDto[]; itemsByDate: Map<string, CheckInDto[]>; selectedDate: string; colors: ThemeColors; onMonthChange: (offset: number) => void; onSelectDate: (key: string) => void }> = ({ month, items, itemsByDate, selectedDate, colors, onMonthChange, onSelectDate }) => {
   const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const offset = (month.getDay() + 6) % 7;
-  const uniqueShops = new Set(items.map(item => item.shopId)).size;
+  const uniqueShops = new Set(items.map(item => item.shop?.slug ?? item.id)).size;
   return (
     <section className="mb-1 rounded-[28px] border p-4 sm:p-6" style={{ borderColor: colors.border, background: colors.surface }}>
       <div className="mb-4 grid grid-cols-[44px_1fr_44px] items-center">
@@ -182,10 +132,7 @@ const CheckInCalendar: React.FC<{ month: Date; items: CheckInDto[]; itemsByDate:
             <button key={key} type="button" onClick={() => onSelectDate(key)} aria-label={`${day}, чекинов: ${checkIns.length}`} aria-pressed={selected} className="relative flex min-h-[62px] flex-col items-center justify-center overflow-hidden rounded-2xl border" style={{ borderColor: selected ? COLORS.primary : 'transparent', background: selected ? `${COLORS.primary}12` : 'transparent', color: colors.textPrimary }}>
               <span className="text-sm">{day}</span>
               {checkIns.length > 0 && <span className="mt-1 flex -space-x-2">{checkIns.slice(0, 2).map(item => {
-                const photo = item.photos?.find(value => getPhotoUrl(value, 'thumbnail'));
-                return photo
-                  ? <img key={item.id} src={getPhotoUrl(photo, 'thumbnail')} alt="" className="h-7 w-7 rounded-full border object-cover" style={{ borderColor: colors.surface }} />
-                  : <span key={item.id} className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border" style={{ borderColor: colors.surface, background: '#1A1412' }}><img src="/maskot-props/maskot-wthi-cup.png" alt="" className="h-10 w-10 max-w-none object-cover" /></span>;
+                return <span key={item.id} className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border" style={{ borderColor: colors.surface, background: '#1A1412' }}><img src="/maskot-props/maskot-wthi-cup.png" alt="" className="h-10 w-10 max-w-none object-cover" /></span>;
               })}</span>}
             </button>
           );

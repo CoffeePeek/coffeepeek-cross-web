@@ -14,7 +14,6 @@ import { SHOP_CHANGE_ICONS } from '../components/icons/iconMap';
 const KINDS: Record<ContributionKind, { title: string; empty: string; icon: string }> = {
   shops: { title: 'Мои кофейни', empty: 'Вы ещё не добавляли кофейни.', icon: 'coffee' },
   roasters: { title: 'Мои обжарщики', empty: 'Вы ещё не добавляли обжарщиков.', icon: 'coffee-bean' },
-  reviews: { title: 'Мои отзывы', empty: 'Вы ещё не оставляли отзывов.', icon: 'chat-centered-text' },
   edits: { title: 'Мои правки кофеен', empty: 'Вы ещё не предлагали изменений.', icon: 'note-pencil' },
 };
 
@@ -97,9 +96,6 @@ const MyContributionsPage: React.FC = () => {
               })}
             </div>
 
-            {kind === 'reviews' && activeTab.status === 'Approved' && (
-              <Link to="/reviews" className="mb-4 inline-flex items-center gap-1 text-sm font-bold" style={{ color: colors.gold }}>Редактировать опубликованные отзывы <AppIcon name="caret-right" size={18} /></Link>
-            )}
 
             <ul role="tabpanel" className="space-y-3">
               {current?.items.map(item => (

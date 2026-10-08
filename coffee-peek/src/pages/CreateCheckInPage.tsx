@@ -83,7 +83,6 @@ const CreateCheckInPage: React.FC = () => {
       request = buildCheckInRequest({
         coffeeShopId: shopId,
         isPublic: draft.isPublic,
-        header: draft.header,
         note: draft.note,
         visitedDate: draft.visitedDate,
         rating: draft.rating,
@@ -101,7 +100,7 @@ const CreateCheckInPage: React.FC = () => {
       const response = await submitCheckIn(request);
       if (!response.success || response.isSuccess === false) throw new Error('Не удалось создать чекин');
       if (response.success) {
-        showToast(draft.isPublic ? 'Чекин создан! Отзыв отправлен на модерацию.' : 'Чекин успешно создан!', 'success');
+        showToast(draft.isPublic ? 'Публичный чекин отправлен на модерацию.' : 'Чекин успешно создан!', 'success');
         clearDraft();
         clearFiles();
         openPublic('shops', shopId!);
@@ -150,8 +149,6 @@ const CreateCheckInPage: React.FC = () => {
               drinkSlug={draft.drinkSlug || ''}
               customDrinkName={draft.customDrinkName || ''}
               onDrinkChange={(drinkSlug, customDrinkName) => updateDraft({ drinkSlug, customDrinkName })}
-              header={draft.header}
-              onHeaderChange={(header) => updateDraft({ header })}
               note={draft.note}
               onNoteChange={(note) => updateDraft({ note })}
               isPublic={draft.isPublic}

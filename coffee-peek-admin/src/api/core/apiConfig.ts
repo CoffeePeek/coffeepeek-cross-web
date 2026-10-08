@@ -3,6 +3,7 @@
 export const API_BASE_URL = import.meta.env.DEV
   ? '/backend'
   : import.meta.env.VITE_API_URL as string;
+export const API_GATEWAY_URL = import.meta.env.VITE_API_URL;
 
 if (!API_BASE_URL) {
   console.error('[config] VITE_API_URL не задан — запросы к API не будут работать. Укажите его в .env / переменных окружения сборки.');
@@ -115,7 +116,7 @@ export const API_ENDPOINTS = {
     SHOPS: '/api/ModerationShops',
     SHOP_BY_ID: (id: string) => `/api/ModerationShops/${encodeURIComponent(id)}`,
     SHOP_STATUS: '/api/ModerationShops/status',
-    REVIEWS: '/api/ModerationReviews',
+    CHECK_INS: '/api/v1/moderation/check-ins',
     ROASTERS: '/api/ModerationRoasters',
     ROASTER_BY_ID: (id: string) => `/api/ModerationRoasters/${encodeURIComponent(id)}`,
     ROASTER_STATUS: '/api/ModerationRoasters/status',

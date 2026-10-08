@@ -8,7 +8,6 @@ export interface PublicUserProfile {
   avatarUrl?: string;
   about?: string;
   createdAtUtc?: string;
-  reviewCount?: number;
   checkInCount?: number;
 }
 

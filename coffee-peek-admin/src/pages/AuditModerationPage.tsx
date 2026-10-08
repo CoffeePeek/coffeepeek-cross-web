@@ -19,7 +19,7 @@ const PAGE_SIZE = 20;
 const ENTITY_OPTIONS: { value: AuditEntityType | ''; label: string }[] = [
   { value: '', label: 'Все типы' },
   { value: 'Shop', label: 'Кофейни' },
-  { value: 'Review', label: 'Отзывы' },
+  { value: 'CheckIn', label: 'Чекины' },
 ];
 
 const ACTION_OPTIONS: { value: AuditAction | ''; label: string }[] = [
@@ -43,7 +43,7 @@ const ACTION_VARIANT: Record<AuditAction, 'approved' | 'rejected' | 'pending'> =
 
 const columns: ColumnDef<ModerationAuditEntry>[] = [
   { accessorKey: 'createdAtUtc', header: 'Дата', cell: ({ row }) => <span className="whitespace-nowrap text-xs text-text-muted">{new Date(row.original.createdAtUtc).toLocaleString('ru')}</span>, meta: { headerClassName: 'pl-5', className: 'pl-5' } },
-  { accessorKey: 'entityType', header: 'Тип', cell: ({ row }) => <Badge>{row.original.entityType === 'Shop' ? 'Кофейня' : row.original.entityType === 'Review' ? 'Отзыв' : 'Пост'}</Badge> },
+  { accessorKey: 'entityType', header: 'Тип', cell: ({ row }) => <Badge>{row.original.entityType === 'Shop' ? 'Кофейня' : row.original.entityType === 'CheckIn' ? 'Чекин' : 'Пост'}</Badge> },
   { accessorKey: 'entityName', header: 'Сущность', cell: ({ row }) => <span className="block max-w-[200px] truncate">{row.original.entityName}</span> },
   { accessorKey: 'action', header: 'Действие', cell: ({ row }) => <Badge variant={ACTION_VARIANT[row.original.action]}>{ACTION_LABELS[row.original.action]}</Badge> },
   { accessorKey: 'moderatorUserId', header: 'Модератор', cell: ({ row }) => <span className="font-mono text-xs text-text-muted">{row.original.moderatorUserId.slice(0, 8)}…</span>, meta: { headerClassName: 'hidden md:table-cell', className: 'hidden md:table-cell' } },
@@ -80,7 +80,7 @@ export const AuditModerationPage: React.FC = () => {
       <div>
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Audit log модерации</h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          История approve / reject / pending по кофейням, отзывам и постам
+          История approve / reject / pending по кофейням, чекинам и постам
         </p>
       </div>
 

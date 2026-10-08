@@ -103,7 +103,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
             <span className="inline-flex h-9 items-center gap-1.5 rounded-full bg-black/70 px-3 text-xs font-bold text-white backdrop-blur-md" aria-label={`Рейтинг ${shop.rating?.toFixed(1)}`}>
               <StarIcon filled size={16} color={COLORS.primary} />
               {shop.rating?.toFixed(1)}
-              {shop.reviewCount ? <span className="font-medium text-white/75">({shop.reviewCount})</span> : null}
+              {shop.checkInCount ? <span className="font-medium text-white/75">({shop.checkInCount})</span> : null}
             </span>
           )}
           <button

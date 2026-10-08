@@ -1,31 +1,27 @@
-import { displayDrinkName } from '../utils/consumedDrinks';
-import { usePublicNavigate } from '../hooks/usePublicNavigate';
 import { usePublicResolution } from '../components/PublicAddressPage';
 import WobbleRing from '../components/WobbleRing';
 import React from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { getUserPublicProfile, type PublicUserProfile } from '../api/user';
-import { getReviewsByUserId, type Review } from '../api/coffeeshop';
+import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
+import CheckInCard from '../components/CheckInCard';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { getThemeClasses } from '../utils/theme';
 import Button from '../components/Button';
 import { logger } from '../utils/logger';
 import { usePageTitle } from '../hooks/usePageTitle';
-import { StarIcon } from '../components/icons';
 import {
-  SealCheck, ShoppingCart, ChatCenteredText, Star,
-  NotePencil, ArrowRight, CaretLeft, CaretRight,
+  SealCheck, ShoppingCart, Star,
+  CaretLeft,
 } from '@/components/Icon';
 import Mascot from '../components/Mascot';
-import ReportReviewButton from '../components/ReportReviewButton';
 
 const UserProfilePage: React.FC = () => {
   const { userId: routeId } = useParams<{ userId: string }>();
   const resolution = usePublicResolution();
   const userId = resolution?.id ?? routeId;
   const navigate = useNavigate();
-  const openPublic = usePublicNavigate();
   const { user } = useUser();
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
@@ -34,11 +30,8 @@ const UserProfilePage: React.FC = () => {
   const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   
-  // Load user reviews
-  const [reviews, setReviews] = React.useState<Review[]>([]);
-  const [isLoadingReviews, setIsLoadingReviews] = React.useState(false);
-  const [reviewsPage, setReviewsPage] = React.useState(1);
-  const [reviewsTotalPages, setReviewsTotalPages] = React.useState(1);
+  const publicCheckIns = usePublicCheckIns({ authorSlug: userId, pageSize: 10 }, !!userId && !!profile);
+  const checkIns = publicCheckIns.data?.pages.flatMap(page => page.items) ?? [];
 
   // Устанавливаем title с именем пользователя
   usePageTitle(profile?.userName || 'Профиль пользователя');
@@ -83,57 +76,6 @@ const UserProfilePage: React.FC = () => {
     };
   }, [userId, user?.id, resolution]);
 
-  // Load user reviews
-  React.useEffect(() => {
-    let cancelled = false;
-
-    const loadReviews = async () => {
-      if (!userId || !profile) return;
-      
-      try {
-        setIsLoadingReviews(true);
-        const response = await getReviewsByUserId(userId, reviewsPage, 10);
-        
-        if (cancelled) return;
-        
-        if (response.success && response.data) {
-          setReviews(response.data.reviews || []);
-          setReviewsTotalPages(response.data.totalPages || 1);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          logger.error('Error loading reviews:', err);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingReviews(false);
-        }
-      }
-    };
-
-    loadReviews();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, reviewsPage, profile]);
-
-  const handlePreviousPage = () => {
-    if (reviewsPage > 1) {
-      setReviewsPage(reviewsPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (reviewsPage < reviewsTotalPages) {
-      setReviewsPage(reviewsPage + 1);
-    }
-  };
-
-  const handleShopSelect = (shopId: string) => {
-    openPublic('shops', reviews.find(review => review.coffeeShopId === shopId)?.shop);
-  };
-
   const bgClass = themeClasses.bg.primary;
   const bgSurface = theme === 'dark' ? themeClasses.bg.secondary : themeClasses.bg.card;
   const borderClass = themeClasses.border.default;
@@ -170,8 +112,8 @@ const UserProfilePage: React.FC = () => {
     );
   }
 
-  const averageRating = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + ((r.ratingCoffee + r.ratingService + r.ratingPlace) / 3), 0) / reviews.length).toFixed(1)
+  const averageRating = checkIns.length > 0
+    ? (checkIns.reduce((sum, r) => sum + ((r.rating.coffee + r.rating.service + r.rating.place) / 3), 0) / checkIns.length).toFixed(1)
     : '0.0';
 
   return (
@@ -240,7 +182,7 @@ const UserProfilePage: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 sm:px-12 py-6 sm:py-10 space-y-8 sm:space-y-12">
         {/* Statistics */}
         <section>
-          <div className="grid grid-cols-3 gap-3 sm:gap-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6">
             <div className={`${bgSurface} p-8 rounded-3xl border ${borderClass} shadow-sm flex flex-col items-center text-center group ${themeClasses.border.activeHover} transition-all`}>
               <div className={`w-12 h-12 rounded-2xl ${themeClasses.primary.bgLight} ${themeClasses.primary.text} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                 <ShoppingCart size={30} />
@@ -250,17 +192,6 @@ const UserProfilePage: React.FC = () => {
               </span>
               <span className={`text-xs font-bold ${textMuted} uppercase tracking-[0.2em] mt-2`}>
                 ЧЕКИНЫ
-              </span>
-            </div>
-            <div className={`${bgSurface} p-8 rounded-3xl border ${borderClass} shadow-sm flex flex-col items-center text-center group ${themeClasses.border.activeHover} transition-all`}>
-              <div className={`w-12 h-12 rounded-2xl ${themeClasses.primary.bgLight} ${themeClasses.primary.text} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <ChatCenteredText size={30} />
-              </div>
-              <span className={`text-4xl font-bold ${textMain}`}>
-                {profile.reviewCount ?? 0}
-              </span>
-              <span className={`text-xs font-bold ${textMuted} uppercase tracking-[0.2em] mt-2`}>
-                ОТЗЫВОВ
               </span>
             </div>
             <div className={`${bgSurface} p-8 rounded-3xl border ${borderClass} shadow-sm flex flex-col items-center text-center group ${themeClasses.border.activeHover} transition-all`}>
@@ -277,120 +208,10 @@ const UserProfilePage: React.FC = () => {
           </div>
         </section>
 
-        {/* Reviews */}
         <section>
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex flex-col gap-1">
-              <h2 className={`text-2xl font-bold ${textMain}`}>Последние отзывы</h2>
-              <p className={`${textMuted} text-sm`}>
-                {profile.reviewCount ? `Всего отзывов: ${profile.reviewCount}` : 'Пока нет отзывов'}
-              </p>
-            </div>
-          </div>
-
-          {isLoadingReviews ? (
-            <div className="flex items-center justify-center py-12">
-              <WobbleRing size={48} />
-            </div>
-          ) : reviews.length > 0 ? (
-            <>
-              <div className="space-y-4">
-                {reviews.map((review) => {
-                  const reviewDate = new Date(review.createdAt);
-                  const formattedDate = reviewDate.toLocaleDateString('ru-RU', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric'
-                  });
-                  const avgRating = ((review.ratingCoffee + review.ratingService + review.ratingPlace) / 3).toFixed(1);
-
-                  return (
-                    <div
-                      key={review.id}
-                      className={`${bgSurface} p-6 rounded-2xl border ${borderClass} shadow-sm flex items-start gap-4 hover:shadow-md transition-all`}
-                    >
-                      <div className={`w-12 h-12 rounded-full ${theme === 'dark' ? themeClasses.bg.secondary : 'bg-stone-100'} flex items-center justify-center shrink-0`}>
-                        <NotePencil size={20} className={themeClasses.primary.text} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start mb-2">
-                          {review.header ? (
-                            <p className={`font-bold ${textMain}`}>{review.header}</p>
-                          ) : (
-                            <p className={`font-bold ${textMain}`}>Отзыв о кофейне</p>
-                          )}
-                          <div className="flex shrink-0 items-center gap-2"><span className={`text-xs ${textMuted}`}>{formattedDate}</span><ReportReviewButton reviewId={review.id} /></div>
-                        </div>
-                        <p className="my-2 text-sm">Напиток: {displayDrinkName(review)}</p>
-                        {review.comment && (
-                          <p className={`text-sm ${textMuted} mt-1 leading-relaxed`}>
-                            {review.comment}
-                          </p>
-                        )}
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="flex gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <StarIcon
-                                key={star}
-                                size={14}
-                                filled={star <= Math.round(parseFloat(avgRating))}
-                                className={
-                                  star <= Math.round(parseFloat(avgRating))
-                                    ? themeClasses.primary.text
-                                    : theme === 'dark' ? themeClasses.border.default : 'text-stone-300'
-                                }
-                              />
-                            ))}
-                          </div>
-                          <button
-                            onClick={() => handleShopSelect(review.coffeeShopId)}
-                            className={`text-xs ${themeClasses.primary.text} ${themeClasses.primary.hover} font-medium transition-colors flex items-center gap-1`}
-                          >
-                            <ArrowRight size={14} />
-                            Перейти к кофейне
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Pagination */}
-              {reviewsTotalPages > 1 && (
-                <div className="flex items-center justify-center gap-4 mt-8">
-                  <Button
-                    onClick={handlePreviousPage}
-                    disabled={reviewsPage === 1}
-                    variant="secondary"
-                  >
-                    <CaretLeft size={20} />
-                    Предыдущая
-                  </Button>
-                  <span className={`px-4 py-2 ${textMain} font-medium`}>
-                    Страница {reviewsPage} из {reviewsTotalPages}
-                  </span>
-                  <Button
-                    onClick={handleNextPage}
-                    disabled={reviewsPage === reviewsTotalPages}
-                    variant="secondary"
-                  >
-                    Следующая
-                    <CaretRight size={20} />
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className={`${bgSurface} p-12 rounded-2xl border ${borderClass} text-center`}>
-              <div className="flex justify-center mb-2" aria-hidden>
-                <Mascot pose="book" size={132} />
-              </div>
-              <p className={`${textMuted} text-lg`}>
-                Пользователь пока не оставил ни одного отзыва
-              </p>
-            </div>
-          )}
+          <h2 className={`mb-6 text-2xl font-bold ${textMain}`}>Публичные чекины</h2>
+          {publicCheckIns.isLoading ? <WobbleRing /> : publicCheckIns.error ? <p role="alert">Не удалось загрузить чекины. <button type="button" onClick={() => void publicCheckIns.refetch()}>Повторить</button></p> : checkIns.length ? <div className="space-y-4">{checkIns.map(item => <CheckInCard key={item.id} item={item} />)}</div> : <div className={`${bgSurface} rounded-2xl border p-12 text-center ${borderClass}`}><Mascot pose="book" size={132} /><p className={textMuted}>Пользователь пока не опубликовал ни одного чекина</p></div>}
+          {publicCheckIns.hasNextPage && <Button className="mt-6" disabled={publicCheckIns.isFetchingNextPage} onClick={() => void publicCheckIns.fetchNextPage()}>Загрузить ещё</Button>}
         </section>
       </div>
     </div>

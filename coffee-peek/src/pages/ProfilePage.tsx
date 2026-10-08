@@ -14,7 +14,6 @@ import { getErrorMessage } from '../utils/errorHandler';
 import {
   CaretRight,
   Camera,
-  ChatCenteredText,
   Heart,
   CoffeeBean,
   MapPin,
@@ -68,7 +67,6 @@ const ProfilePage: React.FC = () => {
     { title: 'Избранные кофейни', subtitle: 'Кофейни, которые вы сохранили', Icon: Heart, color: '#FB7185', bg: 'rgba(244,63,94,.16)', route: '/shops?filter=favorite' },
   ];
   const activities = [
-    { title: 'Мои отзывы', subtitle: 'Ваши оценки и отзывы о кофейнях', Icon: ChatCenteredText, color: '#D58AE8', bg: 'rgba(192,82,214,.16)', route: '/my/reviews' },
     { title: 'Чекины', subtitle: 'Места, которые вы уже посетили', Icon: MapPin, color: '#68B9E8', bg: 'rgba(56,153,211,.16)', route: '/check-ins' },
   ];
   const moderation = [
@@ -191,8 +189,7 @@ const ProfilePage: React.FC = () => {
                 <p className="mt-1 truncate text-sm sm:text-base" style={{ color: colors.muted }}>{profile.email}</p>
               </>
             )}
-            <div className="mt-3 grid grid-cols-3 gap-2 sm:mt-4 sm:gap-3">
-              <ProfileStat value={profile.reviewCount ?? 0} label="Отзывы" to="/my/reviews" text={colors.text} muted={colors.muted} />
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
               <ProfileStat value={profile.checkInCount ?? 0} label="Чекины" to="/check-ins" text={colors.text} muted={colors.muted} />
               <ProfileStat value={profile.addedShopsCount ?? 0} label="Кофейни" to="/my/shops" text={colors.text} muted={colors.muted} />
             </div>

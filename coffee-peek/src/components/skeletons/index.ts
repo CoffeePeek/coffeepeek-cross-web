@@ -4,7 +4,7 @@
 
 export { default as Shimmer } from './Shimmer';
 export { default as ShopCardSkeleton } from './ShopCardSkeleton';
-export { default as ReviewCardSkeleton } from './ReviewCardSkeleton';
+export { default as CheckInCardSkeleton } from './CheckInCardSkeleton';
 export { default as ShopDetailSkeleton } from './ShopDetailSkeleton';
 export { CoffeeDetailSkeleton, RoasterDetailSkeleton } from './CatalogDetailSkeleton';
 export { default as ProfileSkeleton } from './ProfileSkeleton';

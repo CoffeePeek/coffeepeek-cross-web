@@ -22,8 +22,6 @@ interface CheckInFormProps {
   customDrinkName: string;
   onDrinkChange: (slug: string, name: string) => void;
   shopName: string;
-  header: string;
-  onHeaderChange: (value: string) => void;
   note: string;
   onNoteChange: (value: string) => void;
   isPublic: boolean;
@@ -74,7 +72,7 @@ const StarRow: React.FC<{
   </div>
 );
 
-const PhotoThumb: React.FC<{ file: File; onRemove: () => void }> = ({ file, onRemove }) => {
+export const PhotoThumb: React.FC<{ file: File; onRemove: () => void }> = ({ file, onRemove }) => {
   const [src, setSrc] = useState('');
 
   useEffect(() => {
@@ -103,8 +101,6 @@ const CheckInForm: React.FC<CheckInFormProps> = ({
   customDrinkName,
   onDrinkChange,
   shopName,
-  header,
-  onHeaderChange,
   note,
   onNoteChange,
   isPublic,
@@ -211,31 +207,12 @@ const CheckInForm: React.FC<CheckInFormProps> = ({
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p className="font-extended text-xl font-bold" style={{ color: colors.textPrimary }}>Сделать публичным</p>
-          <p className="mt-1 font-body text-sm leading-relaxed" style={{ color: colors.textSecondary }}>Ваш чекин станет отзывом — нужны заголовок и описание</p>
+          <p className="mt-1 font-body text-sm leading-relaxed" style={{ color: colors.textSecondary }}>Публичный чекин появится в ленте после модерации. Личный виден только вам.</p>
         </div>
         <button type="button" role="switch" aria-label="Сделать чекин публичным" aria-checked={isPublic} onClick={() => onPublicChange(!isPublic)} className="inline-flex h-10 w-16 shrink-0 appearance-none items-center rounded-full border-0 p-1" style={{ backgroundColor: isPublic ? gold : isDark ? '#4A3830' : '#D6D3D1' }}>
           <span className="block h-8 w-8 rounded-full bg-white shadow-sm transition-transform duration-200 ease-out" style={{ transform: isPublic ? 'translateX(24px)' : 'translateX(0)' }} />
         </button>
       </div>
-
-      {isPublic && (
-        <div className="space-y-2">
-          <label htmlFor="checkin-header" className="block font-body text-base" style={{ color: colors.textSecondary }}>
-            Заголовок отзыва (обязательно)
-          </label>
-          <input
-            id="checkin-header"
-            value={header}
-            onChange={(e) => onHeaderChange(e.target.value)}
-            required
-            minLength={CHECK_IN_LIMITS.headerMin}
-            maxLength={CHECK_IN_LIMITS.headerMax}
-            placeholder="Коротко о впечатлении"
-            className="min-h-14 w-full rounded-2xl px-4 py-3 font-body text-base outline-none"
-            style={{ backgroundColor: isDark ? colors.input : '#FFFFFF', color: colors.textPrimary, border: fieldBorder }}
-          />
-        </div>
-      )}
 
       <div className="space-y-2">
         <label
@@ -243,17 +220,17 @@ const CheckInForm: React.FC<CheckInFormProps> = ({
           className="block font-body text-base"
           style={{ color: colors.textSecondary }}
         >
-          {isPublic ? 'Описание отзыва (обязательно)' : 'Заметка (необязательно)'}
+          Текст чекина (обязательно)
         </label>
         <textarea
           id="checkin-note"
           value={note}
           onChange={(e) => onNoteChange(e.target.value)}
           placeholder="Расскажите о вашем визите..."
-          required={isPublic}
-          minLength={isPublic ? CHECK_IN_LIMITS.noteMin : undefined}
+          required
+          minLength={CHECK_IN_LIMITS.noteMin}
           maxLength={CHECK_IN_LIMITS.noteMax}
-          aria-describedby={isPublic ? 'checkin-note-hint' : undefined}
+          aria-describedby="checkin-note-hint"
           rows={4}
           className="w-full resize-none rounded-3xl px-4 py-4 font-body text-base outline-none placeholder:opacity-50"
           style={{
@@ -262,11 +239,9 @@ const CheckInForm: React.FC<CheckInFormProps> = ({
             border: fieldBorder,
           }}
         />
-        {isPublic && (
-          <p id="checkin-note-hint" className="font-body text-xs" style={{ color: colors.textSecondary }}>
-            От 10 до 500 символов
+        <p id="checkin-note-hint" className="font-body text-xs" style={{ color: colors.textSecondary }}>
+            От 1 до 1000 символов
           </p>
-        )}
       </div>
 
       <div className="space-y-3">
@@ -277,7 +252,7 @@ const CheckInForm: React.FC<CheckInFormProps> = ({
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1">
           {selectedFiles.length < MAX_CHECKIN_PHOTOS && <label htmlFor="checkin-photos" className="flex h-28 w-24 shrink-0 cursor-pointer items-center justify-center rounded-2xl border" style={{ borderColor: colors.border, backgroundColor: isDark ? colors.surface : '#FFFFFF', color: colors.textSecondary }} aria-label="Добавить фото"><Camera size={30} /></label>}
-          <input id="checkin-photos" type="file" accept="image/*" multiple className="hidden" onChange={onFileSelect} />
+          <input id="checkin-photos" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif" multiple className="hidden" onChange={onFileSelect} />
           {selectedFiles.map((file, index) => <PhotoThumb key={`${file.name}-${file.size}-${index}`} file={file} onRemove={() => onRemoveFile(index)} />)}
         </div>
         {uploadingPhotos && <div className="flex items-center gap-2 py-1" style={{ color: colors.textSecondary }}><WobbleRing size={16} /><span className="font-body text-xs">Загрузка фотографий...</span></div>}

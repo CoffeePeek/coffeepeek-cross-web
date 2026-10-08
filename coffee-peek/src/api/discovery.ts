@@ -40,7 +40,7 @@ export interface MatchedMenuItem {
 }
 export interface ShopCard {
   address: PublicAddress; name: string; city: PublicAddress | null; addressLine: string; coverPhoto: Photo | null;
-  rating: number; reviewCount: number; isOpen: boolean | null; isVisited: boolean | null;
+  rating: number; checkInCount: number; isOpen: boolean | null; isVisited: boolean | null;
   isFavorite: boolean | null; distanceMeters: number | null; tags: PublicTag[]; matchingMenuItems: MatchedMenuItem[];
 }
 export interface Page<T> { items: T[]; totalItems: number; totalPages: number; currentPage: number; pageSize: number }

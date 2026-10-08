@@ -51,14 +51,18 @@ export async function getShopUploadUrls(
 }
 
 /**
- * Presign for check-in / review photos (keys `reviews/…`).
- * POST /api/photos/review
+ * Presign for check-in photos.
+ * POST /api/Photos/check-in
  */
-export async function getReviewUploadUrls(
+export async function getCheckInUploadUrls(
   requests: UploadUrlRequest[]
 ): Promise<ApiResponse<UploadUrlResponse[]>> {
+  if (requests.length > MAX_CHECKIN_PHOTOS) throw new Error('Можно добавить не больше пяти фотографий');
+  if (requests.some(file => !['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/avif'].includes(file.contentType))) {
+    throw new Error('Поддерживаются фотографии JPEG, PNG, GIF, WebP, BMP и AVIF');
+  }
   return httpClient.post<UploadUrlResponse[]>(
-    API_ENDPOINTS.PHOTOS.REVIEW,
+    API_ENDPOINTS.PHOTOS.CHECK_IN,
     requests,
     { requiresAuth: true }
   );
@@ -68,7 +72,7 @@ export async function getReviewUploadUrls(
 export const photoContentType = (file: File) => file.type || 'image/jpeg';
 
 /**
- * PUT to a presigned MinIO URL from /api/photos/{shop,review,menu,roaster}.
+ * PUT to a presigned MinIO URL from /api/photos/{shop,check-in,menu,roaster}.
  * Both headers are part of the signature — any mismatch → 403 SignatureDoesNotMatch.
  */
 export function putPhotoToStorage(uploadUrl: string, file: File): Promise<Response> {
@@ -82,7 +86,7 @@ export function putPhotoToStorage(uploadUrl: string, file: File): Promise<Respon
   });
 }
 
-/** Server limit for POST /api/checkins. */
+/** Server limit for POST /api/v1/check-ins. */
 export const MAX_CHECKIN_PHOTOS = 5;
 
 /**

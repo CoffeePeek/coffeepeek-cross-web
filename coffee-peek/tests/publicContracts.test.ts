@@ -3,12 +3,12 @@ jest.mock('../src/utils/logger', () => ({ logger: { warn: jest.fn(), log: jest.f
 jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), post: jest.fn() } }));
 jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
   COFFEE_SHOP: { BASE: '/api/CoffeeShops' },
-  USER: { REVIEWS: (slug: string) => `/api/users/${slug}/reviews` },
+  CHECK_IN: { BASE: '/api/v1/check-ins' },
   MAP: { BASE: '/api/Map' },
   MODERATION: { SHOP: '/api/ModerationShops', ROASTER: '/api/ModerationRoasters', REVIEWS: '/api/ModerationReviews' },
 } }));
 import { normalizeResponseData } from '../src/api/core/interceptors';
-import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapShops, getReviewsByUserId, createReview } from '../src/api/coffeeshop';
+import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapShops, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
 import { sendCoffeeShopToModeration, sendRoasterToModeration } from '../src/api/moderation';
 import { createShopChangeRequest } from '../src/api/shopChangeRequests';
 import { httpClient } from '../src/api/core/httpClient';
@@ -52,12 +52,12 @@ test('shop with brew methods and roasters remains a shop, with slug keys and can
   const result = normalizeResponseData<any>({ address, name: 'Coffee', city: { ...address, slug: 'minsk' },
     location: { address: 'Street 1' }, beans: [{ slug: 'arabica', name: 'Arabica' }],
     brewMethods: [{ slug: 'v60', name: 'V60' }], roasters: [{ address: author, name: 'Roaster' }],
-    reviews: [{ id: 'review-service-id', shop: address, author, rating: { coffee: 5, service: 4, place: 3 } }],
+    checkIns: [{ id: 'check-in-service-id', shop: address, author, visibility: 'Public', moderationState: 'Approved', rating: { coffee: 5, service: 4, place: 3 } }],
     userCheckIns: [{ id: 'check-in-service-id', shop: null }],
   });
   expect(result).toMatchObject({ id: 'coffee', cityId: 'minsk', address: 'Street 1', publicAddress: address,
     canonicalPath: '/coffee-shops/server-path', beans: [{ id: 'arabica' }], brewMethods: [{ id: 'v60' }],
-    roasters: [{ id: 'petr' }], reviews: [{ id: 'review-service-id', userId: 'petr', coffeeShopId: 'coffee', ratingCoffee: 5 }],
+    roasters: [{ id: 'petr' }], checkIns: [{ id: 'check-in-service-id', author, shop: address, rating: { coffee: 5 } }],
     userCheckIns: [{ id: 'check-in-service-id', shop: null, shopId: '' }],
   });
 });
@@ -87,12 +87,6 @@ test('map markers and zones use addresses without losing clusters', async () => 
   const result = await getMapShops({ minLat: 52, maxLat: 54, minLon: 26, maxLon: 28 });
   expect(result.data).toMatchObject({ shops: [{ id: 'coffee', publicAddress: address, primaryZoneId: 'petr' }], zones: [{ id: 'petr' }], isTruncated: true });
 });
-test('user reviews require authorization and read data.items', async () => {
-  jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [{ id: 'review', shop: null, author: null }], totalItems: 21, totalPages: 3, currentPage: 2 } } as never);
-  const result = await getReviewsByUserId('petr', 2, 10);
-  expect(httpClient.get).toHaveBeenCalledWith('/api/users/petr/reviews', { params: { pageNumber: 2, pageSize: 10 }, requiresAuth: true });
-  expect(result.data).toMatchObject({ totalCount: 21, page: 2, reviews: [{ coffeeShopId: '', userId: '' }] });
-});
 test('moderation, reviews and changes send slug fields and preserve empty/null lists', async () => {
   jest.mocked(httpClient.post).mockResolvedValue({ success: true, data: {} } as never);
   await sendCoffeeShopToModeration({ name: 'Coffee', notValidatedAddress: 'Street 1', cityId: 'minsk', coffeeBeanIds: ['arabica'], equipmentIds: [], roasterIds: [], brewMethodIds: ['v60'] });
@@ -100,9 +94,9 @@ test('moderation, reviews and changes send slug fields and preserve empty/null l
   expect(jest.mocked(httpClient.post).mock.calls[0][1]).not.toHaveProperty('cityId');
   await sendRoasterToModeration({ name: 'Roaster' });
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/ModerationRoasters', expect.objectContaining({ city: null }), { requiresAuth: false });
-  const review = { shop: 'coffee', comment: 'Great', ratingCoffee: 5, ratingPlace: 4, ratingService: 5 };
-  await createReview(review);
-  expect(httpClient.post).toHaveBeenLastCalledWith('/api/ModerationReviews', review, { requiresAuth: true });
+  const checkIn = { coffeeShopSlug: 'coffee', text: 'Great', rating: { coffee: 5, place: 4, service: 5 } };
+  await createCheckIn(checkIn);
+  expect(httpClient.post).toHaveBeenLastCalledWith('/api/v1/check-ins', checkIn, { requiresAuth: true });
   const change = { shop: 'coffee', section: 'Tags' as const, payload: { tags: [], roasters: null } };
   await createShopChangeRequest(change);
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/ShopChangeRequests', change);

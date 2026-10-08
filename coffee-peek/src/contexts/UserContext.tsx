@@ -147,11 +147,10 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Детали кофеен содержат пользовательские поля (canCreateReview, userCheckIns) —
+  // Детали кофеен содержат пользовательские поля (userCheckIns) —
   // при смене пользователя кэш анонимной/чужой версии устаревает.
   useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: ['coffeeShops'] });
-    void queryClient.invalidateQueries({ queryKey: ['reviews'] });
   }, [userId]);
 
   useEffect(() => {

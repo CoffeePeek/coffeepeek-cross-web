@@ -2,11 +2,11 @@ import React from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import Shimmer from './Shimmer';
 
-interface ReviewCardSkeletonProps {
+interface CheckInCardSkeletonProps {
   count?: number;
 }
 
-const ReviewCardSkeleton: React.FC<ReviewCardSkeletonProps> = ({ count = 3 }) => {
+const CheckInCardSkeleton: React.FC<CheckInCardSkeletonProps> = ({ count = 3 }) => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   
@@ -39,10 +39,10 @@ const ReviewCardSkeleton: React.FC<ReviewCardSkeletonProps> = ({ count = 3 }) =>
             </div>
           </div>
           
-          {/* Заголовок отзыва */}
+          {/* Заголовок чекина */}
           <Shimmer width="60%" height="20px" className="mb-2" />
           
-          {/* Текст отзыва */}
+          {/* Текст чекина */}
           <Shimmer width="100%" height="16px" className="mb-2" />
           <Shimmer width="90%" height="16px" className="mb-2" />
           <Shimmer width="80%" height="16px" />
@@ -52,4 +52,4 @@ const ReviewCardSkeleton: React.FC<ReviewCardSkeletonProps> = ({ count = 3 }) =>
   );
 };
 
-export default ReviewCardSkeleton;
+export default CheckInCardSkeleton;

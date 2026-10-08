@@ -41,10 +41,6 @@ const LandingPage: React.FC = () => {
       label: 'Кофеен',
     },
     {
-      value: publicStats ? formatStatCompact(publicStats.totalReviews) : '—',
-      label: 'Отзывов',
-    },
-    {
       value: publicStats ? formatStatCompact(publicStats.totalCheckIns) : '—',
       label: 'Чек-инов',
     },
@@ -59,10 +55,6 @@ const LandingPage: React.FC = () => {
     {
       value: publicStats ? formatStatCount(publicStats.totalCoffeeShops) : '—',
       label: 'кофеен на карте',
-    },
-    {
-      value: publicStats ? formatStatCompact(publicStats.totalReviews) : '—',
-      label: 'отзывов',
     },
     {
       value: publicStats ? formatStatCompact(publicStats.totalCheckIns) : '—',
@@ -113,7 +105,7 @@ const LandingPage: React.FC = () => {
 
               {/* Description */}
               <p className="mt-5 lg:mt-6 mx-auto lg:mx-0 max-w-[320px] lg:max-w-[520px] font-body text-[14px] lg:text-[17px] leading-[1.55]" style={{ color: c.textSecondary }}>
-                Удобный инструмент для любителей кофе. Открой для себя лучшие кофейни, оставляй отзывы и делись впечатлениями с единомышленниками.
+                Удобный инструмент для любителей кофе. Открой для себя лучшие кофейни, оставляй чекины и делись впечатлениями с единомышленниками.
               </p>
 
               <div className="lg:hidden flex justify-center mt-6" aria-hidden>
@@ -228,7 +220,7 @@ const LandingPage: React.FC = () => {
                 <span className="font-extended font-bold text-[17px]" style={{ color: c.textPrimary }}>Coffee<span className="text-[#EAB308]">Peek</span></span>
               </div>
               <p className="mt-3 font-body text-[13px] leading-[1.55]" style={{ color: c.textSecondary }}>
-                Проводник в мире кофе. Карта, отзывы, инструменты и сообщество — в одном приложении.
+                Проводник в мире кофе. Карта, чекины, инструменты и сообщество — в одном приложении.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-14">

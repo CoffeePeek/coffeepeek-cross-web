@@ -1,4 +1,5 @@
 export const API_BASE_URL = import.meta.env.DEV ? '/backend' : import.meta.env.VITE_API_URL;
+export const API_GATEWAY_URL = import.meta.env.VITE_API_URL;
 
 /**
  * Все эндпоинты API
@@ -28,7 +29,6 @@ export const API_ENDPOINTS = {
     DELETION_REQUEST: "/api/users/me/deletion-request",
     EMAIL_CONFIRMATION: "/api/users/me/email-confirmation",
     EMAIL_CONFIRMATION_RESEND: "/api/users/email-confirmation/resend",
-    REVIEWS: (userId: string) => `/api/users/${encodeURIComponent(userId)}/reviews`,
   },
 
   COFFEE_SHOP: {
@@ -57,26 +57,24 @@ export const API_ENDPOINTS = {
     BY_SLUG: (slug: string) => `/api/roasters/${encodeURIComponent(slug)}`,
   },
 
-  REVIEW: {
-    BY_ID: (reviewId: string) => `/api/CoffeeShopReviews/${encodeURIComponent(reviewId)}`,
+  CHECK_IN: {
+    BASE: "/api/v1/check-ins",
+    MINE: "/api/v1/check-ins/mine",
+    BY_ID: (id: string) => `/api/v1/check-ins/${encodeURIComponent(id)}`,
   },
 
-  CHECK_IN: {
-    BASE: "/api/CheckIns",
-  },
+  FEED: "/api/v1/feed",
 
   PHOTOS: {
     AVATAR: "/api/photos/avatar",
     SHOP: "/api/photos/shop",
-    REVIEW: "/api/photos/review",
+    CHECK_IN: "/api/Photos/check-in",
     MENU: "/api/Photos/menu",
     ROASTER: "/api/Photos/roaster",
   },
 
   MODERATION: {
     SHOP: "/api/ModerationShops",
-    REVIEWS: "/api/ModerationReviews",
-    REVIEW_UPDATE: (reviewId: string) => `/api/ModerationReviews/${encodeURIComponent(reviewId)}`,
     ROASTER: "/api/ModerationRoasters",
   },
 

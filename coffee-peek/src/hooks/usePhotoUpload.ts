@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent, type Dispatch, type SetStateAction } from 'react';
 import {
   getMenuUploadUrls,
-  getReviewUploadUrls,
+  getCheckInUploadUrls,
   getShopUploadUrls,
   MAX_CHECKIN_PHOTOS,
   photoContentType,
@@ -123,7 +123,7 @@ export function usePhotoUpload(options?: {
         };
       });
 
-      return Promise.all(uploadPromises);
+      return await Promise.all(uploadPromises);
     } finally {
       setUploadingPhotos(false);
     }
@@ -147,5 +147,5 @@ export function useMenuPhotoUpload(): UsePhotoUploadReturn {
 }
 
 export function useCheckInPhotoUpload(): UsePhotoUploadReturn {
-  return usePhotoUpload({ getUrls: getReviewUploadUrls, maxFiles: MAX_CHECKIN_PHOTOS });
+  return usePhotoUpload({ getUrls: getCheckInUploadUrls, maxFiles: MAX_CHECKIN_PHOTOS });
 }

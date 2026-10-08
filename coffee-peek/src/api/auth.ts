@@ -55,7 +55,6 @@ export interface UserProfile {
   about?: string;
   createdAtUtc: string;
   avatarUrl?: string;
-  reviewCount?: number;
   checkInCount?: number;
   addedShopsCount?: number;
   roles?: string[];

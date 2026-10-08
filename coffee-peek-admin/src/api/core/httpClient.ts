@@ -1,5 +1,5 @@
 import { ApiResponse, ApiConfig, RequestOptions, ApiRequestError } from './types';
-import { API_BASE_URL, buildUrlWithParams } from './apiConfig';
+import { API_BASE_URL, API_GATEWAY_URL, buildUrlWithParams } from './apiConfig';
 import {
   requestInterceptor,
   responseInterceptor,
@@ -21,9 +21,9 @@ class HttpClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestOptions & { _retry?: boolean } = {}
+    options: RequestOptions & { _retry?: boolean; binary?: boolean } = {}
   ): Promise<ApiResponse<T>> {
-    const { params, requiresAuth = true, skipAuthHeader, _retry, ...fetchOptions } = options;
+    const { params, requiresAuth = true, skipAuthHeader, _retry, binary, ...fetchOptions } = options;
 
     const urlWithParams = buildUrlWithParams(endpoint, params);
     const fullUrl = `${this.baseURL}${urlWithParams}`;
@@ -68,8 +68,12 @@ class HttpClient {
         }
       }
 
+      if (binary && response.ok) {
+        return { success: true, message: '', data: await response.blob() as T };
+      }
+
       const { envelope, pagination } = await responseInterceptor<any>(response, fullUrl);
-      let payload = envelope.data ?? envelope;
+      let payload = 'data' in envelope ? envelope.data : envelope;
       if (isAuthTokenEndpoint(endpoint)) {
         const fromEnvelope = pickAuthTokens(envelope);
         const fromPayload = pickAuthTokens(payload);
@@ -85,12 +89,25 @@ class HttpClient {
         success: true,
         isSuccess: envelope.isSuccess ?? envelope.success ?? true,
         message: envelope.message || '',
+        ...('oldEntity' in envelope ? { oldEntity: envelope.oldEntity } : {}),
         data: normalizedData,
         meta: pagination,
       };
     } catch (error) {
       throw error;
     }
+  }
+
+  async getBlob(url: string, signal?: AbortSignal): Promise<Blob> {
+    // Only gateway URLs may receive our bearer token; route absolute gateway URLs through the dev proxy.
+    const base = new URL(this.baseURL, globalThis.location?.origin || this.baseURL);
+    const target = new URL(url, base);
+    const configuredOrigin = API_GATEWAY_URL ? new URL(API_GATEWAY_URL, base).origin : base.origin;
+    if (target.origin !== base.origin && target.origin !== configuredOrigin) throw new Error('Недоступный адрес фотографии');
+    const endpoint = target.pathname.startsWith('/backend/') ? target.pathname.slice(8) : target.pathname;
+    return (await this.request<Blob>(`${endpoint}${target.search}`, {
+      method: 'GET', binary: true, cache: 'no-store', signal,
+    })).data;
   }
 
   async get<T>(endpoint: string, config?: ApiConfig): Promise<ApiResponse<T>> {

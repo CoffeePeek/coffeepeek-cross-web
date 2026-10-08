@@ -11,7 +11,7 @@ export interface BrowseCoffeeShop {
   description?: string;
   cityName?: string;
   rating?: number;
-  reviewCount?: number;
+  checkInCount?: number;
   imageUrl?: string;
 }
 
@@ -155,7 +155,7 @@ function mapBrowseShop(raw: Record<string, unknown>): BrowseCoffeeShop {
       firstString(shop, 'cityName', 'CityName')
       ?? (city ? firstString(city, 'name', 'Name') : undefined),
     rating: firstNumber(shop, 'rating', 'Rating', 'averageRating', 'AverageRating'),
-    reviewCount: firstNumber(shop, 'reviewCount', 'ReviewCount', 'reviewsCount', 'ReviewsCount'),
+    checkInCount: firstNumber(shop, 'checkInCount', 'CheckInCount'),
     imageUrl: imageUrl ?? undefined,
   };
 }

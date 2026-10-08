@@ -143,10 +143,10 @@ export const BrowseShopPage: React.FC = () => {
             )}
           </div>
 
-          {(shop.rating != null || shop.reviewCount != null) && (
+          {(shop.rating != null || shop.checkInCount != null) && (
             <p className="text-sm text-text-muted dark:text-stone-400">
               {shop.rating != null && `⭐ ${shop.rating.toFixed(1)}`}
-              {shop.reviewCount != null && ` · ${shop.reviewCount} отзывов`}
+              {shop.checkInCount != null && ` · ${shop.checkInCount} чекинов`}
             </p>
           )}
 

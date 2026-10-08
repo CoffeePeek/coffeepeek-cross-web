@@ -24,8 +24,8 @@ export const DashboardPage = () => {
   const stats = data ? [
     { label: 'Пользователи', value: data.totalUsers, hint: `+${data.usersRegisteredToday} сегодня`, icon: Users },
     { label: 'Кофейни', value: data.shopsAvailable ? data.totalCoffeeShops : '—', hint: data.shopsAvailable ? `+${data.newCoffeeShopsToday} сегодня` : 'Сервис недоступен', icon: Coffee },
-    { label: 'Отзывы', value: data.shopsAvailable ? data.totalReviews : '—', hint: data.shopsAvailable && data.newReviewsToday ? `+${data.newReviewsToday} сегодня` : 'Без новых', icon: MessageSquareText },
-    { label: 'На модерации', value: data.moderationAvailable ? data.pendingModerationShops + data.pendingModerationReviews : '—', hint: data.moderationAvailable ? `${data.pendingModerationShops} кофеен · ${data.pendingModerationReviews} отзывов` : 'Сервис недоступен', icon: ShieldCheck },
+    { label: 'Чекины', value: data.shopsAvailable ? data.totalCheckIns : '—', hint: data.shopsAvailable && data.newCheckInsToday ? `+${data.newCheckInsToday} сегодня` : 'Без новых', icon: MessageSquareText },
+    { label: 'На модерации', value: data.moderationAvailable ? data.pendingModerationShops + data.pendingModerationCheckIns : '—', hint: data.moderationAvailable ? `${data.pendingModerationShops} кофеен · ${data.pendingModerationCheckIns} чекинов` : 'Сервис недоступен', icon: ShieldCheck },
   ] : [];
 
   return (

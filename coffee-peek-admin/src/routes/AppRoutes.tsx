@@ -8,7 +8,7 @@ const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default
 const DashboardPage = lazy(() => import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const ShopsModerationPage = lazy(() => import('../pages/ShopsModerationPage').then((m) => ({ default: m.ShopsModerationPage })));
 const ShopEditPage = lazy(() => import('../pages/ShopEditPage').then((m) => ({ default: m.ShopEditPage })));
-const ReviewsModerationPage = lazy(() => import('../pages/ReviewsModerationPage').then((m) => ({ default: m.ReviewsModerationPage })));
+const CheckInsModerationPage = lazy(() => import('../pages/CheckInsModerationPage').then((m) => ({ default: m.CheckInsModerationPage })));
 const ShopReportsPage = lazy(() => import('../pages/ShopReportsPage').then((m) => ({ default: m.ShopReportsPage })));
 const UsersPage = lazy(() => import('../pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 const CachePage = lazy(() => import('../pages/CachePage').then((m) => ({ default: m.CachePage })));
@@ -40,7 +40,7 @@ const AppDistributionPage = lazy(() =>
   import('../pages/AppDistributionPage').then((m) => ({ default: m.AppDistributionPage }))
 );
 const ShopChangeRequestsPage = lazy(() => import('../pages/ShopChangeRequestsPage').then((m) => ({ default: m.ShopChangeRequestsPage })));
-const ReviewReportsPage = lazy(() => import('../pages/ReviewReportsPage').then((m) => ({ default: m.ReviewReportsPage })));
+const CheckInReportsPage = lazy(() => import('../pages/CheckInReportsPage').then((m) => ({ default: m.CheckInReportsPage })));
 const ShopChangeRequestDetailPage = lazy(() => import('../pages/ShopChangeRequestDetailPage').then((m) => ({ default: m.ShopChangeRequestDetailPage })));
 
 const Loader = () => (
@@ -89,7 +89,7 @@ export const AppRoutes: React.FC = () => (
         <Route path="/roaster-tags" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage key="tags" kind="tags" /></ProtectedRoute>} />
         <Route path="/roaster-tags/assignments/:id" element={<ProtectedRoute requireModerator><RoasterTagsPage /></ProtectedRoute>} />
         <Route path="/coffee-filter-values" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage key="values" kind="values" /></ProtectedRoute>} />
-        <Route path="/review-reports" element={<ProtectedRoute requireAdmin><ReviewReportsPage /></ProtectedRoute>} />
+        <Route path="/check-in-reports" element={<ProtectedRoute requireAdmin><CheckInReportsPage /></ProtectedRoute>} />
 
         <Route path="/coffee-shops" element={<BrowseShopsPage />} />
         <Route path="/coffee-shops/:id" element={<BrowseShopPage />} />
@@ -136,10 +136,10 @@ export const AppRoutes: React.FC = () => (
         />
 
         <Route
-          path="/reviews"
+          path="/check-ins"
           element={
             <ProtectedRoute requireModerator>
-              <ReviewsModerationPage />
+              <CheckInsModerationPage />
             </ProtectedRoute>
           }
         />

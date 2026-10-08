@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { getThemeClasses } from '../utils/theme';
 import CoffeeShopList from '../components/CoffeeShopList';
+import FeedPage from './FeedPage';
 import SettingsPage from '../pages/SettingsPage';
 import { usePageTitle } from '../hooks/usePageTitle';
 
@@ -37,7 +38,7 @@ const DashboardPage: React.FC = () => {
 
   return (
     <div className={`min-h-screen ${themeClasses.bg.primary}`}>
-      {page === 'settings' ? (
+      {page === 'home' || page === 'feed' ? <FeedPage /> : page === 'settings' ? (
         <SettingsPage />
       ) : (
         <CoffeeShopList initialMapExpanded={page === 'map'} />

@@ -186,7 +186,7 @@ export const BrowseMapPage: React.FC = () => {
                   {selectedDetails?.rating != null && (
                     <p className="text-stone-400 text-xs mt-1">
                       ⭐ {selectedDetails.rating.toFixed(1)}
-                      {selectedDetails.reviewCount != null && ` · ${selectedDetails.reviewCount} отзывов`}
+                      {selectedDetails.checkInCount != null && ` · ${selectedDetails.checkInCount} чекинов`}
                     </p>
                   )}
                 </div>

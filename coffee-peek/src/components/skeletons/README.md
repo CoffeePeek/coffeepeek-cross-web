@@ -62,13 +62,13 @@ import { ShopDetailSkeleton } from './components/skeletons';
 
 ---
 
-### ReviewCardSkeleton
-Skeleton для карточки отзыва.
+### CheckInCardSkeleton
+Skeleton для карточки чекина.
 
 ```tsx
-import { ReviewCardSkeleton } from './components/skeletons';
+import { CheckInCardSkeleton } from './components/skeletons';
 
-<ReviewCardSkeleton count={3} />
+<CheckInCardSkeleton count={3} />
 ```
 
 **Props:**
@@ -78,13 +78,13 @@ import { ReviewCardSkeleton } from './components/skeletons';
 - Аватар пользователя
 - Имя и дата
 - Рейтинг
-- Заголовок отзыва
-- Текст отзыва
+- Заголовок чекина
+- Текст чекина
 
 **Использование:**
-- CoffeeShopPage (раздел отзывов)
-- UserProfilePage (отзывы пользователя)
-- ProfilePage (мои отзывы)
+- CoffeeShopPage (раздел чекинов)
+- UserProfilePage (чекины пользователя)
+- ProfilePage (мои чекины)
 
 ---
 
@@ -162,7 +162,7 @@ import { ModerationSkeleton } from './components/skeletons';
 import { 
   Shimmer,
   ShopCardSkeleton,
-  ReviewCardSkeleton,
+  CheckInCardSkeleton,
   ShopDetailSkeleton,
   ProfileSkeleton,
   ListSkeleton,
@@ -265,7 +265,7 @@ skeletons/
 ├── index.ts                 # Barrel export
 ├── Shimmer.tsx             # Базовый компонент
 ├── ShopCardSkeleton.tsx    # Карточка кофейни
-├── ReviewCardSkeleton.tsx  # Карточка отзыва
+├── CheckInCardSkeleton.tsx  # Карточка чекина
 ├── ShopDetailSkeleton.tsx  # Детальная страница
 ├── ProfileSkeleton.tsx     # Страница профиля
 ├── ListSkeleton.tsx        # Универсальный список

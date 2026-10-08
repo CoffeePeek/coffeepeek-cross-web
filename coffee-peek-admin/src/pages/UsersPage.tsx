@@ -342,7 +342,6 @@ export const UsersPage: React.FC = () => {
       },
     },
     { header: 'Роли', cell: ({ row }) => <div className="flex flex-wrap gap-1">{row.original.roles.length ? row.original.roles.map((role) => <UserRoleBadge key={role} role={role as UserRole} />) : <Badge>—</Badge>}</div> },
-    { accessorKey: 'reviewCount', header: 'Отзывов', meta: { className: 'hidden md:table-cell', headerClassName: 'hidden md:table-cell' }, cell: ({ row }) => row.original.reviewCount ?? 0 },
     { accessorKey: 'checkInCount', header: 'Чекинов', meta: { className: 'hidden md:table-cell', headerClassName: 'hidden md:table-cell' }, cell: ({ row }) => row.original.checkInCount ?? 0 },
     { accessorKey: 'addedShopsCount', header: 'Кофеен', meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' }, cell: ({ row }) => row.original.addedShopsCount ?? 0 },
     { accessorKey: 'createdAtUtc', header: 'Дата', meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' }, cell: ({ row }) => new Date(row.original.createdAtUtc).toLocaleDateString('ru') },

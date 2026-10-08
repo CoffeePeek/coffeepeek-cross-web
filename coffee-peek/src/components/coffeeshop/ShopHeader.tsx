@@ -11,7 +11,7 @@ import { isShopOpenNow } from '../../utils/shopUtils';
 interface ShopHeaderProps {
   shop: DetailedCoffeeShop;
   avgRating: number;
-  reviewsTotalCount: number;
+  checkInsTotalCount: number;
   isFavorite: boolean;
   isCheckingFavorite: boolean;
   onToggleFavorite: () => void;
@@ -50,7 +50,7 @@ async function copyText(text: string): Promise<boolean> {
 export const ShopHeader: React.FC<ShopHeaderProps> = ({
   shop,
   avgRating,
-  reviewsTotalCount,
+  checkInsTotalCount,
   isFavorite,
   isCheckingFavorite,
   onToggleFavorite,
@@ -90,7 +90,7 @@ export const ShopHeader: React.FC<ShopHeaderProps> = ({
             {avgRating.toFixed(1)}
           </span>
           <span className={`${textMuted} font-medium border-b border-current/30 shrink-0`}>
-            {shop.reviewCount || reviewsTotalCount} отзывов
+            {shop.checkInCount || checkInsTotalCount} чекинов
           </span>
           {shop.isNew && (
             <span className="bg-green-500/20 text-green-400 font-bold px-2 py-1 rounded-lg text-xs uppercase tracking-wider shrink-0">

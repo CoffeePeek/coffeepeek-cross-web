@@ -91,7 +91,7 @@ function renderShopCards(shops) {
       ${photo ? `<img src="${escapeHtml(photo)}" alt="${escapeHtml(shop.name)}" width="640" height="360" style="display:block;width:100%;height:180px;object-fit:cover">` : ''}
       <div style="padding:18px"><h2 style="font-size:20px;margin:0 0 8px">${shop.canonicalPath ? `<a href="${escapeHtml(shop.canonicalPath)}" style="color:#fff">${escapeHtml(shop.name)}</a>` : escapeHtml(shop.name)}</h2>
       <p style="color:#A39E93;margin:0 0 8px">${escapeHtml(address)}</p>
-      <p style="margin:0">${shop.reviewCount ? `${escapeHtml(shop.rating)} ★ · ${escapeHtml(shop.reviewCount)} отзывов` : 'Пока без отзывов'}</p></div>
+      <p style="margin:0">${shop.checkInCount ? `${escapeHtml(shop.rating)} ★ · ${escapeHtml(shop.checkInCount)} чекинов` : 'Пока без чекинов'}</p></div>
     </li>`;
   }).join('')}</ul>`;
 }
@@ -110,7 +110,7 @@ function renderShopDetails(shop) {
     shop.description || `${shop.name} — кофейня на CoffeePeek. Адрес: ${address}.`,
     `<article>
       <p><strong>Адрес:</strong> ${escapeHtml(address)}</p>
-      ${shop.reviewCount ? `<p><strong>Рейтинг:</strong> ${escapeHtml(shop.rating)} из 5 · ${escapeHtml(shop.reviewCount)} отзывов</p>` : '<p>Пока без отзывов</p>'}
+      ${shop.checkInCount ? `<p><strong>Рейтинг:</strong> ${escapeHtml(shop.rating)} из 5 · ${escapeHtml(shop.checkInCount)} чекинов</p>` : '<p>Пока без чекинов</p>'}
       ${coordinates ? `<p>${coordinates}</p>` : ''}
       ${menu}
     </article>`,
@@ -136,7 +136,7 @@ export async function renderPublicPage(request) {
 
   if (page === 'home') {
     const title = 'CoffeePeek — кофейни Беларуси';
-    const description = 'Находите кофейни Беларуси, изучайте меню, отзывы и выбирайте место для следующей чашки кофе.';
+    const description = 'Находите кофейни Беларуси, изучайте меню и чекины, выбирайте место для следующей чашки кофе.';
     let html = replaceMeta(shell, { title, description, canonical: `${SITE_URL}/` });
     html = injectContent(html, `${renderHome()}${jsonLd({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'CoffeePeek', url: `${SITE_URL}/` })}`);
     return { html, status: 200 };
@@ -192,11 +192,11 @@ export async function renderPublicPage(request) {
     image: data.photos?.[0]?.urls?.detail || data.photos?.[0]?.fullUrl,
   });
   const content = kind === 'shops' ? renderShopDetails(data) : pageLayout(title, description,
-    kind === 'users' ? `<p>Отзывов: ${escapeHtml(data.reviewCount)}</p><p>Чекинов: ${escapeHtml(data.checkInCount)}</p>` : '');
+    kind === 'users' ? `<p>Чекинов: ${escapeHtml(data.checkInCount)}</p>` : '');
   const structured = kind === 'shops' ? jsonLd({ '@context': 'https://schema.org', '@type': 'CafeOrCoffeeShop', name: data.name, description, url: canonical,
     address: { '@type': 'PostalAddress', streetAddress: data.location?.address, addressCountry: 'BY' },
     geo: data.location?.latitude != null ? { '@type': 'GeoCoordinates', latitude: data.location.latitude, longitude: data.location.longitude } : undefined,
-    aggregateRating: data.reviewCount ? { '@type': 'AggregateRating', ratingValue: data.rating, reviewCount: data.reviewCount } : undefined,
+    aggregateRating: data.checkInCount ? { '@type': 'AggregateRating', ratingValue: data.rating, ratingCount: data.checkInCount } : undefined,
   }) : '';
   html = injectContent(html, content + structured);
   return { html, status: 200 };

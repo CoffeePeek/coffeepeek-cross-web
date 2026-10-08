@@ -18,7 +18,7 @@ const CoffeeShopListPage = lazyWithRetry(() => import('../pages/CoffeeShopListPa
 const CatalogSearchPage = lazyWithRetry(() => import('../pages/CatalogSearchPage'));
 const CoffeeDetailPage = lazyWithRetry(() => import('../pages/CoffeeDetailPage'));
 const CoffeeShopDetailPage = lazyWithRetry(() => import('../pages/CoffeeShopPage'));
-const CreateReviewPage = lazyWithRetry(() => import('../pages/CreateReviewPage'));
+const CheckInEditorPage = lazyWithRetry(() => import('../pages/CheckInEditorPage'));
 const UserProfilePage = lazyWithRetry(() => import('../pages/UserProfilePage'));
 const ProfilePage = lazyWithRetry(() => import('../pages/ProfilePage'));
 const DeleteAccountPage = lazyWithRetry(() => import('../pages/DeleteAccountPage'));
@@ -34,8 +34,8 @@ const ConfirmEmailPage = lazyWithRetry(() => import('../pages/ConfirmEmailPage')
 const ConfirmAccountDeletionPage = lazyWithRetry(() => import('../pages/ConfirmAccountDeletionPage'));
 const ForgotPasswordPage = lazyWithRetry(() => import('../pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazyWithRetry(() => import('../pages/ResetPasswordPage'));
+const FeedPage = lazyWithRetry(() => import('../pages/FeedPage'));
 const CheckInsPage = lazyWithRetry(() => import('../pages/CheckInsPage'));
-const ReviewsPage = lazyWithRetry(() => import('../pages/ReviewsPage'));
 const DownloadPage = lazyWithRetry(() => import('../pages/DownloadPage'));
 const EditCoffeeShopPage = lazyWithRetry(() => import('../pages/EditCoffeeShopPage'));
 const MyContributionsPage = lazyWithRetry(() => import('../pages/MyContributionsPage'));
@@ -90,11 +90,13 @@ export const AppRoutes: React.FC = () => {
         <Route path="/coffee-shops/:shopId" element={<AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CoffeeShopDetailPage /></PublicAddressPage></AuthenticatedLayout>} />
         <Route path="/cities/:slug" element={<AuthenticatedLayout><PublicAddressPage kind="cities" param="slug" /></AuthenticatedLayout>} />
         <Route path="/coffee-zones/:slug" element={<AuthenticatedLayout><PublicAddressPage kind="zones" param="slug" /></AuthenticatedLayout>} />
-        <Route path="/coffee-shops/:shopId/reviews/new" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CreateReviewPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
-        <Route path="/coffee-shops/:shopId/reviews/:reviewId/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CreateReviewPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
+        <Route path="/coffee-shops/:shopId/check-ins/new" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
+        <Route path="/coffee-shops/:shopId/check-ins/:checkInId/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/coffee-shops/:shopId/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><EditCoffeeShopPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/coffee-shops/:shopId/checkin" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CreateCheckInPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
-        <Route path="/coffee-shops/:shopId/reviews/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CreateReviewPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
+        <Route path="/feed" element={<AuthenticatedLayout><FeedPage /></AuthenticatedLayout>} />
+        <Route path="/check-ins/:checkInId/edit" element={<ProtectedRoute><AuthenticatedLayout><CheckInEditorPage /></AuthenticatedLayout></ProtectedRoute>} />
+        <Route path="/my/reviews" element={<Navigate to="/check-ins" replace />} />
         {/* Protected routes */}
         <Route
           path="/dashboard"
@@ -124,11 +126,11 @@ export const AppRoutes: React.FC = () => {
         />
 
         <Route
-          path="/shops/:shopId/reviews/new"
+          path="/shops/:shopId/check-ins/new"
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <PublicAddressPage kind="shops" param="shopId"><CreateReviewPage /></PublicAddressPage>
+                <PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage>
               </AuthenticatedLayout>
             </ProtectedRoute>
           }
@@ -157,11 +159,11 @@ export const AppRoutes: React.FC = () => {
         />
 
         <Route
-          path="/shops/:shopId/reviews/:reviewId/edit"
+          path="/shops/:shopId/check-ins/:checkInId/edit"
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <PublicAddressPage kind="shops" param="shopId"><CreateReviewPage /></PublicAddressPage>
+                <PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage>
               </AuthenticatedLayout>
             </ProtectedRoute>
           }
@@ -253,7 +255,7 @@ export const AppRoutes: React.FC = () => {
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <ReviewsPage />
+                <Navigate to="/check-ins" replace />
               </AuthenticatedLayout>
             </ProtectedRoute>
           }

@@ -8,14 +8,13 @@ import { httpClient } from './core/httpClient';
 import { API_ENDPOINTS } from './core/apiConfig';
 import type { ApiResponse } from './core/types';
 import { logger } from '../utils/logger';
-import { normalizeReviewDto } from './core/reviewNormalize';
 import { normalizeCheckInDto } from './core/checkInNormalize';
 import type { ShopMenuDto } from './menu';
 import { queryClient } from '../lib/queryClient';
 
 // ==================== UI models ====================
 // Public entity id/cityId and filter *Ids fields contain server-provided slugs.
-// publicAddress keeps the canonical metadata; photo/review/check-in IDs stay service IDs.
+// publicAddress keeps the canonical metadata; photo/check-in IDs stay service IDs.
 
 // imgproxy variants; without the proxy configured all four equal fullUrl.
 export interface PhotoUrlsDto {
@@ -98,7 +97,7 @@ export interface CoffeeShop {
   photos?: ShortPhotoMetadataDto[];
   shopPhotos?: string[];
   rating?: number;
-  reviewCount?: number;
+  checkInCount?: number;
   isOpen?: boolean;
   isVisited?: boolean;
   isNew?: boolean;
@@ -185,13 +184,11 @@ export interface DetailedCoffeeShop {
   photos?: PhotoMetadataDto[];
   imageUrls?: string[];
   rating: number;
-  reviewCount: number;
-  reviews?: Review[];
+  checkInCount: number;
+  checkIns?: CheckInDto[];
   userCheckIns?: CheckInDto[];
   isOpen: boolean;
   isVisited?: boolean;
-  canCreateReview?: boolean | null;
-  existingReviewId?: string | null;
   isNew?: boolean;
   priceRange: number | string;
   tags?: ShopTagDto[];
@@ -253,7 +250,7 @@ export interface ShortShopDto {
   name: string;
   photos: ShortPhotoMetadataDto[];
   rating: number;
-  reviewCount: number;
+  checkInCount: number;
   isVisited: boolean;
   isNew: boolean;
   isOpen: boolean;
@@ -389,127 +386,92 @@ export interface BrewMethod {
   name: string;
 }
 
-// Интерфейсы для отзывов
-export interface Review extends SavedDrink {
-  author?: PublicAddress | null;
-  shop?: PublicAddress | null;
+export interface RatingDto {
+  coffee: number;
+  service: number;
+  place: number;
+}
+
+export type CheckInVisibility = 'Private' | 'Public';
+export type CheckInModerationState = 'NotSubmitted' | 'Pending' | 'Approved' | 'Rejected';
+
+export interface CheckInPhoto {
   id: string;
-  moderationReviewId?: string;
-  coffeeShopId: string;
-  shopName?: string;
-  userId: string;
-  userName?: string;
-  userAvatar?: string;
-  header?: string | null;
-  comment: string;
-  ratingCoffee: number;
-  ratingService: number;
-  ratingPlace: number;
-  rating?: number;
-  visitedAt?: string; // ISO date string
-  createdAt: string;
-  updatedAt?: string;
-  photos?: ShortPhotoMetadataDto[];
+  fileName: string;
+  contentType: string;
+  storageKey: string;
+  sizeBytes: number;
+  sortIndex: number;
+  url: string;
 }
 
-export interface GetReviewsResponse {
-  reviews: Review[];
-  totalCount: number;
-  page?: number;
-  pageSize?: number;
-  totalPages?: number;
+export interface CheckInDto extends SavedDrink {
+  id: string;
+  shop: PublicAddress | null;
+  author: PublicAddress | null;
+  username: string;
+  shopName: string;
+  text: string;
+  rating: RatingDto;
+  visitedAt: string;
+  createdAtUtc: string;
+  visibility: CheckInVisibility;
+  moderationState: CheckInModerationState;
+  contentRevision: number;
+  rejectionReason: string | null;
+  photos: CheckInPhoto[];
+  helpfulCount: number;
+  isHelpfulByCurrentUser: boolean;
 }
 
-export interface CreateReviewRequest {
-  drinkSlug?: string;
-  customDrinkName?: string;
-  shop: string;
-  header?: string | null;
-  comment: string;
-  ratingCoffee: number;
-  ratingService: number;
-  ratingPlace: number;
+export interface UpdateCheckInRequest {
+  text: string;
+  rating: RatingDto;
+  drinkSlug?: string | null;
+  customDrinkName?: string | null;
+}
+
+export interface CreateCheckInRequest extends UpdateCheckInRequest {
+  coffeeShopSlug: string;
+  visibility?: CheckInVisibility;
+  visitedAt?: string | null;
   photos?: Array<{
     fileName: string;
     contentType: string;
     storageKey: string;
     size: number;
-  }>;
-}
-
-/** Published review IDs are used for reading; this command updates its moderation source. */
-export interface UpdateReviewRequest {
-  header?: string | null;
-  comment: string;
-  rating: RatingDto;
-  drinkSlug?: string;
-  customDrinkName?: string;
-  clearDrink?: boolean;
-  photos?: CreateReviewRequest['photos'];
-}
-
-export interface CreateReviewResult {
-  entityId: string;
-}
-
-export interface UpdateReviewResult {
-  reviewId: string;
-}
-
-export interface RatingDto {
-  place: number;
-  service: number;
-  coffee: number;
-}
-
-export interface CreateCheckInRequest {
-  drinkSlug?: string;
-  customDrinkName?: string;
-  shop: string;
-  isPublic: boolean;
-  visitedAt: string; // ISO date string, required
-  note: string | null; // Required for public check-ins only.
-  header: string | null; // Required for public check-ins only.
-  photos: Array<{
-    fileName: string;
-    contentType: string;
-    storageKey: string;
-    size: number;
-  }>;
-  rating: RatingDto;
-}
-
-export interface CreateCheckInResponse {
-  checkInId: string;
-  reviewId?: string | null;
-}
-
-export interface CheckInDto extends SavedDrink {
-  shop?: PublicAddress | null;
-  id: string;
-  userId: string;
-  shopId: string;
-  shopName: string | null;
-  note?: string | null;
-  createdAt: string;
-  visitedAt?: string | null;
-  isPublic?: boolean;
-  reviewId?: string | null;
-  photos?: ShortPhotoMetadataDto[] | null;
-  rating?: RatingDto;
+  }> | null;
 }
 
 export interface GetCheckInsResponse {
   items: CheckInDto[];
-  totalItems: number;
+  totalCount: number;
   totalPages: number;
-  currentPage?: number;
-  pageSize?: number;
+  currentPage: number;
+  pageSize: number;
 }
 
 export interface CheckInDateRange {
   from: string;
   to: string;
+}
+
+export interface PublicCheckInFilters {
+  citySlug?: string;
+  coffeeShopSlug?: string;
+  authorSlug?: string;
+  pageSize?: number;
+  cursor?: string;
+}
+
+export interface PublicCheckInsPage {
+  items: CheckInDto[];
+  nextCursor: string | null;
+}
+
+export interface FeedPage {
+  items: Array<{ publishedAtUtc: string; checkIn: CheckInDto }>;
+  nextCursor: string | null;
 }
 
 /**
@@ -807,152 +769,53 @@ export async function getCoffeeShopBySlug(slug: string, signal?: AbortSignal): P
   });
 }
 
-/**
- * Получает отзывы пользователя по ID
- */
-export async function getReviewsByUserId(
-  userId: string,
-  page: number = 1,
-  pageSize: number = 10
-): Promise<ApiResponse<GetReviewsResponse>> {
-  const response = await httpClient.get<any>(API_ENDPOINTS.USER.REVIEWS(userId), {
-    params: { pageNumber: page, pageSize },
-    requiresAuth: true,
+export async function createCheckIn(request: CreateCheckInRequest): Promise<ApiResponse<CheckInDto>> {
+  return httpClient.post<CheckInDto>(API_ENDPOINTS.CHECK_IN.BASE, request, { requiresAuth: true });
+}
+
+export async function getCheckInById(id: string): Promise<ApiResponse<CheckInDto>> {
+  return httpClient.get<CheckInDto>(API_ENDPOINTS.CHECK_IN.BY_ID(id), { requiresAuth: false });
+}
+
+export async function updateCheckIn(id: string, request: UpdateCheckInRequest): Promise<ApiResponse<CheckInDto>> {
+  return httpClient.put<CheckInDto>(API_ENDPOINTS.CHECK_IN.BY_ID(id), request, { requiresAuth: true });
+}
+
+export async function changeCheckInVisibility(id: string, visibility: CheckInVisibility): Promise<ApiResponse<CheckInDto>> {
+  return httpClient.put<CheckInDto>(`${API_ENDPOINTS.CHECK_IN.BY_ID(id)}/visibility`, { visibility }, { requiresAuth: true });
+}
+
+export async function deleteCheckIn(id: string): Promise<ApiResponse<null>> {
+  return httpClient.delete<null>(API_ENDPOINTS.CHECK_IN.BY_ID(id), { requiresAuth: true });
+}
+
+export async function setCheckInHelpful(id: string, helpful: boolean) {
+  const path = `${API_ENDPOINTS.CHECK_IN.BY_ID(id)}/helpful`;
+  return helpful
+    ? httpClient.put<{ isHelpful: boolean; helpfulCount: number }>(path, undefined, { requiresAuth: true })
+    : httpClient.delete<{ isHelpful: boolean; helpfulCount: number }>(path, { requiresAuth: true });
+}
+
+export async function getCheckIns(page = 1, pageSize = 10, range?: CheckInDateRange): Promise<ApiResponse<GetCheckInsResponse>> {
+  const response = await httpClient.get<{ items: CheckInDto[]; totalCount: number }>(API_ENDPOINTS.CHECK_IN.MINE, {
+    params: { pageNumber: page, pageSize, ...range }, requiresAuth: true,
   });
-
-  const raw = response.data ?? {};
-  const dtos = Array.isArray(raw)
-    ? raw
-    : Array.isArray(raw.reviewDtos)
-      ? raw.reviewDtos
-      : Array.isArray(raw.ReviewDtos)
-        ? raw.ReviewDtos
-        : Array.isArray(raw.reviews)
-          ? raw.reviews
-          : Array.isArray(raw.items)
-            ? raw.items
-            : [];
-
-  const data: GetReviewsResponse = {
-    reviews: dtos.map((dto: any) => normalizeReviewDto(dto)),
-    totalCount: Number(
-      response.pagination?.totalItems ?? raw.totalItems ?? raw.totalCount ?? dtos.length
-    ),
-    totalPages: Number(
-      response.pagination?.totalPages ??
-        raw.totalPages ??
-        (pageSize > 0 ? Math.max(1, Math.ceil((raw.totalItems ?? raw.totalCount ?? dtos.length) / pageSize)) : 1)
-    ),
-    page: Number(response.pagination?.page ?? raw.currentPage ?? page),
-    pageSize: Number(response.pagination?.pageSize ?? raw.pageSize ?? pageSize),
-  };
-
-  return { ...response, data };
+  const totalCount = response.pagination?.totalItems ?? response.data.totalCount;
+  return { ...response, data: {
+    items: response.data.items.map(normalizeCheckInDto),
+    totalCount,
+    totalPages: response.pagination?.totalPages ?? Math.max(1, Math.ceil(totalCount / pageSize)),
+    currentPage: response.pagination?.page ?? page,
+    pageSize: response.pagination?.pageSize ?? pageSize,
+  } };
 }
 
-/**
- * Получает отзыв по ID
- */
-export async function getReviewById(reviewId: string): Promise<ApiResponse<Review>> {
-  const response = await httpClient.get<any>(API_ENDPOINTS.REVIEW.BY_ID(reviewId), {
-    requiresAuth: true,
-  });
-
-  const dto = response.data?.review ?? response.data;
-  return { ...response, data: normalizeReviewDto(dto) };
+export async function getPublicCheckIns(filters: PublicCheckInFilters = {}): Promise<ApiResponse<PublicCheckInsPage>> {
+  return httpClient.get<PublicCheckInsPage>(API_ENDPOINTS.CHECK_IN.BASE, { params: filters, requiresAuth: false });
 }
 
-export async function createReview(
-  request: CreateReviewRequest,
-): Promise<ApiResponse<CreateReviewResult>> {
-  return httpClient.post<CreateReviewResult>(API_ENDPOINTS.MODERATION.REVIEWS, request, {
-    requiresAuth: true,
-  });
-}
-
-/**
- * Обновляет отзыв
- */
-export async function updateReview(
-  moderationReviewId: string,
-  request: UpdateReviewRequest,
-): Promise<ApiResponse<UpdateReviewResult>> {
-  return httpClient.put<UpdateReviewResult>(API_ENDPOINTS.MODERATION.REVIEW_UPDATE(moderationReviewId), request, {
-    requiresAuth: true,
-  });
-}
-
-/**
- * Создает чекин для кофейни
- */
-export async function createCheckIn(
-  request: CreateCheckInRequest
-): Promise<ApiResponse<CreateCheckInResponse>> {
-  return httpClient.post<CreateCheckInResponse>(
-    API_ENDPOINTS.CHECK_IN.BASE,
-    request,
-    { requiresAuth: true }
-  );
-}
-
-/**
- * Список чек-инов текущего пользователя.
- * Пагинация: X-Page-Number / X-Page-Size.
- * Totals: X-Total-Count / X-Total-Pages или TotalItems/TotalPages в body — не длина страницы.
- */
-export async function getCheckIns(
-  page: number = 1,
-  pageSize: number = 10,
-  range?: CheckInDateRange,
-): Promise<ApiResponse<GetCheckInsResponse>> {
-  const headers: Record<string, string> = {
-    'X-Page-Number': page.toString(),
-    'X-Page-Size': pageSize.toString(),
-  };
-
-  const response = await httpClient.get<CheckInDto[] | GetCheckInsResponse | { items?: CheckInDto[]; checkIns?: CheckInDto[] }>(
-    API_ENDPOINTS.CHECK_IN.BASE,
-    { headers, requiresAuth: true, ...(range ? { params: range } : {}) }
-  );
-
-  const raw = response.data;
-  let items: CheckInDto[] = [];
-  let bodyTotalItems: number | undefined;
-  let bodyTotalPages: number | undefined;
-  let bodyPage: number | undefined;
-  let bodyPageSize: number | undefined;
-
-  if (Array.isArray(raw)) {
-    items = raw.map(normalizeCheckInDto);
-  } else if (raw && typeof raw === 'object') {
-    const obj = raw as Record<string, unknown>;
-    if (Array.isArray(obj.items)) items = obj.items.map(normalizeCheckInDto);
-    else if (Array.isArray(obj.checkIns)) items = obj.checkIns.map(normalizeCheckInDto);
-    bodyTotalItems = (obj.totalItems ?? obj.TotalItems ?? obj.totalCount) as number | undefined;
-    bodyTotalPages = (obj.totalPages ?? obj.TotalPages) as number | undefined;
-    bodyPage = (obj.currentPage ?? obj.page) as number | undefined;
-    bodyPageSize = obj.pageSize as number | undefined;
-  }
-
-  const totalItems =
-    response.pagination?.totalItems ??
-    bodyTotalItems ??
-    0;
-  const totalPages =
-    response.pagination?.totalPages ??
-    bodyTotalPages ??
-    (pageSize > 0 ? Math.max(1, Math.ceil(totalItems / pageSize)) : 1);
-
-  return {
-    ...response,
-    data: {
-      items,
-      totalItems,
-      totalPages,
-      currentPage: bodyPage ?? page,
-      pageSize: bodyPageSize ?? pageSize,
-    },
-  };
+export async function getFeed(filters: PublicCheckInFilters = {}): Promise<ApiResponse<FeedPage>> {
+  return httpClient.get<FeedPage>(API_ENDPOINTS.FEED, { params: filters, requiresAuth: false });
 }
 
 /** Loads every check-in in the half-open visit-time range [from, to). */

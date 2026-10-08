@@ -18,9 +18,3 @@ export function savedDrinkName(drink: SavedDrink, language = typeof document ===
 export function displayDrinkName(drink: SavedDrink, language = typeof document === 'undefined' ? 'ru' : document.documentElement.lang) {
   return savedDrinkName(drink, language) || (language.toLowerCase().startsWith('en') ? 'Not specified' : 'Не указан');
 }
-
-export function reviewDrinkSelection(drinkSlug: string, customDrinkName: string, original?: SavedDrink) {
-  if (original && drinkSlug === (original.drinkSlug || '') && customDrinkName.trim() === (original.customDrinkName || '')) return {};
-  if (original && !drinkSlug) return { clearDrink: true };
-  return drinkSelection(drinkSlug, customDrinkName);
-}

@@ -8,7 +8,6 @@ import { type ApiErrorResponse, ApiRequestError } from './apiError';
 import { getErrorMessageByStatus } from '../../utils/errorHandler';
 import { logger } from '../../utils/logger';
 import { isTokenExpired } from '../../utils/jwt';
-import { normalizeReviewDto } from './reviewNormalize';
 import { normalizeCheckInDto } from './checkInNormalize';
 import { normalizeDayOfWeek } from '../../utils/shopUtils';
 
@@ -236,11 +235,11 @@ export function normalizeResponseData<T>(data: any): T {
     return data;
   }
 
-  data = normalizePublicDto(data);
+  data = normalizePublicDto(data.shopDto ?? data);
   if ('coffeeShops' in data && Array.isArray(data.coffeeShops)) {
     return { ...data, coffeeShops: data.coffeeShops.map(normalizeCoffeeShopData) } as T;
   }
-  if ('name' in data && ('shopContact' in data || 'schedules' in data || 'beans' in data || 'reviews' in data || 'userCheckIns' in data)) {
+  if ('name' in data && ('shopContact' in data || 'schedules' in data || 'beans' in data || 'checkIns' in data || 'userCheckIns' in data)) {
     return normalizeCoffeeShopData(data) as T;
   }
   return data;
@@ -250,6 +249,7 @@ export function normalizeResponseData<T>(data: any): T {
 export function normalizePublicDto(data: any): any {
   if (Array.isArray(data)) return data.map(normalizePublicDto);
   if (!data || typeof data !== 'object' || ('slug' in data && 'canonicalPath' in data)) return data;
+  if ('visibility' in data && 'moderationState' in data) return normalizeCheckInDto(data);
   const result: any = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, normalizePublicDto(value)]));
   const address = data.address && typeof data.address === 'object' ? data.address : null;
   if (address?.slug) {
@@ -394,9 +394,8 @@ function normalizeCoffeeShopData(shop: BackendShopData | unknown): Record<string
       .filter((s): s is { dayOfWeek: number; openTime: string; closeTime: string } => s !== null);
   }
 
-  // Нормализуем reviews если они есть (ReviewDto: rating — объект, дата — createdAtUtc)
-  if ('reviews' in shop && Array.isArray(shop.reviews)) {
-    normalized.reviews = shop.reviews.map((review: any) => normalizeReviewDto(review));
+  if ('checkIns' in shop && Array.isArray(shop.checkIns)) {
+    normalized.checkIns = shop.checkIns.map(normalizeCheckInDto);
   }
 
   const userCheckIns = shopData.userCheckIns ?? shopData.UserCheckIns;

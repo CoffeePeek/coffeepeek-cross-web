@@ -160,6 +160,12 @@ export function getGoogleAuthErrorMessage(error: unknown): string {
  */
 export function getErrorMessage(error: any, context?: 'login' | 'register'): string {
   const status = error?.status || error?.response?.status;
+
+  if (status === 400 && !context) {
+    const messages = Object.values(error?.errors ?? {}).flat();
+    if (messages.length) return messages.join(', ');
+    if (error?.message) return error.message;
+  }
   
   if (status) {
     if (status === 401 && (context === 'login' || context === 'register')) {
@@ -186,7 +192,7 @@ export function getErrorMessage(error: any, context?: 'login' | 'register'): str
     return error.message;
   }
   
-  return ErrorCodes.UNKNOWN.message;
+  return error instanceof Error ? error.message : ErrorCodes.UNKNOWN.message;
 }
 
 const OAUTH_PASSWORD_HINT =

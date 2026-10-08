@@ -2,14 +2,14 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { DotsThree, WarningCircle, X } from '@phosphor-icons/react';
 import { useMutation } from '@tanstack/react-query';
-import { reportReview } from '../api/reviewReports';
+import { reportCheckIn } from '../api/checkInReports';
 import { useUser } from '../contexts/UserContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 import { getErrorMessage } from '../utils/errorHandler';
 
-export default function ReportReviewButton({ reviewId }: { reviewId: string }) {
+export default function ReportCheckInButton({ checkInId }: { checkInId: string }) {
   const { user } = useUser();
   const { theme } = useTheme();
   const classes = getThemeClasses(theme);
@@ -23,7 +23,7 @@ export default function ReportReviewButton({ reviewId }: { reviewId: string }) {
   const [text, setText] = useState('');
   const [sent, setSent] = useState(false);
   const mutation = useMutation({
-    mutationFn: () => reportReview(reviewId, text),
+    mutationFn: () => reportCheckIn(checkInId, text),
     onSuccess: () => { setSent(true); setOpen(false); setText(''); showToast('Жалоба отправлена', 'success'); },
   });
 
@@ -59,7 +59,7 @@ export default function ReportReviewButton({ reviewId }: { reviewId: string }) {
   const close = () => { if (!mutation.isPending) setOpen(false); };
   return (
     <div ref={menu} className={`relative shrink-0 text-sm ${classes.text.primary}`}>
-      <button ref={trigger} type="button" aria-label="Действия с отзывом" aria-expanded={menuOpen} aria-controls={`${id}-menu`} className={`flex h-11 w-11 items-center justify-center rounded-full ${classes.text.secondary} hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308]`} onClick={() => setMenuOpen(!menuOpen)}>
+      <button ref={trigger} type="button" aria-label="Действия с чекином" aria-expanded={menuOpen} aria-controls={`${id}-menu`} className={`flex h-11 w-11 items-center justify-center rounded-full ${classes.text.secondary} hover:bg-black/5 dark:hover:bg-white/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308]`} onClick={() => setMenuOpen(!menuOpen)}>
         <DotsThree size={26} weight="bold" />
       </button>
       {menuOpen && <div id={`${id}-menu`} className={`absolute right-0 top-12 z-20 w-52 rounded-2xl border p-1.5 shadow-lg ${classes.bg.card} ${classes.border.default}`}>
@@ -70,15 +70,15 @@ export default function ReportReviewButton({ reviewId }: { reviewId: string }) {
           <div className="px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 sm:p-6">
             <div aria-hidden="true" className={`mx-auto mb-3 h-1 w-10 rounded-full sm:hidden ${classes.bg.tertiary}`} />
             <div className="mb-2 flex items-center justify-between gap-3">
-              <h2 id={`${id}-title`} className="text-xl font-bold">Пожаловаться на отзыв</h2>
+              <h2 id={`${id}-title`} className="text-xl font-bold">Пожаловаться на чекин</h2>
               <button type="button" disabled={mutation.isPending} aria-label="Закрыть" onClick={close} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-50"><X size={22} /></button>
             </div>
-            <p id={`${id}-description`} className={`mb-5 text-sm ${classes.text.secondary}`}>Расскажите, что не так с отзывом. Администратор проверит вашу жалобу.</p>
+            <p id={`${id}-description`} className={`mb-5 text-sm ${classes.text.secondary}`}>Расскажите, что не так с чекином. Администратор проверит вашу жалобу.</p>
             <form className="space-y-3" onSubmit={event => { event.preventDefault(); if (!mutation.isPending) mutation.mutate(); }}>
               <label htmlFor={`${id}-text`} className="block font-semibold">Причина жалобы</label>
               <textarea id={`${id}-text`} autoFocus required maxLength={2000} rows={5} value={text} onChange={event => setText(event.target.value)} disabled={mutation.isPending} placeholder="Например, оскорбления или недостоверная информация" className={`w-full resize-none rounded-2xl border p-3 focus:outline-none focus:ring-2 focus:ring-[#EAB308]/50 ${classes.bg.input} ${classes.border.default}`} />
               <p className={`text-right text-xs ${classes.text.secondary}`}>{text.trim().length} / 2000</p>
-              {mutation.error && <p role="alert" className="text-red-500">{(mutation.error as { status?: number }).status === 429 ? 'Слишком много запросов. Попробуйте позже.' : (mutation.error as { status?: number }).status === 404 ? 'Отзыв больше недоступен.' : getErrorMessage(mutation.error)}</p>}
+              {mutation.error && <p role="alert" className="text-red-500">{(mutation.error as { status?: number }).status === 429 ? 'Слишком много запросов. Попробуйте позже.' : (mutation.error as { status?: number }).status === 404 ? 'Чекин больше недоступен.' : getErrorMessage(mutation.error)}</p>}
               <button type="submit" disabled={mutation.isPending || !text.trim()} className={`min-h-12 w-full rounded-2xl px-4 py-3 font-bold disabled:opacity-50 ${classes.primary.bg} ${classes.text.inverse}`}>{mutation.isPending ? 'Отправка…' : 'Отправить жалобу'}</button>
             </form>
           </div>

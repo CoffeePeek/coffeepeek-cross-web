@@ -1,16 +1,14 @@
-import { displayDrinkName } from '../utils/consumedDrinks';
+import CheckInCard from '../components/CheckInCard';
 import PublicEntityLink from '../components/PublicEntityLink';
 import { usePublicNavigate } from '../hooks/usePublicNavigate';
 import { usePublicResolution } from '../components/PublicAddressPage';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { CheckInDto, DetailedCoffeeShop } from '../api/coffeeshop';
-import { getPhotoUrl } from '../api/coffeeshop';
-import CheckInModal from '../components/CheckInModal';
 import GuestAuthCard from '../components/GuestAuthCard';
 import { ContactButtons } from '../components/coffeeshop/ContactButtons';
 import { PhotoGallery } from '../components/coffeeshop/PhotoGallery';
-import { ReviewsSection } from '../components/coffeeshop/ReviewsSection';
+import { CheckInsSection } from '../components/coffeeshop/CheckInsSection';
 import { ShopHeader } from '../components/coffeeshop/ShopHeader';
 import { ShopMenuSection } from '../components/coffeeshop/ShopMenuSection';
 import { AppIcon, BeanPriceMarks } from '../components/icons';
@@ -21,22 +19,20 @@ import { ShopDetailSkeleton } from '../components/skeletons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
 import { useFavorite } from '../hooks/useFavorites';
-import { useMyReview } from '../hooks/useMyReview';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useShopData } from '../hooks/useShopData';
-import { useUsersCache } from '../hooks/useUsersCache';
 import { distanceKm, formatDistance } from '../utils/distance';
 import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { getPriceRangeTier } from '../utils/priceRange';
 import { formatDayOfWeekShort, getCurrentDayOfWeek, getCurrentStatus, toLocalSchedules } from '../utils/shopUtils';
 import { getThemeClasses } from '../utils/theme';
 import {
-  ArrowLeft, CaretDown, ChatCenteredText, Check, Clock, Heart, MapPin,
+  ArrowLeft, CaretDown, Check, Clock, Heart, MapPin,
   NavigationArrow, NotePencil, ShareNetwork, Star,
 } from '@/components/Icon';
 
-const EMPTY_REVIEWS: NonNullable<DetailedCoffeeShop['reviews']> = [];
+const EMPTY_CHECK_INS: NonNullable<DetailedCoffeeShop['checkIns']> = [];
 
 type DetailColors = {
   bg: string;
@@ -46,12 +42,6 @@ type DetailColors = {
   muted: string;
   gold: string;
 };
-
-function formatCheckInDate(value?: string): string {
-  if (!value) return 'Дата не указана';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Дата не указана' : date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-}
 
 const CoffeeShopPage: React.FC = () => {
   const { shopId: routeId } = useParams<{ shopId: string }>();
@@ -63,12 +53,9 @@ const CoffeeShopPage: React.FC = () => {
   const { user, requireAuth } = useRequireAuth();
   const { showToast } = useToast();
   const legacyShop = useShopData(resolution ? null : shopId ?? '');
-  const { shop, isLoading, error, reloadShop } = resolution ? { shop: resolution.data as DetailedCoffeeShop, isLoading: false, error: null, reloadShop: resolution.reload } : legacyShop;
-  const { myReviewId } = useMyReview(shop);
-  const reviews = shop?.reviews ?? EMPTY_REVIEWS;
-  const usersCache = useUsersCache(reviews);
+  const { shop, isLoading, error } = resolution ? { shop: resolution.data as DetailedCoffeeShop, isLoading: false, error: null } : legacyShop;
+  const checkIns = shop?.checkIns ?? EMPTY_CHECK_INS;
   const { favorite, pending: favoritePending, toggle: toggleFavorite } = useFavorite('coffee_shop', shop?.publicAddress, shop?.isFavorite);
-  const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
@@ -121,7 +108,7 @@ const CoffeeShopPage: React.FC = () => {
     );
   }
 
-  const reviewsTotalCount = shop.reviewCount || reviews.length;
+  const checkInsTotalCount = shop.checkInCount ?? checkIns.length;
   const shopIsFavorite = favorite === true;
   const status = getCurrentStatus(shop);
   const localSchedules = toLocalSchedules(shop.schedules);
@@ -136,26 +123,14 @@ const CoffeeShopPage: React.FC = () => {
   const directionsUrl = latitude !== undefined && longitude !== undefined
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(shop.location?.address || shop.name)}`;
-  const shopBasicInfo = {
-    name: shop.name,
-    address: shop.location?.address || 'Адрес не указан',
-    photo: shop.photos?.[0] ? getPhotoUrl(shop.photos[0], 'card') : '',
-    averageRating: shop.rating,
-  };
 
   const handleToggleFavorite = () => {
     toggleFavorite();
   };
 
-  const handleReview = () => {
-    if (!requireAuth()) return;
-    const suffix = myReviewId ? '/reviews/edit' : '/reviews/new';
-    openPublic('shops', shopId!, suffix, { state: { shop: shopBasicInfo, reviewId: myReviewId } });
-  };
-
   const handleCheckIn = () => {
     if (!requireAuth()) return;
-    setShowCheckInModal(true);
+    void openPublic('shops', shop.publicAddress ?? shopId, '/check-ins/new');
   };
 
   const handleEditShop = () => {
@@ -207,9 +182,9 @@ const CoffeeShopPage: React.FC = () => {
 
       <main className="mx-auto max-w-[920px] space-y-7 px-4 py-6 sm:px-6 sm:py-8">
         <section>
-          <ShopHeader shop={shop} avgRating={shop.rating || 0} reviewsTotalCount={reviewsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={favoritePending} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => setShowReportModal(true)} textMuted={textMuted} borderColor={borderColor} />
+          <ShopHeader shop={shop} avgRating={shop.rating || 0} checkInsTotalCount={checkInsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={favoritePending} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => setShowReportModal(true)} textMuted={textMuted} borderColor={borderColor} />
           <div className="grid grid-cols-3 gap-2.5">
-            <div className="rounded-[22px] p-4" style={{ background: isDark ? '#382F1E' : '#FFF9E8', color: colors.text }}><div className="flex items-center gap-2"><Star size={23} weight="fill" color={colors.gold} /><strong className="text-lg sm:text-xl">{(shop.rating || 0).toFixed(1)}</strong></div><p className="mt-1 text-xs" style={{ color: colors.muted }}>{reviewsTotalCount} отзывов</p></div>
+            <div className="rounded-[22px] p-4" style={{ background: isDark ? '#382F1E' : '#FFF9E8', color: colors.text }}><div className="flex items-center gap-2"><Star size={23} weight="fill" color={colors.gold} /><strong className="text-lg sm:text-xl">{(shop.rating || 0).toFixed(1)}</strong></div><p className="mt-1 text-xs" style={{ color: colors.muted }}>{checkInsTotalCount} чекинов</p></div>
             <div className="rounded-[22px] p-4" style={{ background: status?.isOpen ? (isDark ? '#183B2A' : '#DCF7E7') : (isDark ? '#442727' : '#FEE2E2'), color: status?.isOpen ? '#22C55E' : '#EF4444' }}><strong className="block text-sm sm:text-xl">● {status?.isOpen ? 'Открыта' : 'Закрыта'}</strong>{statusTime && <p className="mt-1 text-xs opacity-75">{status?.isOpen ? 'до' : 'с'} {statusTime}</p>}</div>
             <div className="rounded-[22px] border p-4" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}>{priceTier ? <BeanPriceMarks count={priceTier} size={17} color={colors.gold} /> : <strong className="text-lg">—</strong>}<p className="mt-1 text-xs" style={{ color: colors.muted }}>Стоимость</p></div>
           </div>
@@ -227,18 +202,16 @@ const CoffeeShopPage: React.FC = () => {
         {(shop.equipments?.length || shop.beans?.length) ? <section><SectionTitle colors={colors}>Кофе и оборудование</SectionTitle><div className="grid gap-4 rounded-[24px] border p-5 sm:grid-cols-2" style={{ background: colors.surface, borderColor: colors.border }}>{!!shop.equipments?.length && <div><h3 className="mb-2 font-bold" style={{ color: colors.text }}>Оборудование</h3><p className="text-sm leading-relaxed" style={{ color: colors.muted }}>{shop.equipments.map(item => item.name).join(', ')}</p></div>}{!!shop.beans?.length && <div><h3 className="mb-2 font-bold" style={{ color: colors.text }}>Зёрна</h3><p className="text-sm leading-relaxed" style={{ color: colors.muted }}>{shop.beans.map(item => item.name).join(', ')}</p></div>}</div></section> : null}
 
         <ContactButtons shop={shop} cardBg={cardBg} borderColor={borderColor} textMain={textMain} textMuted={textMuted} />
-        {user && <CheckInsList checkIns={shop.userCheckIns ?? []} colors={colors} onEdit={reviewId => openPublic('shops', shopId!, '/reviews/edit', { state: { shop: shopBasicInfo, reviewId } })} />}
-        <ReviewsSection reviews={reviews} usersCache={usersCache} isLoading={false} myReviewId={myReviewId} isCheckingMyReview={false} onWriteOrEditReview={handleReview} onUserSelect={userId => { const path = usersCache.get(userId)?.canonicalPath; if (path) navigate(path);  }} user={user} textMain={textMain} textMuted={textMuted} cardBg={cardBg} borderColor={borderColor} coffeeShopName={shop.name} averageRating={shop.rating || 0} totalCount={reviewsTotalCount} />
+        {user && <CheckInsList checkIns={shop.userCheckIns ?? []} colors={colors}  />}
+        <CheckInsSection checkIns={checkIns} isLoading={false} onCreateCheckIn={handleCheckIn} coffeeShopName={shop.name} averageRating={shop.rating || 0} totalCount={checkInsTotalCount} />
         {!user && <GuestAuthCard {...colors} />}
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-[1150] flex items-center gap-2 border-t px-4 py-3 backdrop-blur-xl lg:hidden" style={{ background: isDark ? 'rgba(23,18,16,.9)' : 'rgba(248,247,245,.9)', borderColor: colors.border, paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
         <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label="Построить маршрут" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg" style={{ background: colors.gold, color: '#1A1412' }}><NavigationArrow size={22} weight="fill" /></a>
-        <button type="button" onClick={handleReview} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><ChatCenteredText size={20} />Отзыв</button>
         <button type="button" onClick={handleCheckIn} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><Check size={20} />Чекин</button>
       </div>
 
-      <CheckInModal isOpen={showCheckInModal} onClose={() => setShowCheckInModal(false)} shop={shop} onSuccess={reloadShop} />
       <ReportShopIssueModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} shopId={shopId} shopName={shop.name} />
     </div>
   );
@@ -269,9 +242,9 @@ const HoursCard: React.FC<{ shop: DetailedCoffeeShop; schedules: ReturnType<type
   );
 };
 
-const CheckInsList: React.FC<{ checkIns: CheckInDto[]; colors: DetailColors; onEdit: (reviewId: string) => void }> = ({ checkIns, colors, onEdit }) => {
+const CheckInsList: React.FC<{ checkIns: CheckInDto[]; colors: DetailColors }> = ({ checkIns, colors }) => {
   if (!checkIns.length) return null;
-  return <section><SectionTitle colors={colors}>Мои чекины</SectionTitle><div className="space-y-2">{checkIns.map(checkIn => <article key={checkIn.id} className="rounded-[20px] border p-4" style={{ background: colors.surface, borderColor: colors.border }}><div className="flex items-center justify-between gap-3"><div><strong style={{ color: colors.text }}>{formatCheckInDate(checkIn.visitedAt || checkIn.createdAt)}</strong><p className="mt-1 text-sm" style={{ color: colors.muted }}>Напиток: {displayDrinkName(checkIn)}</p>{checkIn.note && <p className="mt-1 text-sm" style={{ color: colors.muted }}>{checkIn.note}</p>}</div>{checkIn.reviewId && <button type="button" onClick={() => onEdit(checkIn.reviewId!)} className="min-h-11 rounded-full border px-4 text-sm font-bold" style={{ borderColor: colors.border, color: colors.text }}>Отзыв</button>}</div></article>)}</div></section>;
+  return <section><SectionTitle colors={colors}>Мои чекины</SectionTitle><div className="space-y-4">{checkIns.map(item => <CheckInCard key={item.id} item={item} own showShop={false} />)}</div></section>;
 };
 
 export default CoffeeShopPage;

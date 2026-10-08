@@ -37,7 +37,7 @@ export const BrowseShopsPage: React.FC = () => {
     { accessorKey: 'cityName', header: 'Город', cell: ({ row }) => row.original.cityName || '—' },
     { accessorKey: 'address', header: 'Адрес', cell: ({ row }) => row.original.address || '—' },
     { accessorKey: 'rating', header: 'Рейтинг', cell: ({ row }) => row.original.rating != null ? `★ ${row.original.rating.toFixed(1)}` : '—' },
-    { accessorKey: 'reviewCount', header: 'Отзывы', cell: ({ row }) => row.original.reviewCount ?? 0 },
+    { accessorKey: 'checkInCount', header: 'Чекины', cell: ({ row }) => row.original.checkInCount ?? 0 },
     { id: 'actions', cell: ({ row }) => <Button asChild variant="secondary" size="sm"><Link to={row.original.canonicalPath}>Открыть</Link></Button> },
   ];
 

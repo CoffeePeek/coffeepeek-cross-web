@@ -36,7 +36,7 @@ const CATEGORIES: Category[] = [
     title: 'Оценить',
     chrome: 'Чек-ин',
     desc: 'Отметь визит, опиши вкус и поставь оценку — рейтинг растёт из реальных чашек.',
-    more: 'Чек-ин фиксирует, что ты был. Отзыв — что почувствовал. Звёзды складываются в оценку места, а не в рекламу.',
+    more: 'Чек-ин фиксирует, что ты был. Чекин — что почувствовал. Звёзды складываются в оценку места, а не в рекламу.',
     Icon: ChatCenteredText,
   },
   {
@@ -214,7 +214,7 @@ const SceneRate: React.FC<{
             ))}
           </span>
         </Hint>
-        <Hint text="Отзыв — опиши вкус своими словами" className="w-full">
+        <Hint text="Чекин — опиши вкус своими словами" className="w-full">
           <p className="font-body text-[13px] lg:text-[14px] leading-relaxed min-h-[3.2em] cursor-default">
             <Typewriter text={REVIEW_TEXT} reduceMotion={reduceMotion} startDelay={900} color={text} />
           </p>

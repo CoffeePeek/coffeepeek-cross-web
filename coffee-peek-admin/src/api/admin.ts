@@ -70,27 +70,26 @@ interface BackendModerationShop {
   menu?: unknown;
 }
 
-interface BackendModerationReview {
+export interface ModerationCheckIn {
   id: string;
-  header: string;
-  comment: string;
-  drinkSlug?: string | null;
-  customDrinkName?: string | null;
-  drinkNameRu?: string | null;
-  drinkNameEn?: string | null;
-  userId: string;
-  userName?: string;
-  shopId: string;
-  shopName?: string;
-  rating?: {
-    coffee: number;
-    service: number;
-    place: number;
-  };
-  rejectedReason?: string | null;
+  checkInId: string;
+  contentRevision: number;
+  visitedAtUtc: string;
   createdAt: string;
-  moderationStatus: ModerationStatus | number;
-  photos?: PhotoMetadataDto[] | null;
+  text: string;
+  rating: { coffee: number; service: number; place: number };
+  userId: string;
+  userName: string;
+  shopId: string;
+  drinkSlug: string | null;
+  customDrinkName: string | null;
+  drinkNameRu: string | null;
+  drinkNameEn: string | null;
+  rejectedReason: string | null;
+  moderatedBy: string | null;
+  moderatedAt: string | null;
+  moderationStatus: ModerationStatus;
+  photos: PhotoMetadataDto[];
 }
 
 export interface PhotoMetadataDto {
@@ -113,8 +112,8 @@ interface GetAllModerationShopsResponse {
   pageSize: number;
 }
 
-interface GetAllModerationReviewsResponse {
-  reviewDtos: BackendModerationReview[];
+interface ModerationCheckInsPage {
+  items: ModerationCheckIn[];
   totalItems: number;
   totalPages: number;
   currentPage: number;
@@ -128,7 +127,6 @@ interface BackendAdminUser {
   createdAtUtc: string;
   about: string | null;
   avatarUrl: string | null;
-  reviewCount: number;
   checkInCount: number;
   addedShopsCount: number;
   roles: string[];
@@ -167,7 +165,7 @@ export interface AdminCoffeeShop {
   ownerEmail?: string;
   createdAtUtc: string;
   averageRating?: number;
-  reviewCount?: number;
+  checkInCount?: number;
   description?: string;
   priceRange?: number;
   photos?: { fileName?: string; storageKey: string; fullUrl: string }[];
@@ -212,26 +210,6 @@ export interface ModerationActionRequest {
   comment?: string;
 }
 
-export interface AdminReview {
-  id: string;
-  shopId: string;
-  shopName: string;
-  drinkSlug?: string | null;
-  customDrinkName?: string | null;
-  drinkNameRu?: string | null;
-  drinkNameEn?: string | null;
-  authorEmail: string;
-  authorName?: string;
-  header: string;
-  comment: string;
-  ratingCoffee: number;
-  ratingService: number;
-  ratingPlace: number;
-  status: ModerationStatus;
-  createdAtUtc: string;
-  photos: { fileName?: string; storageKey: string; fullUrl: string }[];
-}
-
 export type ShopIssueCategory =
   | 'OutdatedMenu'
   | 'ShopClosed'
@@ -262,7 +240,6 @@ export interface AdminUser {
   about?: string | null;
   createdAtUtc: string;
   avatarUrl?: string | null;
-  reviewCount: number;
   checkInCount: number;
   addedShopsCount: number;
   isBlocked: boolean;
@@ -295,11 +272,11 @@ export interface OverviewStats {
   emailConfirmedUsers: number;
   googleUsers: number;
   totalCoffeeShops: number;
-  totalReviews: number;
+  totalCheckIns: number;
   pendingModerationShops: number;
-  pendingModerationReviews: number;
+  pendingModerationCheckIns: number;
   newCoffeeShopsToday: number;
-  newReviewsToday: number;
+  newCheckInsToday: number;
   import: { pending: number; published: number; rejected: number; skipped: number; inFeed: number };
   /** false → shop-service numbers are placeholders. */
   shopsAvailable: boolean;
@@ -321,7 +298,6 @@ export interface AdminUsersTimeseries {
 export interface AdminShopsTimeseries {
   days: number;
   newShops: AdminDailyCount[];
-  newReviews: AdminDailyCount[];
   newCheckIns: AdminDailyCount[];
 }
 
@@ -333,7 +309,7 @@ export interface AdminTopShop {
 
 export interface AdminShopsInsights {
   ratings: {
-    totalReviews: number;
+    totalCheckIns: number;
     averageRating: number;
     averagePlace: number;
     averageService: number;
@@ -341,7 +317,6 @@ export interface AdminShopsInsights {
     distribution: { stars: number; count: number }[];
   };
   topShopsByCheckIns30Days: AdminTopShop[];
-  topShopsByReviews: AdminTopShop[];
   downloads: {
     total: number;
     last30Days: number;
@@ -350,10 +325,9 @@ export interface AdminShopsInsights {
   };
 }
 
-export type AdminModerationQueueName = 'shops' | 'reviews' | 'roasters' | 'changeRequests' | 'issueReports';
+export type AdminModerationQueueName = 'shops' | 'checkIns' | 'roasters' | 'changeRequests' | 'issueReports';
 
 export interface AdminModerationInsights {
-  sla: { reviewsModerated30Days: number; avgReviewModerationHours: number | null };
   queues: { queue: AdminModerationQueueName; pending: number; oldestPendingHours: number | null }[];
   oldestPendingHours: number | null;
   topModerators30Days: { moderatorUserId: string; total: number; approved: number; rejected: number }[];
@@ -366,7 +340,7 @@ export interface ClearCacheResponse {
 
 export type CoffeeShopStatus = 'Active' | 'TemporarilyClosed' | 'PermanentlyClosed';
 export type { PriceRangeLevel } from '../constants/priceRange';
-export type AuditEntityType = 'Shop' | 'Review' | 'CommunityPost';
+export type AuditEntityType = 'Shop' | 'CheckIn' | 'CommunityPost';
 export type AuditAction = 'Approved' | 'Rejected' | 'Pending';
 
 export interface PublishedShopLocation {
@@ -578,31 +552,6 @@ function mapShopToAdmin(shop: BackendModerationShop): AdminCoffeeShop {
   };
 }
 
-function mapReviewToAdmin(review: BackendModerationReview): AdminReview {
-  return {
-    id: review.id,
-    shopId: review.shopId,
-    shopName: review.shopName ?? review.shopId,
-    drinkSlug: review.drinkSlug,
-    customDrinkName: review.customDrinkName,
-    drinkNameRu: review.drinkNameRu,
-    drinkNameEn: review.drinkNameEn,
-    authorEmail: review.userName ?? review.userId,
-    authorName: review.userName,
-    header: review.header,
-    comment: review.comment,
-    ratingCoffee: review.rating?.coffee ?? 0,
-    ratingService: review.rating?.service ?? 0,
-    ratingPlace: review.rating?.place ?? 0,
-    status: mapModerationStatus(review.moderationStatus),
-    createdAtUtc: review.createdAt,
-    // fullUrl is null when the media public endpoint isn't configured — nothing to render then.
-    photos: [...(review.photos ?? [])]
-      .sort((a, b) => a.sortIndex - b.sortIndex)
-      .flatMap((p) => (p.fullUrl ? [{ fileName: p.fileName, storageKey: p.storageKey, fullUrl: p.fullUrl }] : [])),
-  };
-}
-
 function mapUserToAdmin(user: BackendAdminUser): AdminUser {
   return {
     id: user.id,
@@ -612,7 +561,6 @@ function mapUserToAdmin(user: BackendAdminUser): AdminUser {
     about: user.about,
     createdAtUtc: user.createdAtUtc,
     avatarUrl: user.avatarUrl,
-    reviewCount: user.reviewCount,
     checkInCount: user.checkInCount,
     addedShopsCount: user.addedShopsCount,
     isBlocked: user.isBlocked,
@@ -750,46 +698,35 @@ export async function updateCoffeeShop(
   };
 }
 
-// ==================== Review moderation ====================
+// ==================== Check-in moderation ====================
 
-export async function getModerationReviews(
-  params: ListParams = {}
-): Promise<ApiResponse<PaginatedResult<AdminReview>>> {
-  const page = params.page ?? 1;
-  const pageSize = params.pageSize ?? 20;
-  const response = await httpClient.get<GetAllModerationReviewsResponse>(
-    API_ENDPOINTS.MODERATION.REVIEWS,
-    { params }
-  );
-  const raw = response.data as unknown as GetAllModerationReviewsResponse;
-
-  return {
-    ...response,
-    data: toPaginatedResult(
-      (raw.reviewDtos ?? []).map(mapReviewToAdmin),
-      response.meta,
-      page,
-      pageSize
-    ),
-  };
+export async function getModerationCheckIns(params: ListParams & { userId?: string } = {}): Promise<ApiResponse<PaginatedResult<ModerationCheckIn>>> {
+  const response = await httpClient.get<ModerationCheckInsPage>(API_ENDPOINTS.MODERATION.CHECK_INS, { params });
+  const raw = response.data;
+  return { ...response, data: {
+    items: raw.items,
+    totalCount: response.meta?.totalCount ?? raw.totalItems,
+    totalPages: response.meta?.totalPages ?? raw.totalPages,
+    page: response.meta?.currentPage ?? raw.currentPage,
+    pageSize: response.meta?.pageSize ?? raw.pageSize,
+  } };
 }
 
-export async function approveReview(id: string, data?: ModerationActionRequest): Promise<ApiResponse<void>> {
-  return httpClient.put<void>(API_ENDPOINTS.MODERATION.REVIEWS, {
-    moderationReviewId: id,
-    moderationStatus: 'Approved',
-    comment: data?.comment?.trim() || null,
-    rejectReason: null,
+export async function getModerationCheckIn(id: string): Promise<ApiResponse<ModerationCheckIn>> {
+  return httpClient.get<ModerationCheckIn>(`${API_ENDPOINTS.MODERATION.CHECK_INS}/${encodeURIComponent(id)}`);
+}
+
+export async function approveCheckIn(submissionId: string, data?: ModerationActionRequest): Promise<ApiResponse<ModerationStatus>> {
+  return httpClient.put<ModerationStatus>(API_ENDPOINTS.MODERATION.CHECK_INS, {
+    submissionId, moderationStatus: 'Approved', comment: data?.comment?.trim() || null, rejectReason: null,
   });
 }
 
-export async function rejectReview(id: string, data?: ModerationActionRequest): Promise<ApiResponse<void>> {
-  const reason = data?.comment?.trim() || null;
-  return httpClient.put<void>(API_ENDPOINTS.MODERATION.REVIEWS, {
-    moderationReviewId: id,
-    moderationStatus: 'Rejected',
-    comment: reason,
-    rejectReason: reason,
+export async function rejectCheckIn(submissionId: string, data?: ModerationActionRequest): Promise<ApiResponse<ModerationStatus>> {
+  const reason = data?.comment?.trim() || '';
+  if (reason.length < 2 || reason.length > 1000) throw new Error('Причина отклонения должна содержать от 2 до 1000 символов');
+  return httpClient.put<ModerationStatus>(API_ENDPOINTS.MODERATION.CHECK_INS, {
+    submissionId, moderationStatus: 'Rejected', comment: null, rejectReason: reason,
   });
 }
 
@@ -1135,7 +1072,7 @@ function mapAuditEntry(entry: Record<string, unknown>): ModerationAuditEntry {
     id: String(entry.id),
     entityType: mapEnumStatus<AuditEntityType>(entry.entityType as AuditEntityType | number, [
       'Shop',
-      'Review',
+      'CheckIn',
       'CommunityPost',
     ]),
     entityId: String(entry.entityId),

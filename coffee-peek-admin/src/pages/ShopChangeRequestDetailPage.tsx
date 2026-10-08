@@ -301,7 +301,7 @@ export const ShopChangeRequestDetailPage: React.FC = () => {
                   <p className="text-xs text-text-muted dark:text-stone-400">@{user.userName}</p>
                 )}
                 <p className="mt-2 text-xs text-text-muted dark:text-stone-400">
-                  Отзывов: {user.reviewCount ?? 0} · Отметок: {user.checkInCount ?? 0}
+                  Чекинов: {user.checkInCount ?? 0}
                 </p>
                 <p className="mt-1 text-[11px] font-mono text-text-muted/80">{request.submittedByUserId}</p>
               </div>
