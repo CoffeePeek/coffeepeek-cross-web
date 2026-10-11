@@ -32,6 +32,12 @@ function displayDrinkName(checkIn: ModerationCheckIn): string {
     || (isEnglish ? 'Not specified' : 'Не указан');
 }
 
+function displayRating(checkIn: ModerationCheckIn): string {
+  const rating = checkIn.rating;
+  if (rating?.coffee == null || rating.service == null || rating.place == null) return 'Без оценки';
+  return `К ${rating.coffee} · С ${rating.service} · М ${rating.place}`;
+}
+
 export const CheckInsModerationPage: React.FC = () => {
   const { showToast } = useToast();
   const qc = useQueryClient();
@@ -93,7 +99,7 @@ export const CheckInsModerationPage: React.FC = () => {
     { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text}</p><p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos} /></div> },
     { accessorKey: 'shopName', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400">{row.original.shopId}</PublishedShopLink> },
     { id: 'author', header: 'Автор', cell: ({ row }) => row.original.userName },
-    { id: 'ratings', header: 'Оценки', cell: ({ row }) => `К ${row.original.rating.coffee} · С ${row.original.rating.service} · М ${row.original.rating.place}` },
+    { id: 'ratings', header: 'Оценки', cell: ({ row }) => displayRating(row.original) },
     { accessorKey: 'moderationStatus', header: 'Статус', cell: ({ row }) => <Badge variant={statusToBadgeVariant(row.original.moderationStatus)}>{statusLabels[row.original.moderationStatus]}</Badge> },
     { accessorKey: 'visitedAtUtc', header: 'Дата', cell: ({ row }) => new Date(row.original.visitedAtUtc).toLocaleDateString('ru') },
     { id: 'actions', cell: ({ row }) => row.original.moderationStatus === 'Pending' ? <div className="flex gap-2"><Button variant="success" size="sm" onClick={() => openAction(row.original.id, 'approve')}>Одобрить</Button><Button variant="danger" size="sm" onClick={() => openAction(row.original.id, 'reject')}>Отклонить</Button></div> : null },

@@ -9,7 +9,7 @@ const customer = process.env.COFFEE_CUSTOMER_ORIGIN || 'http://127.0.0.1:5173';
 const admin = process.env.COFFEE_ADMIN_ORIGIN || 'http://127.0.0.1:5174';
 const output = path.resolve('test-results/check-ins');
 await mkdir(output, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
 const address = (kind, slug) => ({ slug, canonicalPath: `/${kind}/${slug}`, revision: 1, isAlias: false });
 const at = new Date().toISOString();
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jP1sAAAAASUVORK5CYII=', 'base64');
@@ -17,8 +17,10 @@ const photo = { id: 'photo-id', fileName: 'coffee.png', contentType: 'image/png'
 let own = { id: 'own', shop: address('coffee-shops', 'sample'), author: address('users', 'me'), username: 'Я', shopName: 'Тестовая кофейня', text: 'Мой личный визит', rating: { coffee: 5, service: 4, place: 5 }, visitedAt: at, createdAtUtc: at, visibility: 'Private', moderationState: 'NotSubmitted', contentRevision: 1, rejectionReason: null, drinkSlug: 'cappuccino', customDrinkName: null, drinkNameRu: 'Капучино', drinkNameEn: 'Cappuccino', photos: [photo], helpfulCount: 0, isHelpfulByCurrentUser: false };
 let published = { ...own, id: 'published', author: address('users', 'other'), username: 'Другой автор', text: 'Публичный визит с хорошим кофе', visibility: 'Public', moderationState: 'Approved', photos: [] };
 const second = { ...published, id: 'second', text: 'Повторное посещение на второй странице' };
-let submission = { id: 'submission-id', checkInId: 'published', contentRevision: 4, visitedAtUtc: at, createdAt: at, text: 'Новая ревизия публичного визита', rating: own.rating, userId: 'other-id', userName: 'Другой автор', shopId: 'shop-id', drinkSlug: 'cappuccino', drinkNameRu: 'Капучино', drinkNameEn: 'Cappuccino', customDrinkName: null, rejectedReason: null, moderatedBy: null, moderatedAt: null, moderationStatus: 'Pending', photos: [{ ...photo, fullUrl: '/api/v1/check-ins/published/moderation-photos/photo-id?revision=4', urls: null, ownerId: 'other-id', uploadedAt: at }] };
+let submission = { id: 'submission-id', checkInId: 'published', contentRevision: 4, visitedAtUtc: at, createdAt: at, text: 'Новая ревизия публичного визита', rating: null, userId: 'other-id', userName: 'Другой автор', shopId: 'shop-id', drinkSlug: 'cappuccino', drinkNameRu: 'Капучино', drinkNameEn: 'Cappuccino', customDrinkName: null, rejectedReason: null, moderatedBy: null, moderatedAt: null, moderationStatus: 'Pending', photos: [{ ...photo, fullUrl: '/api/v1/check-ins/published/moderation-photos/photo-id?revision=4', urls: null, ownerId: 'other-id', uploadedAt: at }] };
 let report = { id: 'report-id', checkInId: null, reportedByUserId: 'me-id', text: 'Историческая жалоба', status: 'Pending', createdAtUtc: at, resolvedByAdminId: null, resolvedAtUtc: null };
+const unratedReport = { id: 'unrated-report-id', checkInId: 'published', reportedByUserId: 'me-id', text: 'Жалоба на чекин без оценки', status: 'Pending', createdAtUtc: at, resolvedByAdminId: null, resolvedAtUtc: null };
+const unratedCheckIn = { id: 'published', shopId: 'shop-id', userId: 'other-id', username: 'Другой автор', text: 'Чекин без оценки', visitedAt: at, ratingPlace: null, ratingService: null, ratingCoffee: null, deletedAtUtc: null, isPubliclyVisible: true };
 const requests = [], errors = [];
 const token = roles => ['e30', Buffer.from(JSON.stringify({ sub: 'me-id', roles, email: 'me@example.test', email_verified: true, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'fixture'].join('.');
 async function setup(isAdmin = false) {
@@ -68,8 +70,9 @@ async function setup(isAdmin = false) {
       assert.equal(url.searchParams.get('status'), 'Pending');
       return reply({ items: submission.moderationStatus === 'Pending' ? [submission] : [], totalItems: submission.moderationStatus === 'Pending' ? 1 : 0, totalPages: 1, currentPage: 1, pageSize: 15 });
     }
-    if (api === '/api/admin/check-in-reports') { assert.equal(url.searchParams.get('status'), 'Pending'); return reply({ items: report.status === 'Pending' ? [report] : [], totalCount: report.status === 'Pending' ? 1 : 0, page: 1, pageSize: 20 }); }
+    if (api === '/api/admin/check-in-reports') { assert.equal(url.searchParams.get('status'), 'Pending'); const items = [...(report.status === 'Pending' ? [report] : []), unratedReport]; return reply({ items, totalCount: items.length, page: 1, pageSize: 20 }); }
     if (api === '/api/admin/check-in-reports/report-id') return reply({ report, checkIn: null });
+    if (api === '/api/admin/check-in-reports/unrated-report-id') return reply({ report: unratedReport, checkIn: unratedCheckIn });
     if (api === '/api/admin/check-in-reports/report-id/resolution') { assert.deepEqual(body, { deleteCheckIn: false }); report = { ...report, status: 'Dismissed', resolvedAtUtc: at }; return reply(report); }
     // Secondary catalogs and telemetry stay inside the fixture environment too.
     return reply([]);
@@ -83,7 +86,7 @@ async function screenshot(page, name) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
   assert(!overflow, `${name}: horizontal viewport overflow`);
 }
-try {
+async function verifyCustomerFlow() {
   const page = await setup();
   await page.goto(`${customer}/feed`);
   await page.getByText(published.text, { exact: true }).waitFor();
@@ -143,10 +146,15 @@ try {
   await page.getByRole('button', { name: 'Удалить', exact: true }).click();
   await page.getByText('Пока нет чекинов', { exact: true }).waitFor();
   assert.equal(requests.find(r => r.api.endsWith('/reports') && r.method === 'POST').body.text, 'Неточный текст');
+}
+
+try {
+  if (process.env.CHECK_INS_ADMIN_ONLY !== '1') await verifyCustomerFlow();
 
   const mod = await setup(true);
   await mod.goto(`${admin}/check-ins`);
   await mod.getByText(submission.text, { exact: true }).waitFor();
+  await mod.getByText('Без оценки', { exact: true }).waitFor();
   await mod.locator('td img').waitFor();
   await screenshot(mod, 'moderation-desktop');
   await mod.getByRole('button', { name: 'Отклонить', exact: true }).click();
@@ -158,7 +166,7 @@ try {
   await dialog.getByRole('button', { name: 'Отклонить', exact: true }).click();
   await mod.getByText('Чекины не найдены', { exact: true }).waitFor();
   await mod.goto(`${admin}/check-in-reports`);
-  await mod.getByRole('button', { name: 'Рассмотреть', exact: true }).click();
+  await mod.getByRole('row').filter({ hasText: report.text }).getByRole('button', { name: 'Рассмотреть', exact: true }).click();
   await mod.getByText('Чекин недоступен', { exact: true }).waitFor();
   assert(await mod.getByRole('button', { name: 'Принять и удалить чекин' }).isDisabled());
   await mod.setViewportSize({ width: 390, height: 844 });
@@ -166,6 +174,11 @@ try {
   await mod.getByRole('button', { name: 'Отклонить жалобу', exact: true }).click();
   await mod.getByRole('button', { name: 'Да, отклонить жалобу', exact: true }).click();
   await mod.getByText('Жалоба отклонена. Чекин сохранён.', { exact: true }).waitFor();
+  await mod.goto(`${admin}/check-in-reports`);
+  await mod.getByRole('row').filter({ hasText: unratedReport.text }).getByRole('button', { name: 'Рассмотреть', exact: true }).click();
+  await mod.getByText(unratedCheckIn.text, { exact: true }).waitFor();
+  await mod.getByText('Без оценки', { exact: true }).waitFor();
+  assert(!(await mod.getByRole('dialog').innerText()).includes('NaN'), 'unrated report must not display NaN');
   assert.equal(errors.length, 0, errors.join('\n'));
   assert(!requests.some(r => /ModerationReviews|review-reports|\/reviews\b|Photos\/review/.test(r.api)), 'obsolete review endpoints must not be called');
   console.log(`Check-in browser flows passed; screenshots: ${output}`);

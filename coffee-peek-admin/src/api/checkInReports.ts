@@ -25,9 +25,9 @@ export interface ReportedCheckIn {
   username: string;
   text: string;
   visitedAt: string;
-  ratingPlace: number;
-  ratingService: number;
-  ratingCoffee: number;
+  ratingPlace?: number | null;
+  ratingService?: number | null;
+  ratingCoffee?: number | null;
   deletedAtUtc: string | null;
   isPubliclyVisible: boolean;
 }
