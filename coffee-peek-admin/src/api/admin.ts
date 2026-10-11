@@ -77,7 +77,7 @@ export interface ModerationCheckIn {
   visitedAtUtc: string;
   createdAt: string;
   text: string;
-  rating: { coffee: number; service: number; place: number };
+  rating?: { coffee: number; service: number; place: number } | null;
   userId: string;
   userName: string;
   shopId: string;
