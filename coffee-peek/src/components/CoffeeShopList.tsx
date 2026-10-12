@@ -13,6 +13,7 @@ import { useCities } from '../hooks/queries/useCatalogs';
 import { useFavorites } from '../hooks/useFavorites';
 import { useLoadMoreOnScroll } from '../hooks/useLoadMoreOnScroll';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
+import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import ShopSearchBar from './ShopSearchBar';
 import ShopCatalogFilters from './ShopCatalogFilters';
 import { RoasterCatalogCard, ShopCatalogCard } from './CatalogCards';
@@ -50,10 +51,16 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     }
   }, [params, defaultCity, usesDefaultCity]);
   const state = parsed.state;
-  const filters = state.filters as ShopFilters;
   const sectionParam = params.get('section');
   const section: Section = sectionParam === 'shops' || sectionParam === 'roasters' || sectionParam === 'all' ? sectionParam : initialSection;
   const [input, setInput] = useState(state.q);
+  const autoNearby = typeof window !== 'undefined' && section !== 'roasters' && usesDefaultCity && !parsed.error && !state.q
+    && !params.has('sort') && !params.has('roasterSlug') && !params.has('filter') && state.page === 1;
+  const deviceLocation = useQuery({ queryKey: ['device-location', 'default-shops'], queryFn: () => getDeviceLocation(), enabled: autoNearby, retry: false });
+  const searchState = autoNearby && deviceLocation.data && getLocationLifetime(deviceLocation.data.timestamp) > 0 ? {
+    ...state, filters: { origin: deviceLocation.data.coords, radiusKm: 3 }, sort: 'distance_asc',
+  } : state;
+  const filters = searchState.filters as ShopFilters;
   const [showFilters, setShowFilters] = useState(false);
   const [desktop, setDesktop] = useState(() => typeof window === 'undefined' || window.matchMedia('(min-width: 1024px)').matches);
   const [mapExpanded, setMapExpanded] = useState(initialMapExpanded);
@@ -97,9 +104,9 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   }, [showFilters, desktop]);
   useEffect(() => {
     if (normalizeQuery(input) === state.q) return;
-    const timer = setTimeout(() => update(applyCriteria(state, { q: normalizeQuery(input), sort: filters.origin ? 'distance_asc' : input.trim() ? 'relevance' : 'name_asc' })), 300);
+    const timer = setTimeout(() => update(applyCriteria(searchState, { q: normalizeQuery(input), sort: filters.origin ? 'distance_asc' : input.trim() ? 'relevance' : 'name_asc' })), 300);
     return () => clearTimeout(timer);
-  }, [input, state, section]);
+  }, [input, state, section, filters.origin]);
   useEffect(() => {
     if (!mapExpanded) return;
     expandButton.current?.focus();
@@ -112,12 +119,12 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     return () => { window.removeEventListener('keydown', onKeyDown); document.body.style.overflow = previousOverflow; };
   }, [mapExpanded]);
   const personal = filters.favoritesOnly || filters.visitedOnly;
-  const errors = validateSearch(state, 'shops');
-  const enabled = !authLoading && (!usesDefaultCity || !!defaultCity || !cities.isPending) && !parsed.error && !Object.keys(errors).length && (!personal || !!user);
+  const errors = validateSearch(searchState, 'shops');
+  const enabled = !authLoading && (!usesDefaultCity || !!filters.origin || !!defaultCity || !cities.isPending) && (!autoNearby || !deviceLocation.isPending && !deviceLocation.isFetching) && !parsed.error && !Object.keys(errors).length && (!personal || !!user);
   const query = useInfiniteQuery({
-    queryKey: ['catalog', scope, 'shops', state.q, state.filters, state.sort, state.page],
-    initialPageParam: state.page,
-    queryFn: ({ signal, pageParam }) => searchShops({ q: state.q, filters, sort: state.sort, page: pageParam, pageSize: 12 }, signal),
+    queryKey: ['catalog', scope, 'shops', searchState.q, filters, searchState.sort, searchState.page],
+    initialPageParam: searchState.page,
+    queryFn: ({ signal, pageParam }) => searchShops({ q: searchState.q, filters, sort: searchState.sort, page: pageParam, pageSize: 20 }, signal),
     getNextPageParam: page => page.currentPage < page.totalPages ? page.currentPage + 1 : undefined,
     enabled: enabled && section !== 'roasters', retry: false, staleTime: 0,
   });
@@ -125,7 +132,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     queryKey: ['catalog', scope, 'roasters', 'all'], queryFn: ({ signal }) => getRoasterCards(signal),
     enabled: enabled && section !== 'shops', retry: false,
   });
-  const localRoasters = enabled ? discoveryRoasters(roasters.data ?? [], state, slug => favorites.isFavorite('roaster', slug) === true) : [];
+  const localRoasters = enabled ? discoveryRoasters(roasters.data ?? [], searchState, slug => favorites.isFavorite('roaster', slug) === true) : [];
   const pending = useMutationState({ filters: { mutationKey: ['favorite-change', scope], status: 'pending' }, select: mutation => mutation.state.variables as { kind: string; address: { slug: string }; favorite: boolean } });
   const removed = pending.filter(change => !change.favorite && change.kind === 'coffee_shop' && favorites.isFavorite('coffee_shop', change.address.slug, true) === false);
   const shops = enabled ? [...new Map((query.data?.pages.flatMap(page => page.items) ?? []).filter(shop => !filters.favoritesOnly || !removed.some(change => change.address.slug === shop.address.slug)).map(shop => [shop.address.slug, shop])).values()] : [];
@@ -136,7 +143,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     if (!desktop && overview && query.hasNextPage && !query.isFetching && !query.isError && row.scrollLeft + row.clientWidth >= row.scrollWidth - 200) void query.fetchNextPage();
   };
   const apply = (nextFilters: Record<string, unknown>) => {
-    const next = applyCriteria(state, { filters: nextFilters, sort: nextFilters.origin ? 'distance_asc' : state.q ? 'relevance' : 'name_asc' });
+    const next = applyCriteria(searchState, { filters: nextFilters, sort: nextFilters.origin ? 'distance_asc' : state.q ? 'relevance' : 'name_asc' });
     update(next);
     setMapExpanded(false);
     if (!user && (nextFilters.favoritesOnly || nextFilters.visitedOnly)) navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, 'shops')}` } } });
@@ -144,7 +151,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const reset = () => { setInput(''); update(applyCriteria(state, { filters: defaultCity ? { city: defaultCity } : {}, q: '', sort: 'name_asc' }), 'all'); };
   const closeFilters = () => { dialog.current?.close(); setShowFilters(false); };
   const panel = { filters, onApply: apply, resultCount: (section === 'roasters' ? 0 : total) + (section === 'shops' ? 0 : localRoasters.length) };
-  const showSection = (nextSection: Section) => update(applyCriteria(state, {}), nextSection);
+  const showSection = (nextSection: Section) => update(applyCriteria(nextSection === 'roasters' ? state : searchState, {}), nextSection);
   const allLoaded = (section === 'roasters' || query.isSuccess) && (section === 'shops' || roasters.isSuccess);
   const empty = <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border px-6 py-12 text-center" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
     <Mascot pose="search" size={132} /><p className="mt-3 text-sm" style={{ color: colors.textSecondary }}>Ничего не найдено. Попробуйте другой фильтр.</p>
