@@ -143,6 +143,7 @@ export interface MapCoffeeZone {
   canonicalPath?: string;
   id: string;
   name: string;
+  color?: string;
   description: string | null;
   latitude: number;
   longitude: number;
@@ -575,6 +576,7 @@ export type MapSearchResponseData = {
   zones?: Array<{
     address: PublicAddress;
     name: string | null;
+    color?: string | null;
     description: string | null;
     latitude: string | number;
     longitude: string | number;
@@ -636,6 +638,7 @@ function normalizeMapSearch(data: MapSearchResponseData): MapSearchData {
       publicAddress: zone.address,
       canonicalPath: zone.address?.canonicalPath,
       name: typeof zone.name === 'string' && zone.name.trim() ? zone.name : 'Кофейная зона',
+      color: typeof zone.color === 'string' && /^#[0-9a-f]{6}$/i.test(zone.color) ? zone.color : undefined,
       description: typeof zone.description === 'string' ? zone.description : null,
       latitude,
       longitude,

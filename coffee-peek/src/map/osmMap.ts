@@ -388,6 +388,7 @@ export function coffeeDetailIcon(focus?: unknown): HTMLElement {
 export type MapZoneLike = {
   id: string;
   name: string;
+  color?: string;
   latitude: number;
   longitude: number;
   radiusMeters: number;
@@ -436,7 +437,7 @@ export function renderMapZones(map: MapLibreMap, zones: MapZoneLike[], isDark: b
     type: 'FeatureCollection' as const,
     features: zones.map((zone) => ({
       type: 'Feature' as const,
-      properties: { id: zone.id, name: zone.name, shopCount: zone.shopCount },
+      properties: { id: zone.id, name: zone.name, shopCount: zone.shopCount, color: zone.color ?? brand.primary },
       geometry: { type: 'Polygon' as const, coordinates: [zonePolygon(zone)] },
     })),
   };
@@ -452,7 +453,7 @@ export function renderMapZones(map: MapLibreMap, zones: MapZoneLike[], isDark: b
       id: ZONES_FILL_LAYER_ID,
       type: 'fill',
       source: ZONES_SOURCE_ID,
-      paint: { 'fill-color': brand.primary, 'fill-opacity': isDark ? 0.16 : 0.12 },
+      paint: { 'fill-color': ['get', 'color'], 'fill-opacity': isDark ? 0.16 : 0.12 },
     });
   } else {
     map.setPaintProperty(ZONES_FILL_LAYER_ID, 'fill-opacity', isDark ? 0.16 : 0.12);
@@ -462,7 +463,7 @@ export function renderMapZones(map: MapLibreMap, zones: MapZoneLike[], isDark: b
       id: ZONES_LINE_LAYER_ID,
       type: 'line',
       source: ZONES_SOURCE_ID,
-      paint: { 'line-color': brand.primary, 'line-width': 2, 'line-opacity': 0.8 },
+      paint: { 'line-color': ['get', 'color'], 'line-width': 2, 'line-opacity': 0.8 },
     });
   }
 }
@@ -470,10 +471,11 @@ export function renderMapZones(map: MapLibreMap, zones: MapZoneLike[], isDark: b
 export function coffeeZoneLabelIcon(zone: MapZoneLike): HTMLElement {
   const element = document.createElement('div');
   element.className = 'coffee-map-zone-label';
+  element.style.setProperty('--zone-color', zone.color ?? brand.primary);
   const name = document.createElement('strong');
   name.textContent = zone.name;
   const count = document.createElement('span');
-  count.textContent = `${zone.shopCount}`;
+  count.textContent = `· ${zone.shopCount}`;
   count.title = `Кофеен в зоне: ${zone.shopCount}`;
   element.append(name, count);
   return element;

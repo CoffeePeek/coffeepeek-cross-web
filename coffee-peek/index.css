@@ -131,7 +131,7 @@ html {
 }
 
 /* ── Magazine Stamp typography system ──────────────────────────── */
-/* Wordmark: Manrope Ultrabold, tight tracking                       */
+/* Base wordmark class: Manrope Regular, tight tracking             */
 .wordmark {
   font-family: "Manrope", sans-serif;
   font-weight: 400;
@@ -147,13 +147,13 @@ html {
   line-height: 0.92;
 }
 
-/* Accent word inside hero: Ultrabold gold                         */
+/* Accent word inside hero: Regular gold                          */
 .accent-word {
   font-weight: 400;
   color: #EAB308;
 }
 
-/* Large numeral (ratings, stats): Ultrabold, tabular              */
+/* Large numeral (ratings, stats): Regular, tabular                */
 .numeral {
   font-family: "Manrope", sans-serif;
   font-weight: 400;

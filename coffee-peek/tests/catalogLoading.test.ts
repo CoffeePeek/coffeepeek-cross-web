@@ -20,7 +20,7 @@ jest.mock('../src/hooks/useLocalCity', () => ({ useLocalCity: () => ({ cityId: '
 jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 jest.mock('../src/hooks/useRequireAuth', () => ({ useRequireAuth: () => ({ requireAuth: jest.fn() }) }));
 jest.mock('../src/hooks/useLoadMoreOnScroll', () => ({ useLoadMoreOnScroll: () => undefined }));
-jest.mock('../src/components/ShopSearchBar', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/components/ShopSearchBar', () => ({ __esModule: true, default: jest.fn(() => null) }));
 jest.mock('../src/utils/lazyWithRetry', () => ({ lazyWithRetry: () => () => null }));
 jest.mock('../src/components/ShopFilterPanel', () => ({ __esModule: true, default: () => 'Цена' }));
 jest.mock('../src/components/CatalogFilters', () => ({ CatalogFilters: () => null, FilterChips: () => null, activeFilterCount: () => 0, catalogInput: '' }));
@@ -37,6 +37,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PublicAddressPage from '../src/components/PublicAddressPage';
 import CoffeeShopList from '../src/components/CoffeeShopList';
+import ShopSearchBar from '../src/components/ShopSearchBar';
 import CatalogSearchPage from '../src/pages/CatalogSearchPage';
 import { searchShops } from '../src/api/discovery';
 
@@ -90,6 +91,15 @@ test('the default city restored from the URL keeps the overview map visible', ()
   const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(CoffeeShopList)));
   expect(html).toContain('discovery-layout--overview');
   expect(html).not.toContain('discovery-map--hidden');
+  expect(jest.mocked(ShopSearchBar).mock.calls.at(-1)?.[0].onBack).toBeUndefined();
+});
+
+test.each(['shops', 'roasters'] as const)('the %s list has a back action and no map shortcut', section => {
+  const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [`/search?section=${section}`] }, React.createElement(CoffeeShopList)));
+  expect(html).toContain('discovery-map--hidden');
+  expect(html).not.toContain('>Карта</button>');
+  expect(html).not.toContain('Отменить');
+  expect(jest.mocked(ShopSearchBar).mock.calls.at(-1)?.[0].onBack).toEqual(expect.any(Function));
 });
 
 test('the default shop request uses a known location, while explicit filters keep their values', async () => {
