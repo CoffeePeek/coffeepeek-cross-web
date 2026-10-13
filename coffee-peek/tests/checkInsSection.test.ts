@@ -30,3 +30,10 @@ test('repeated visits remain cards, but category summary uses the latest visit o
   const html = renderToStaticMarkup(createElement(CheckInsSection, { ...props, checkIns: [checkIn, { ...checkIn, id: 'older', createdAtUtc: '2026-09-01T12:00:00Z', rating: { coffee: 1, service: 1, place: 1 } }] }));
   expect(html).toContain('aria-label="Кофе" aria-valuemin="0" aria-valuemax="5" aria-valuenow="5"');
 });
+
+test('unrated latest visits do not contribute to category averages', () => {
+  const other = { ...checkIn, id: 'other', author: { slug: 'other' }, rating: null };
+  const html = renderToStaticMarkup(createElement(CheckInsSection, { ...props, checkIns: [checkIn, other] }));
+  expect(html).toContain('aria-label="Кофе" aria-valuemin="0" aria-valuemax="5" aria-valuenow="5"');
+  expect(html).not.toContain('NaN');
+});

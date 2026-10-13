@@ -15,6 +15,12 @@ test('mine sends query pagination and reads totalCount, with header totals takin
   expect(httpClient.get).toHaveBeenCalledWith('/api/v1/check-ins/mine', { params: { pageNumber: 2, pageSize: 10 }, requiresAuth: true });
 });
 
+test('mine preserves check-ins without a rating for display', async () => {
+  const unrated = { ...item, id: 'unrated', rating: null };
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [unrated], totalCount: 1 } } as never);
+  expect((await getCheckIns()).data.items).toEqual([unrated]);
+});
+
 test('calendar fetches every page in a half-open date range', async () => {
   const range = { from: '2026-09-01T00:00:00+03:00', to: '2026-10-01T00:00:00+03:00' };
   jest.mocked(httpClient.get).mockResolvedValueOnce({ data: { items: [item], totalCount: 101 } } as never).mockResolvedValueOnce({ data: { items: [{ ...item, id: 'second' }], totalCount: 101 } } as never);

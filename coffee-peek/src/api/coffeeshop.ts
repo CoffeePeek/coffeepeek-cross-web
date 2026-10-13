@@ -413,7 +413,7 @@ export interface CheckInDto extends SavedDrink {
   username: string;
   shopName: string;
   text: string;
-  rating: RatingDto;
+  rating: RatingDto | null;
   visitedAt: string;
   createdAtUtc: string;
   visibility: CheckInVisibility;

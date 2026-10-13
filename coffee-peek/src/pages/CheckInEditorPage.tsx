@@ -67,7 +67,7 @@ export default function CheckInEditorPage() {
   const { selectedFiles, handleFileSelect, removeFile, uploadPhotos, uploadingPhotos } = useCheckInPhotoUpload();
   useEffect(() => {
     if (!existing) return;
-    reset({ text: existing.text, coffee: existing.rating.coffee, service: existing.rating.service, place: existing.rating.place, drinkSlug: existing.drinkSlug ?? '', customDrinkName: existing.customDrinkName ?? '' });
+    reset({ text: existing.text, coffee: existing.rating?.coffee ?? 5, service: existing.rating?.service ?? 5, place: existing.rating?.place ?? 5, drinkSlug: existing.drinkSlug ?? '', customDrinkName: existing.customDrinkName ?? '' });
   }, [existing, reset]);
 
   const submit = handleSubmit(async form => {

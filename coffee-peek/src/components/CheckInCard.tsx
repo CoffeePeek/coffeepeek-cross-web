@@ -28,7 +28,7 @@ export default function CheckInCard({ item, own = false, showShop = true }: { it
   const visibility = useCheckInVisibility();
   const deletion = useDeleteCheckIn();
   const isOwn = own || (!!user?.address?.slug && item.author?.slug === user.address.slug);
-  const average = (item.rating.coffee + item.rating.service + item.rating.place) / 3;
+  const average = item.rating ? (item.rating.coffee + item.rating.service + item.rating.place) / 3 : null;
   const published = item.visibility === 'Public' && item.moderationState === 'Approved';
   const actionError = helpful.error || visibility.error || deletion.error;
   const username = item.username || 'Пользователь';
@@ -61,7 +61,7 @@ export default function CheckInCard({ item, own = false, showShop = true }: { it
       </> : undefined} />}
     </header>
     {showShop && (item.shop ? <Link to={item.shop.canonicalPath} className="mb-2 block break-words text-xl font-bold leading-snug hover:underline">{item.shopName || 'Кофейня'}</Link> : <p className="mb-2 break-words text-xl font-bold leading-snug">{item.shopName || 'Кофейня'}</p>)}
-    <div className="mb-3 flex items-center gap-2" role="img" aria-label={`Оценка ${average.toFixed(1)} из 5. Кофе ${item.rating.coffee}, сервис ${item.rating.service}, атмосфера ${item.rating.place}`}>
+    {item.rating && average !== null ? <div className="mb-3 flex items-center gap-2" role="img" aria-label={`Оценка ${average.toFixed(1)} из 5. Кофе ${item.rating.coffee}, сервис ${item.rating.service}, атмосфера ${item.rating.place}`}>
       <div aria-hidden="true" className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, index) => <span key={index} className="relative block h-5 w-5">
           <StarIcon size={20} className={theme === 'light' ? 'text-gray-300' : 'text-stone-500'} />
@@ -69,7 +69,7 @@ export default function CheckInCard({ item, own = false, showShop = true }: { it
         </span>)}
       </div>
       <span aria-hidden="true" className="text-sm font-medium tabular-nums">{average.toFixed(1)}</span>
-    </div>
+    </div> : <p className={`mb-3 text-sm ${classes.text.secondary}`}>Без оценки</p>}
     {isOwn && <div className="mb-3"><CheckInStatus item={item} /></div>}
     {drinkName && <button type="button" onClick={() => setDrinkOpen(true)} aria-label={`Посмотреть фото напитка: ${drinkName}`} className={`mb-4 flex min-h-14 w-full items-center gap-3 rounded-2xl p-1.5 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${theme === 'light' ? classes.bg.secondary : classes.bg.tertiary}`}>
       <img src={drinkPhoto} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
