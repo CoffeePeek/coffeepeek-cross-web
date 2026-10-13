@@ -440,7 +440,17 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--discovery-card-width)), 1fr));
   gap: 16px;
 }
-.discovery-cards--shops { --discovery-card-width: 320px; }
+.discovery-cards--shops, .coffee-catalog-cards { --discovery-card-width: 320px; }
+.coffee-catalog-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.coffee-catalog-cards > article {
+  flex: 1 1 270px;
+  max-width: var(--discovery-card-width);
+  min-width: 0;
+}
 .discovery-map {
   grid-area: panel;
   position: sticky;
