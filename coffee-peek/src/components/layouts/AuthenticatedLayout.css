@@ -11,8 +11,7 @@
   display: flow-root;
   flex: 1;
   min-width: 0;
-  min-height: max(0px, calc(100dvh - var(--app-header-height)));
-  padding-bottom: var(--app-navigation-height);
+  min-height: var(--app-content-height);
 }
 
 /* Page and loading shells share the space left by the layout's navigation. */

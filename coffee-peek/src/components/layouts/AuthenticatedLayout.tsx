@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
-import Header from '../Header';
+import Header, { BottomNavigation } from '../Header';
 import { AppIcon } from '../icons';
 import './AuthenticatedLayout.css';
 
@@ -62,6 +62,7 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ childr
       <div className="app-layout-content">
         {children}
       </div>
+      <BottomNavigation />
     </div>
   );
 };

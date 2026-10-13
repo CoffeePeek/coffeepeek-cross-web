@@ -83,7 +83,8 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     return () => observer.disconnect();
   }, []);
   const filtering = section !== 'all' || isDiscoveryFiltering(input, filters, defaultCity);
-  const mapHidden = (filtering || showFilters) && !mapExpanded;
+  const mapHidden = filtering || showFilters;
+  const mapVisibleExpanded = mapExpanded && !mapHidden;
   const overview = !filtering;
   const update = (next: typeof state, nextSection = section) => {
     const nextParams = writeSearchState(next, 'shops');
@@ -92,6 +93,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   };
   useEffect(() => { setInput(state.q); }, [state.q]);
   useEffect(() => { setMapExpanded(initialMapExpanded); }, [initialMapExpanded]);
+  useEffect(() => { if (mapHidden) setMapExpanded(false); }, [mapHidden]);
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1024px)');
     const sync = () => setDesktop(media.matches);
@@ -108,7 +110,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     return () => clearTimeout(timer);
   }, [input, state, section, filters.origin]);
   useEffect(() => {
-    if (!mapExpanded) return;
+    if (!mapVisibleExpanded) return;
     expandButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeMap();
@@ -117,7 +119,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKeyDown); document.body.style.overflow = previousOverflow; };
-  }, [mapExpanded]);
+  }, [mapVisibleExpanded]);
   const personal = filters.favoritesOnly || filters.visitedOnly;
   const errors = validateSearch(searchState, 'shops');
   const enabled = !authLoading && (!usesDefaultCity || !!filters.origin || !!defaultCity || !cities.isPending) && (!autoNearby || !deviceLocation.isPending && !deviceLocation.isFetching) && !parsed.error && !Object.keys(errors).length && (!personal || !!user);
@@ -137,7 +139,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const removed = pending.filter(change => !change.favorite && change.kind === 'coffee_shop' && favorites.isFavorite('coffee_shop', change.address.slug, true) === false);
   const shops = enabled ? [...new Map((query.data?.pages.flatMap(page => page.items) ?? []).filter(shop => !filters.favoritesOnly || !removed.some(change => change.address.slug === shop.address.slug)).map(shop => [shop.address.slug, shop])).values()] : [];
   const total = Math.max(0, (query.data?.pages[0]?.totalItems ?? 0) - (filters.favoritesOnly ? removed.length : 0));
-  const loadMoreRef = useLoadMoreOnScroll((desktop || !overview) && !mapExpanded && section !== 'roasters' && enabled && !!query.hasNextPage && !query.isFetching && !query.isError, () => { void query.fetchNextPage(); });
+  const loadMoreRef = useLoadMoreOnScroll((desktop || !overview) && !mapVisibleExpanded && section !== 'roasters' && enabled && !!query.hasNextPage && !query.isFetching && !query.isError, () => { void query.fetchNextPage(); });
   const loadMoreShops = (event: React.UIEvent<HTMLDivElement>) => {
     const row = event.currentTarget;
     if (!desktop && overview && query.hasNextPage && !query.isFetching && !query.isError && row.scrollLeft + row.clientWidth >= row.scrollWidth - 200) void query.fetchNextPage();
@@ -161,16 +163,13 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     {overview && <button type="button" onClick={() => showSection(nextSection)} className="flex min-h-11 shrink-0 items-center gap-2 rounded-full px-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Показать все <AppIcon name="arrow_forward" size={18} /></button>}
   </div>;
   return <>
-    <main className={`discovery-layout ${overview ? 'discovery-layout--overview' : ''} ${mapExpanded ? 'discovery-layout--expanded' : showFilters && desktop ? 'discovery-layout--filters' : mapHidden ? 'discovery-layout--search' : ''}`} style={{ color: colors.textPrimary }}>
-      <div ref={toolbar} className="discovery-toolbar" inert={mapExpanded} aria-hidden={mapExpanded || undefined}>
+    <main className={`discovery-layout ${overview ? 'discovery-layout--overview' : ''} ${mapVisibleExpanded ? 'discovery-layout--expanded' : showFilters && desktop ? 'discovery-layout--filters' : mapHidden ? 'discovery-layout--search' : ''}`} style={{ color: colors.textPrimary }}>
+      <div ref={toolbar} className="discovery-toolbar" inert={mapVisibleExpanded} aria-hidden={mapVisibleExpanded || undefined}>
         <h1 className="sr-only">Поиск кофеен и обжарщиков</h1>
         <div className="mb-2 flex items-end gap-2">
           <ShopSearchBar className="min-w-0 flex-1" desktopFilters searchQuery={input} onSearchChange={value => { setInput(value); setMapExpanded(false); }} showFilters={showFilters} onFilterToggle={() => { setShowFilters(value => !value); setMapExpanded(false); }} activeFilterCount={activeFilterCount({ ...filters, city: undefined })} colors={colors} dark={theme === 'dark'} placeholder={section === 'roasters' ? 'Поиск обжарщиков…' : 'Поиск кофеен и обжарщиков'} ariaLabel={section === 'roasters' ? 'Поиск обжарщиков' : 'Поиск кофеен и обжарщиков'} onBack={filtering || showFilters ? () => { reset(); closeFilters(); } : undefined} />
         </div>
         <ShopCatalogFilters mode="chips" {...panel} />
-        {section === 'all' && (filtering || showFilters) && <div className="flex items-center justify-end lg:hidden">
-          <button type="button" onClick={() => { window.scrollTo({ top: 0 }); setMapExpanded(true); }} className="flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ borderColor: colors.border }}><AppIcon name="map" size={18} />Карта</button>
-        </div>}
         {(filters.menu || filters.minRating !== undefined) && <FilterChips filters={{ menu: filters.menu, minRating: filters.minRating }} groups={[]} onChange={extra => apply({ ...filters, menu: undefined, minRating: undefined, ...extra })} />}
         {(parsed.error || Object.keys(errors).length > 0) && <div role="alert" className="mb-6"><p>{parsed.error || Object.values(errors).join(' ')}</p><button type="button" className="min-h-11 underline" onClick={reset}>Сбросить фильтры</button></div>}
         {personal && !user && !authLoading && <p>Войдите, чтобы использовать личные фильтры.</p>}
@@ -178,7 +177,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
           <p>Проверьте фильтры. Удалите недоступное значение или сбросьте фильтры.</p><FilterChips filters={filters} groups={[]} onChange={apply} /><button type="button" className="min-h-11 underline" onClick={reset}>Сбросить фильтры</button>
         </div>}
       </div>
-      <div ref={content} className="discovery-content" inert={mapExpanded} aria-hidden={mapExpanded || undefined}>
+      <div ref={content} className="discovery-content" inert={mapVisibleExpanded} aria-hidden={mapVisibleExpanded || undefined}>
         <div className="discovery-results" aria-live="polite" aria-busy={query.isFetching || roasters.isFetching}>
           {section !== 'shops' && (localRoasters.length > 0 || roasters.isPending && enabled) && <section aria-label="Обжарщики" className="discovery-roasters">
             {sectionHeading('Обжарщики', localRoasters.length, 'roasters')}
@@ -194,13 +193,13 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
       </div>
       <section className={`discovery-map ${mapHidden ? 'discovery-map--hidden' : ''}`} aria-label="Карта кофеен" inert={mapHidden} aria-hidden={mapHidden || undefined}>
         <div className="discovery-map-frame" style={{ borderColor: colors.border }}>
-          <Suspense fallback={<div className="flex h-full items-center justify-center"><WobbleRing size={48} /></div>}><MapPage fillContainer showSearch={false} compactPreview={!mapExpanded} /></Suspense>
+          <Suspense fallback={<div className="flex h-full items-center justify-center"><WobbleRing size={48} /></div>}><MapPage fillContainer showSearch={false} compactPreview={!mapVisibleExpanded} /></Suspense>
           <div className="pointer-events-none absolute right-4 top-4 z-[600]">
-            <button ref={expandButton} type="button" onClick={() => { if (mapExpanded) closeMap(); else { window.scrollTo({ top: 0 }); setMapExpanded(true); } }} aria-label={mapExpanded ? 'Свернуть карту' : 'Развернуть карту'} aria-expanded={mapExpanded} className="discovery-map-expand pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ background: colors.surface, borderColor: colors.border }}>{mapExpanded ? <ArrowsIn size={32} className="h-8 w-8 shrink-0" /> : <ArrowsOut size={32} className="h-8 w-8 shrink-0" />}</button>
+            <button ref={expandButton} type="button" onClick={() => { if (mapVisibleExpanded) closeMap(); else { window.scrollTo({ top: 0 }); setMapExpanded(true); } }} aria-label={mapVisibleExpanded ? 'Свернуть карту' : 'Развернуть карту'} aria-expanded={mapVisibleExpanded} className="discovery-map-expand pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ background: colors.surface, borderColor: colors.border }}>{mapVisibleExpanded ? <ArrowsIn size={32} className="h-8 w-8 shrink-0" /> : <ArrowsOut size={32} className="h-8 w-8 shrink-0" />}</button>
           </div>
         </div>
       </section>
-      {showFilters && desktop && !mapExpanded && <section aria-label="Фильтры поиска" className="discovery-filter-panel rounded-[28px] border p-4" style={{ background: colors.surface, borderColor: colors.border }}>
+      {showFilters && desktop && !mapVisibleExpanded && <section aria-label="Фильтры поиска" className="discovery-filter-panel rounded-[28px] border p-4" style={{ background: colors.surface, borderColor: colors.border }}>
         <ShopCatalogFilters mode="sidebar" {...panel} onClose={closeFilters} />
       </section>}
     </main>

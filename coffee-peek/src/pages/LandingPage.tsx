@@ -13,7 +13,7 @@ import {
 import { AppIcon, StarIcon } from '../components/icons';
 import { MobileAppDownload } from '../components/mobile-app';
 import LandingMapWidget from '../components/LandingMapWidget';
-import Header from '../components/Header';
+import Header, { BottomNavigation } from '../components/Header';
 import LandingProductDemo from '../components/LandingProductDemo';
 import LogoMark from '../components/LogoMark';
 import Mascot from '../components/Mascot';
@@ -307,6 +307,7 @@ const LandingPage: React.FC = () => {
           </div>
         </footer>
       </div>
+      <BottomNavigation />
     </div>
   );
 };

@@ -514,6 +514,12 @@
     gap: 16px;
     padding: 0 16px 24px;
   }
+  .discovery-layout--search {
+    grid-template-areas: 'toolbar' 'content';
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+  .discovery-layout--search .discovery-map--hidden { display: none; }
   .discovery-map { position: relative; top: 0; }
   .discovery-layout--overview .discovery-shops { order: -1; }
   .discovery-layout--overview .discovery-cards {
