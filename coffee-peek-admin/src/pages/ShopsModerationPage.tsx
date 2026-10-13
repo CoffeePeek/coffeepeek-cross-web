@@ -78,7 +78,9 @@ export const ShopsModerationPage: React.FC = () => {
   const sortKey = (searchParams.get('sort') ?? '') as SortKey | '';
   const sortDir = (searchParams.get('dir') === 'desc' ? 'desc' : 'asc') as SortDir;
 
-  const [pendingAction, setPendingAction] = useState<{ id: string; type: 'approve' | 'reject' } | null>(null);
+  const [rejectionId, setRejectionId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkApprovalIds, setBulkApprovalIds] = useState<string[] | null>(null);
   const [localSearch, setLocalSearch] = useState(search);
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
@@ -93,12 +95,16 @@ export const ShopsModerationPage: React.FC = () => {
   });
 
   const approveMutation = useMutation({
-    mutationFn: ({ id, comment }: { id: string; comment?: string }) =>
-      approveShop(id, comment ? { comment } : undefined),
-    onSuccess: () => {
+    mutationFn: async (id: string) => {
+      const response = await approveShop(id);
+      if (response.isSuccess === false) throw new Error(response.message || 'Не удалось одобрить кофейню');
+      return response;
+    },
+    onSuccess: (_response, id) => {
       showToast('Кофейня одобрена', 'success');
+      setSelectedIds((previous) => new Set([...previous].filter((selectedId) => selectedId !== id)));
       qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'shops'] });
-      setPendingAction(null);
+      qc.invalidateQueries({ queryKey: ['admin', 'published-shops'] });
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
   });
@@ -109,7 +115,7 @@ export const ShopsModerationPage: React.FC = () => {
     onSuccess: () => {
       showToast('Кофейня отклонена', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'shops'] });
-      setPendingAction(null);
+      setRejectionId(null);
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
   });
@@ -151,7 +157,68 @@ export const ShopsModerationPage: React.FC = () => {
     return [...list].sort((a, b) => compareShops(a, b, sortKey) * direction);
   }, [data?.items, sortDir, sortKey]);
 
+  const pendingItems = items.filter((item) => item.status === 'Pending');
+  const selectedPendingIds = pendingItems.filter((item) => selectedIds.has(item.id)).map((item) => item.id);
+  const allPendingSelected = pendingItems.length > 0 && selectedPendingIds.length === pendingItems.length;
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setBulkApprovalIds(null);
+  }, [page, status, search]);
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (checked) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleAllPending = () => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      pendingItems.forEach((item) => {
+        if (allPendingSelected) next.delete(item.id); else next.add(item.id);
+      });
+      return next;
+    });
+  };
+
+  const approveSelected = async () => {
+    if (!bulkApprovalIds?.length) return;
+    const approved: string[] = [];
+    const failed: unknown[] = [];
+    for (const id of bulkApprovalIds) {
+      try {
+        const response = await approveShop(id);
+        if (response.isSuccess === false) throw new Error(response.message || 'Не удалось одобрить кофейню');
+        approved.push(id);
+      } catch (error) {
+        failed.push(error);
+      }
+    }
+    if (approved.length) {
+      setSelectedIds((previous) => new Set([...previous].filter((id) => !approved.includes(id))));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'shops'] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'published-shops'] }),
+      ]);
+    }
+    if (failed.length) {
+      showToast(`Одобрено: ${approved.length}. Не удалось: ${failed.length}. ${getErrorMessage(failed[0], 'Повторите попытку.')}`, 'error');
+    } else {
+      showToast(`Кофеен одобрено: ${approved.length}`, 'success');
+    }
+    setBulkApprovalIds(null);
+  };
+
   const columns: ColumnDef<ModerationShop>[] = [
+    {
+      id: 'select',
+      header: () => <Input type="checkbox" checked={allPendingSelected} ref={(element) => { if (element) element.indeterminate = selectedPendingIds.length > 0 && !allPendingSelected; }} onChange={toggleAllPending} disabled={!pendingItems.length || approveMutation.isPending} aria-label="Выбрать все ожидающие кофейни на этой странице" />,
+      cell: ({ row }) => <Input type="checkbox" checked={selectedIds.has(row.original.id)} disabled={row.original.status !== 'Pending' || approveMutation.isPending} onChange={(event) => toggleOne(row.original.id, event.target.checked)} aria-label={`Выбрать кофейню ${row.original.name}`} />,
+      meta: { className: 'w-10', headerClassName: 'w-10' },
+    },
     {
       id: 'photo',
       header: '',
@@ -172,7 +239,7 @@ export const ShopsModerationPage: React.FC = () => {
       id: 'actions',
       header: 'Действия',
       meta: { className: 'w-[7.25rem] align-top' },
-      cell: ({ row }) => <div className="ml-auto flex w-[7.25rem] flex-col gap-1.5"><Button asChild variant="primary" size="sm" className="w-full whitespace-nowrap"><Link to={`/shops/${row.original.id}`}>Открыть</Link></Button>{row.original.status === 'Pending' && <><Button variant="success" size="sm" className="w-full whitespace-nowrap" onClick={() => setPendingAction({ id: row.original.id, type: 'approve' })}>Одобрить</Button><Button variant="danger" size="sm" className="w-full whitespace-nowrap" onClick={() => setPendingAction({ id: row.original.id, type: 'reject' })}>Отклонить</Button></>}</div>,
+      cell: ({ row }) => <div className="ml-auto flex w-[7.25rem] flex-col gap-1.5"><Button asChild variant="primary" size="sm" className="w-full whitespace-nowrap"><Link to={`/shops/${row.original.id}`}>Открыть</Link></Button>{row.original.status === 'Pending' && <><Button variant="success" size="sm" className="w-full whitespace-nowrap" aria-label={`Одобрить кофейню ${row.original.name}`} loading={approveMutation.isPending && approveMutation.variables === row.original.id} disabled={approveMutation.isPending} onClick={() => approveMutation.mutate(row.original.id)}>Одобрить</Button><Button variant="danger" size="sm" className="w-full whitespace-nowrap" disabled={approveMutation.isPending} onClick={() => setRejectionId(row.original.id)}>Отклонить</Button></>}</div>,
     },
   ];
 
@@ -214,29 +281,30 @@ export const ShopsModerationPage: React.FC = () => {
         </form>
       </div>
 
+      {selectedPendingIds.length > 0 && <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border-light bg-white p-3 text-sm text-text-main dark:border-border-dark dark:bg-surface-dark dark:text-white">
+        <span>Выбрано на этой странице: <strong>{selectedPendingIds.length}</strong></span>
+        <Button variant="success" size="sm" disabled={approveMutation.isPending} onClick={() => setBulkApprovalIds(selectedPendingIds)}>Одобрить выбранные</Button>
+        <Button variant="secondary" size="sm" disabled={approveMutation.isPending} onClick={() => setSelectedIds(new Set())}>Снять выбор</Button>
+      </div>}
+
       {isError && <LoadError message={data ? 'Не удалось обновить заявки. Показаны последние загруженные данные.' : 'Не удалось загрузить заявки на кофейни.'} onRetry={() => void refetch()} retrying={isFetching} />}
       {(!isError || data) && <Card>
-        <DataTable columns={columns} data={items} loading={isLoading} emptyText="Кофейни не найдены" getRowId={(shop) => shop.id} />
+        <DataTable columns={columns} data={items} loading={isLoading} emptyText="Кофейни не найдены" getRowId={(shop) => shop.id} getRowClassName={(shop) => selectedIds.has(shop.id) ? 'bg-primary/5 dark:bg-primary/10' : undefined} />
       </Card>}
       {data && <Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} />}
 
       <ConfirmDialog
-        isOpen={pendingAction?.type === 'approve'}
-        title="Одобрить кофейню?"
-        message="Кофейня станет видна пользователям."
-        confirmLabel="Одобрить"
+        isOpen={bulkApprovalIds !== null}
+        title={`Одобрить выбранные кофейни (${bulkApprovalIds?.length ?? 0})?`}
+        message="Кофейни станут видны пользователям. Заявки будут обработаны по очереди; ошибка одной не остановит остальные."
+        confirmLabel="Одобрить выбранные"
         variant="success"
-        withComment
-        commentLabel="Комментарий (необязательно)"
-        onConfirm={async (comment) => {
-          if (pendingAction)
-            await approveMutation.mutateAsync({ id: pendingAction.id, comment });
-        }}
-        onCancel={() => setPendingAction(null)}
+        onConfirm={approveSelected}
+        onCancel={() => setBulkApprovalIds(null)}
       />
 
       <ConfirmDialog
-        isOpen={pendingAction?.type === 'reject'}
+        isOpen={rejectionId !== null}
         title="Отклонить кофейню?"
         message="Укажите причину отклонения."
         confirmLabel="Отклонить"
@@ -244,10 +312,10 @@ export const ShopsModerationPage: React.FC = () => {
         withComment
         commentLabel="Причина отклонения"
         onConfirm={async (comment) => {
-          if (pendingAction)
-            await rejectMutation.mutateAsync({ id: pendingAction.id, comment });
+          if (rejectionId)
+            await rejectMutation.mutateAsync({ id: rejectionId, comment });
         }}
-        onCancel={() => setPendingAction(null)}
+        onCancel={() => setRejectionId(null)}
       />
     </div>
   );
