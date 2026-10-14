@@ -12,8 +12,10 @@ export interface CheckInReport {
   resolvedAtUtc: string | null;
 }
 
-export function reportCheckIn(checkInId: string, text: string) {
+export async function reportCheckIn(checkInId: string, text: string) {
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > 2000) throw new Error('Введите от 1 до 2000 символов');
-  return httpClient.post<CheckInReport>(`${API_ENDPOINTS.CHECK_IN.BY_ID(checkInId)}/reports`, { text: trimmed }, { requiresAuth: true });
+  const response = await httpClient.post<CheckInReport>(`${API_ENDPOINTS.CHECK_IN.BY_ID(checkInId)}/reports`, { text: trimmed }, { requiresAuth: true });
+  if (response.statusCode !== 201) throw new Error('Сервер не подтвердил отправку жалобы');
+  return response;
 }

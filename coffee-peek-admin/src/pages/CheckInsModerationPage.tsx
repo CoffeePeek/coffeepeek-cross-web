@@ -14,6 +14,7 @@ import { Card } from '../components/ui/Card';
 import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
+import { checkInDate, checkInKind, homeRecipe } from '../utils/checkInKind';
 
 const PAGE_SIZE = 15;
 
@@ -33,9 +34,22 @@ function displayDrinkName(checkIn: ModerationCheckIn): string {
 }
 
 function displayRating(checkIn: ModerationCheckIn): string {
+  const kind = checkInKind(checkIn);
+  if (kind === 'Home') {
+    const score = homeRecipe(checkIn).tasteScore;
+    return score == null ? 'Без оценки' : `Вкус ${score}/5`;
+  }
+  if (kind !== 'Shop') return '—';
   const rating = checkIn.rating;
   if (rating?.coffee == null || rating.service == null || rating.place == null) return 'Без оценки';
   return `К ${rating.coffee} · С ${rating.service} · М ${rating.place}`;
+}
+
+function displayRecipe(checkIn: ModerationCheckIn): string {
+  const recipe = homeRecipe(checkIn);
+  return [recipe.beanName, recipe.brewMethodCode,
+    recipe.doseGrams != null ? `${recipe.doseGrams} г` : '',
+    recipe.brewDurationSeconds != null ? `${recipe.brewDurationSeconds} с` : ''].filter(Boolean).join(' · ') || 'Без деталей рецепта';
 }
 
 export const CheckInsModerationPage: React.FC = () => {
@@ -96,12 +110,13 @@ export const CheckInsModerationPage: React.FC = () => {
   };
 
   const columns: ColumnDef<ModerationCheckIn>[] = [
-    { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text}</p><p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos} /></div> },
-    { accessorKey: 'shopName', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400">{row.original.shopId}</PublishedShopLink> },
+    { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text || 'Без заметки'}</p>{checkInKind(row.original) === 'Home' && <p className="mt-1 text-xs text-text-muted">{displayRecipe(row.original)}</p>}<p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos || []} /></div> },
+    { id: 'kind', header: 'Тип', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Дома' : checkInKind(row.original) === 'Shop' ? 'В кофейне' : 'Не указан' },
+    { id: 'place', header: 'Место', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Кофе дома' : row.original.shopId ? <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400">{row.original.shopId}</PublishedShopLink> : 'Кофейня недоступна' },
     { id: 'author', header: 'Автор', cell: ({ row }) => row.original.userName },
     { id: 'ratings', header: 'Оценки', cell: ({ row }) => displayRating(row.original) },
     { accessorKey: 'moderationStatus', header: 'Статус', cell: ({ row }) => <Badge variant={statusToBadgeVariant(row.original.moderationStatus)}>{statusLabels[row.original.moderationStatus]}</Badge> },
-    { accessorKey: 'visitedAtUtc', header: 'Дата', cell: ({ row }) => new Date(row.original.visitedAtUtc).toLocaleDateString('ru') },
+    { id: 'checkInDate', header: 'Дата', cell: ({ row }) => checkInDate(row.original) },
     { id: 'actions', cell: ({ row }) => row.original.moderationStatus === 'Pending' ? <div className="flex gap-2"><Button variant="success" size="sm" onClick={() => openAction(row.original.id, 'approve')}>Одобрить</Button><Button variant="danger" size="sm" onClick={() => openAction(row.original.id, 'reject')}>Отклонить</Button></div> : null },
   ];
 

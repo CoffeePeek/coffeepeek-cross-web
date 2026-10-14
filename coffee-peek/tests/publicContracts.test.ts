@@ -103,6 +103,7 @@ test('moderation, reviews and changes send slug fields and preserve empty/null l
   await sendRoasterToModeration({ name: 'Roaster' });
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/ModerationRoasters', expect.objectContaining({ city: null }), { requiresAuth: false });
   const checkIn = { coffeeShopSlug: 'coffee', text: 'Great', rating: { coffee: 5, place: 4, service: 5 } };
+  jest.mocked(httpClient.post).mockResolvedValueOnce({ success: true, data: { id: 'check-in-1', visibility: 'Private' } } as never);
   await createCheckIn(checkIn);
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/v1/check-ins', checkIn, { requiresAuth: true });
   const change = { shop: 'coffee', section: 'Tags' as const, payload: { tags: [], roasters: null } };

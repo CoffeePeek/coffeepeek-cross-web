@@ -4,6 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
 import Header, { BottomNavigation } from '../Header';
 import { AppIcon } from '../icons';
+import CheckInCreateFlow from '../CheckInCreateFlow';
 import './AuthenticatedLayout.css';
 
 interface AuthenticatedLayoutProps {
@@ -63,6 +64,7 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ childr
         {children}
       </div>
       <BottomNavigation />
+      <CheckInCreateFlow />
     </div>
   );
 };

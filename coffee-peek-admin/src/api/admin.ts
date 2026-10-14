@@ -8,6 +8,7 @@ import { COFFEE_FOCUS_TO_API, parseCoffeeFocus } from '../constants/catalogInges
 import { mapShopMenu, ShopMenuDto } from './menu';
 import { apiDayOfWeekToUi, uiDayToDotNetName } from '../utils/dayOfWeek';
 import { schedulesFromUtc, schedulesToUtc } from '../utils/shopForm';
+import type { CheckInKindFields } from '../utils/checkInKind';
 
 // ==================== Types ====================
 
@@ -70,17 +71,17 @@ interface BackendModerationShop {
   menu?: unknown;
 }
 
-export interface ModerationCheckIn {
+export interface ModerationCheckIn extends CheckInKindFields {
   id: string;
   checkInId: string;
   contentRevision: number;
-  visitedAtUtc: string;
+  visitedAtUtc?: string | null;
   createdAt: string;
   text: string;
   rating?: { coffee: number; service: number; place: number } | null;
   userId: string;
   userName: string;
-  shopId: string;
+  shopId?: string | null;
   drinkSlug: string | null;
   customDrinkName: string | null;
   drinkNameRu: string | null;

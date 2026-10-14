@@ -26,3 +26,13 @@ test('historical reports preserve null target, with explicit boolean resolutions
     expect(httpClient.put).toHaveBeenLastCalledWith('/api/admin/check-in-reports/id/resolution', { deleteCheckIn });
   }
 });
+
+test('moderation and report details keep home kind and recipe without a shop', async () => {
+  const home = { id: 'home-check-in', kind: 'Home', shopId: null, preparedAtUtc: '2026-10-14T09:00:00Z',
+    home: { preparedOn: '2026-10-14', brewMethodCode: 'hario-v60', beanName: 'Руанда', tasteScore: 5 } };
+  jest.mocked(httpClient.get).mockResolvedValueOnce({ data: { items: [{ ...home, checkInId: home.id, id: 'submission' }],
+    totalItems: 1, totalPages: 1, currentPage: 1, pageSize: 15 } } as never)
+    .mockResolvedValueOnce({ data: { report: { status: 'Pending' }, checkIn: home } } as never);
+  expect((await getModerationCheckIns({ status: 'Pending' })).data.items[0]).toMatchObject({ kind: 'Home', shopId: null, home: { tasteScore: 5 } });
+  expect((await getCheckInReport('report-id')).data.checkIn).toMatchObject({ kind: 'Home', shopId: null, home: { beanName: 'Руанда' } });
+});

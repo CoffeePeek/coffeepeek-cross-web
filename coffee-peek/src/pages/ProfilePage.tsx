@@ -67,7 +67,7 @@ const ProfilePage: React.FC = () => {
     { title: 'Избранные кофейни', subtitle: 'Кофейни, которые вы сохранили', Icon: Heart, color: '#FB7185', bg: 'rgba(244,63,94,.16)', route: '/shops?filter=favorite' },
   ];
   const activities = [
-    { title: 'Чекины', subtitle: 'Места, которые вы уже посетили', Icon: MapPin, color: '#68B9E8', bg: 'rgba(56,153,211,.16)', route: '/check-ins' },
+    { title: 'Чекины', subtitle: 'В кофейнях и дома', Icon: MapPin, color: '#68B9E8', bg: 'rgba(56,153,211,.16)', route: '/check-ins' },
   ];
   const moderation = [
     { title: 'Правки кофеен', subtitle: 'Изменения, которые вы отправили', Icon: NotePencil, color: '#D8A743', bg: 'rgba(202,145,28,.16)', route: '/my/edits' },
@@ -190,7 +190,7 @@ const ProfilePage: React.FC = () => {
               </>
             )}
             <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-3">
-              <ProfileStat value={profile.checkInCount ?? 0} label="Чекины" to="/check-ins" text={colors.text} muted={colors.muted} />
+              <ProfileStat value={profile.checkInCount ?? 0} label="В кофейнях" to="/check-ins" text={colors.text} muted={colors.muted} />
               <ProfileStat value={profile.addedShopsCount ?? 0} label="Кофейни" to="/my/shops" text={colors.text} muted={colors.muted} />
             </div>
           </div>

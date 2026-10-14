@@ -13,6 +13,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../components/ui/Dialog';
 import { useToast } from '../contexts/ToastContext';
 import { getErrorMessage } from '../utils/errors';
+import { checkInDate, checkInKind, homeRecipe } from '../utils/checkInKind';
 
 const statuses = [
   { value: 'Pending', label: 'Ожидают решения' },
@@ -67,11 +68,13 @@ export function CheckInReportsPage() {
   ];
   const report = detail.data?.report;
   const checkIn = detail.data?.checkIn;
+  const kind = checkIn ? checkInKind(checkIn) : 'Unknown';
+  const recipe = checkIn ? homeRecipe(checkIn) : null;
   const ratingCoffee = checkIn?.ratingCoffee;
   const ratingService = checkIn?.ratingService;
   const ratingPlace = checkIn?.ratingPlace;
   const hasRating = typeof ratingCoffee === 'number' && typeof ratingService === 'number' && typeof ratingPlace === 'number';
-  const averageRating = hasRating ? (ratingCoffee + ratingService + ratingPlace) / 3 : null;
+  const averageRating = kind === 'Shop' && hasRating ? (ratingCoffee + ratingService + ratingPlace) / 3 : null;
   return <div className="mx-auto w-full max-w-[1600px] space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><div className="mb-2 flex items-center gap-3"><span className="rounded-xl bg-primary/15 p-2.5 text-amber-600 dark:text-primary"><Flag className="h-5 w-5" /></span><h2 className="font-display text-2xl font-bold">Жалобы на чекины</h2></div><p className="text-sm text-text-muted">Проверьте сообщение пользователя и решите, стоит ли удалять чекин.</p></div>
@@ -96,10 +99,11 @@ export function CheckInReportsPage() {
               <p className="whitespace-pre-wrap break-words text-base leading-relaxed">{report.text}</p>
             </section>
             {checkIn ? <section className="rounded-2xl border border-border-light p-5 dark:border-border-dark">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-sm font-semibold text-text-muted"><MessageSquareText className="h-4 w-4" />Чекин пользователя</h3><PublishedShopLink className="flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline dark:text-primary" shopId={checkIn.shopId}>Открыть кофейню<ArrowUpRight className="h-4 w-4" /></PublishedShopLink></div>
-              <div className="mb-4 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 text-lg font-bold dark:bg-white/10">{(checkIn.username || '?').charAt(0).toUpperCase()}</span><div><p className="font-semibold">{checkIn.username || 'Пользователь'}</p>{averageRating === null ? <p className="text-sm text-text-muted">Без оценки</p> : <p className="flex items-center gap-1 text-sm text-text-muted"><Star className="h-3.5 w-3.5 fill-primary text-primary" />{averageRating.toFixed(1)}<span>· Средняя оценка</span></p>}</div></div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-sm font-semibold text-text-muted"><MessageSquareText className="h-4 w-4" />Чекин пользователя · {kind === 'Home' ? 'Дома' : kind === 'Shop' ? 'В кофейне' : 'Тип не указан'}</h3>{kind === 'Shop' && checkIn.shopId && <PublishedShopLink className="flex items-center gap-1 text-sm font-medium text-amber-700 hover:underline dark:text-primary" shopId={checkIn.shopId}>Открыть кофейню<ArrowUpRight className="h-4 w-4" /></PublishedShopLink>}</div>
+              <div className="mb-4 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-stone-100 text-lg font-bold dark:bg-white/10">{(checkIn.username || '?').charAt(0).toUpperCase()}</span><div><p className="font-semibold">{checkIn.username || 'Пользователь'}</p>{kind === 'Home' ? <p className="flex items-center gap-1 text-sm text-text-muted">{recipe?.tasteScore == null ? 'Без оценки' : <><Star className="h-3.5 w-3.5 fill-primary text-primary" />{recipe.tasteScore}/5 · Вкус</>}</p> : averageRating === null ? <p className="text-sm text-text-muted">Без оценки</p> : <p className="flex items-center gap-1 text-sm text-text-muted"><Star className="h-3.5 w-3.5 fill-primary text-primary" />{averageRating.toFixed(1)}<span>· Средняя оценка</span></p>}</div></div>
+              {kind === 'Home' && <div className="mb-4 rounded-xl bg-stone-50 p-3 text-sm dark:bg-white/5"><p className="font-semibold">Кофе дома · {checkInDate(checkIn)}</p><p className="mt-1 text-text-muted">{[recipe?.beanName, recipe?.brewMethodCode, recipe?.doseGrams != null ? `${recipe.doseGrams} г` : '', recipe?.brewDurationSeconds != null ? `${recipe.brewDurationSeconds} с` : ''].filter(Boolean).join(' · ') || 'Без деталей рецепта'}</p></div>}
               <p className="whitespace-pre-wrap break-words leading-relaxed text-stone-600 dark:text-stone-300">{checkIn.text}</p>
-              {hasRating && <div className="mt-5 grid grid-cols-3 gap-2">{[['Кофе', ratingCoffee], ['Сервис', ratingService], ['Аура', ratingPlace]].map(([label, rating]) => <div key={label} className="rounded-xl bg-stone-50 px-3 py-2.5 text-center dark:bg-white/5"><p className="text-xs text-text-muted">{label}</p><p className="mt-1 font-semibold">{rating}<span className="text-xs font-normal text-text-muted"> / 5</span></p></div>)}</div>}
+              {kind === 'Shop' && hasRating && <div className="mt-5 grid grid-cols-3 gap-2">{[['Кофе', ratingCoffee], ['Сервис', ratingService], ['Аура', ratingPlace]].map(([label, rating]) => <div key={label} className="rounded-xl bg-stone-50 px-3 py-2.5 text-center dark:bg-white/5"><p className="text-xs text-text-muted">{label}</p><p className="mt-1 font-semibold">{rating}<span className="text-xs font-normal text-text-muted"> / 5</span></p></div>)}</div>}
               {checkIn.deletedAtUtc && <p className="mt-4 text-sm text-red-500">Чекин уже удалён</p>}
               {!checkIn.isPubliclyVisible && <p className="mt-2 text-sm text-text-muted">Чекин скрыт из публичной выдачи</p>}
             </section> : <p className="rounded-2xl border p-5 text-text-muted">Чекин недоступен</p>}

@@ -7,13 +7,14 @@ import { getCheckInReports, getCheckInReport, resolveCheckInReport, normalizeChe
 import { httpClient as adminClient } from '../../coffee-peek-admin/src/api/core/httpClient';
 
 beforeEach(() => jest.clearAllMocks());
-test('report trims text, validates boundaries and requires authentication', () => {
-  reportCheckIn('id/1', '  Оскорбления  ');
+test('report trims text, validates boundaries and requires authentication', async () => {
+  jest.mocked(httpClient.post).mockResolvedValue({ statusCode: 201, data: { id: 'report' } } as never);
+  await reportCheckIn('id/1', '  Оскорбления  ');
   expect(httpClient.post).toHaveBeenCalledWith('/api/v1/check-ins/id%2F1/reports', { text: 'Оскорбления' }, { requiresAuth: true });
-  for (const text of ['', ' \n ', 'a'.repeat(2001)]) expect(() => reportCheckIn('id', text)).toThrow();
+  for (const text of ['', ' \n ', 'a'.repeat(2001)]) await expect(reportCheckIn('id', text)).rejects.toThrow();
   expect(httpClient.post).toHaveBeenCalledTimes(1);
-  reportCheckIn('id', 'a');
-  reportCheckIn('id', 'a'.repeat(2000));
+  await reportCheckIn('id', 'a');
+  await reportCheckIn('id', 'a'.repeat(2000));
   expect(httpClient.post).toHaveBeenCalledTimes(3);
 });
 test('admin preserves empty status, disables HTTP caching and sends both explicit resolutions', async () => {

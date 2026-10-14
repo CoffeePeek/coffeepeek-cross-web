@@ -1,4 +1,5 @@
 import { httpClient } from './core/httpClient';
+import type { CheckInKindFields } from '../utils/checkInKind';
 
 export type CheckInReportStatus = 0 | 1 | 2;
 export function normalizeCheckInReportStatus(status: unknown): CheckInReportStatus {
@@ -18,13 +19,13 @@ export interface CheckInReport {
   resolvedByAdminId: string | null;
   resolvedAtUtc: string | null;
 }
-export interface ReportedCheckIn {
+export interface ReportedCheckIn extends CheckInKindFields {
   id: string;
-  shopId: string;
+  shopId?: string | null;
   userId: string;
   username: string;
   text: string;
-  visitedAt: string;
+  visitedAt?: string | null;
   ratingPlace?: number | null;
   ratingService?: number | null;
   ratingCoffee?: number | null;

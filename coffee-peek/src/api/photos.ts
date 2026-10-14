@@ -5,6 +5,19 @@
 import { httpClient } from './core/httpClient';
 import { API_ENDPOINTS } from './core/apiConfig';
 import type { ApiResponse } from './core/types';
+import { API_BASE_URL, API_GATEWAY_URL } from './core/apiConfig';
+
+/** Fetch media returned by the API. Bearer tokens are only sent to the configured gateway. */
+export async function getCheckInPhotoBlob(url: string, signal?: AbortSignal): Promise<Blob> {
+  if (!url) throw new Error('Адрес фотографии отсутствует');
+  const base = new URL(API_BASE_URL || '/', globalThis.location?.origin || 'http://localhost');
+  const target = new URL(url, base);
+  const gateway = API_GATEWAY_URL ? new URL(API_GATEWAY_URL, base).origin : base.origin;
+  if (target.origin === base.origin || target.origin === gateway) return httpClient.getBlob(target.href, signal);
+  const response = await fetch(target.href, { signal, credentials: 'omit' });
+  if (!response.ok) throw new Error(`Не удалось загрузить фотографию: HTTP ${response.status}`);
+  return response.blob();
+}
 
 // ==================== Types ====================
 

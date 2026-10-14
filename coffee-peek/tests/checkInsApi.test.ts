@@ -29,13 +29,14 @@ test('calendar fetches every page in a half-open date range', async () => {
 });
 
 test('public lists and feed use separate cursors, slug filters and optional authorization', async () => {
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [], nextCursor: null } } as never);
   const filters = { authorSlug: 'author', coffeeShopSlug: 'coffee', citySlug: 'minsk', cursor: 'public-cursor', pageSize: 20 };
   await getPublicCheckIns(filters);
   expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/check-ins', { params: filters, requiresAuth: false });
   await getFeed({ ...filters, cursor: 'feed-cursor' });
-  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { ...filters, cursor: 'feed-cursor' }, requiresAuth: false });
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { ...filters, cursor: 'feed-cursor' }, requiresAuth: false, headers: { 'Cache-Control': 'no-store' } });
   await getFeed({ citySlug: 'another-city' });
-  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { citySlug: 'another-city' }, requiresAuth: false });
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { citySlug: 'another-city' }, requiresAuth: false, headers: { 'Cache-Control': 'no-store' } });
 });
 
 test('creation returns the whole card and update uses the check-in ID with no mutable photos/date', async () => {
@@ -53,6 +54,7 @@ test('creation returns the whole card and update uses the check-in ID with no mu
 });
 
 test('visibility, helpful and deletion use explicit idempotent commands', async () => {
+  jest.mocked(httpClient.put).mockResolvedValue({ data: item } as never);
   await changeCheckInVisibility('id', 'Private');
   expect(httpClient.put).toHaveBeenLastCalledWith('/api/v1/check-ins/id/visibility', { visibility: 'Private' }, { requiresAuth: true });
   await setCheckInHelpful('id', true);

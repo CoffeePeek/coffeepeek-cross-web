@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { httpClient } from '../api/core/httpClient';
+import { getCheckInPhotoBlob } from '../api/photos';
 import type { CheckInPhoto } from '../api/coffeeshop';
 import { useUser } from '../contexts/UserContext';
 import PhotoLightbox from './PhotoLightbox';
@@ -21,7 +21,7 @@ export default function CheckInPhotos({ photos, shopName, feed = false }: { phot
     setFailed(false);
     setSelected(null);
     void Promise.allSettled((JSON.parse(urls) as string[]).map(async url => {
-      const blob = await httpClient.getBlob(url, controller.signal);
+      const blob = await getCheckInPhotoBlob(url, controller.signal);
       if (controller.signal.aborted) return '';
       const image = URL.createObjectURL(blob);
       loaded.push(image);
@@ -37,10 +37,10 @@ export default function CheckInPhotos({ photos, shopName, feed = false }: { phot
   if (!photos.length) return null;
   return <div className="mt-4">
     {!images.length && !failed && <Shimmer width="100%" height="auto" className={`${feed ? 'aspect-[2/1] sm:aspect-[3/2]' : 'aspect-[3/2]'} rounded-xl`} />}
-    {images.length > 0 && <div className={`grid gap-1 overflow-hidden rounded-xl ${images.length === 1 ? feed ? 'aspect-[2/1] sm:aspect-[3/2]' : 'aspect-[3/2]' : images.length > 3 ? 'aspect-[5/4] grid-cols-2 grid-rows-2' : 'aspect-[5/3] grid-cols-2'} ${images.length === 3 ? 'grid-rows-2' : ''}`}>
-      {images.slice(0, 4).map((src, index) => <button key={src} type="button" onClick={() => setSelected(index)} aria-label={`Открыть фото ${index + 1} из ${images.length} в чекине`} className={`relative min-h-0 min-w-0 overflow-hidden rounded-lg border-0 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#EAB308] ${images.length === 3 && index === 0 ? 'row-span-2' : ''}`}>
+    {images.length > 0 && <div className={`grid gap-1 overflow-hidden rounded-xl ${images.length === 1 ? feed ? 'aspect-[2/1]' : 'aspect-[3/2]' : 'aspect-[4/3] grid-cols-2 grid-rows-2'} ${images.length === 2 ? 'grid-rows-1' : ''}`}>
+      {images.slice(0, 3).map((src, index) => <button key={src} type="button" onClick={() => setSelected(index)} aria-label={`Открыть фото ${index + 1} из ${images.length} в чекине`} className={`relative min-h-0 min-w-0 overflow-hidden rounded-lg border-0 p-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[#EAB308] ${images.length >= 3 && index === 0 ? 'row-span-2' : ''}`}>
         <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
-        {index === 3 && images.length > 4 && <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-black/45 text-2xl font-bold text-white">+{images.length - 4}</span>}
+        {index === 2 && images.length > 3 && <span aria-hidden="true" className="absolute inset-0 flex items-center justify-center bg-black/45 text-2xl font-bold text-white">+{images.length - 3}</span>}
       </button>)}
     </div>}
     {failed && <button type="button" className="mt-2 min-h-11 text-sm underline" onClick={() => setRetry(value => value + 1)}>Не удалось загрузить фото. Повторить</button>}

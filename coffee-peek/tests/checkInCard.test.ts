@@ -7,6 +7,8 @@ jest.mock('../src/hooks/queries/useCheckIns', () => ({
   useDeleteCheckIn: () => ({ error: null, isPending: false }),
 }));
 jest.mock('../src/components/CheckInPhotos', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/components/CheckInDrinkPhoto', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/components/HomeCheckInCard', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/PhotoLightbox', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/ReportCheckInButton', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/utils/errorHandler', () => ({ getErrorMessage: () => 'Ошибка' }));

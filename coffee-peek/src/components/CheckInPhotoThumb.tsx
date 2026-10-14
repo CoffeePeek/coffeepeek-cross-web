@@ -11,7 +11,7 @@ export default function CheckInPhotoThumb({ file, onRemove }: { file: File; onRe
   }, [file]);
 
   return (
-    <div className="relative h-28 w-24 shrink-0 overflow-hidden rounded-2xl">
+    <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl">
       {src && <img src={src} alt="" className="h-full w-full object-cover" />}
       <button
         type="button"

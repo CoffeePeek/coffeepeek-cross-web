@@ -16,8 +16,15 @@ import CheckInPhotos from './CheckInPhotos';
 import CheckInStatus from './CheckInStatus';
 import PhotoLightbox from './PhotoLightbox';
 import ReportCheckInButton from './ReportCheckInButton';
+import HomeCheckInCard from './HomeCheckInCard';
+import CheckInDrinkPhoto from './CheckInDrinkPhoto';
 
 export default function CheckInCard({ item, own = false, showShop = true, feed = false }: { item: CheckInDto; own?: boolean; showShop?: boolean; feed?: boolean }) {
+  if (item.kind === 'Home') return <HomeCheckInCard item={item} own={own} feed={feed} />;
+  return <ShopCheckInCard item={item} own={own} showShop={showShop} feed={feed} />;
+}
+
+function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: { item: CheckInDto; own?: boolean; showShop?: boolean; feed?: boolean }) {
   const { user } = useUser();
   const { theme } = useTheme();
   const classes = getThemeClasses(theme);
@@ -31,7 +38,7 @@ export default function CheckInCard({ item, own = false, showShop = true, feed =
   const average = item.rating ? (item.rating.coffee + item.rating.service + item.rating.place) / 3 : null;
   const published = item.visibility === 'Public' && item.moderationState === 'Approved';
   const actionError = helpful.error || visibility.error || deletion.error;
-  const username = item.username || 'Пользователь';
+  const username = item.username || (isOwn ? 'Вы' : 'Пользователь');
   const drinkName = savedDrinkName(item) || (item.drinkSlug ? 'Напиток' : '');
   const drinkPhoto = getMockDrinkPhoto(item);
   const avatar = isOwn ? user?.avatarUrl : undefined;
@@ -77,6 +84,7 @@ export default function CheckInCard({ item, own = false, showShop = true, feed =
       <CaretRight aria-hidden="true" size={18} className="mr-2 shrink-0" />
     </button>}
     <p className="whitespace-pre-line break-words text-base leading-[1.55]">{item.text}</p>
+    <CheckInDrinkPhoto url={item.drinkPhotoUrl} alt="Изображение напитка" />
     <CheckInPhotos photos={item.photos} shopName={item.shopName} feed={feed} />
     {feed && drinkName && <div className={`mt-2 flex items-center gap-1.5 text-sm sm:hidden ${classes.text.secondary}`}><Coffee aria-hidden="true" size={17} className="shrink-0" /><span className="min-w-0 break-words">{drinkName}</span></div>}
     {(published || isOwn) && <div className="mt-3">

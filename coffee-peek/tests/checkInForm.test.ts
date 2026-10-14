@@ -3,12 +3,12 @@ import { buildCheckInRequest, formatCheckInDate, todayInputValue, type CheckInDr
 const now = new Date('2026-09-05T12:00:00Z');
 const draft: CheckInDraft = { coffeeShopId: 'coffee-slug', isPublic: false, note: 'Посещение', visitedDate: '2026-09-05', rating: { coffee: 5, service: 4, place: 3 } };
 
-test.each([false, true])('both visibility modes require trimmed text, with no review fields: %s', isPublic => {
+test.each([false, true])('both visibility modes accept an optional trimmed note: %s', isPublic => {
   const request = buildCheckInRequest({ ...draft, isPublic, note: ' Хороший кофе ' }, now);
   expect(request).toMatchObject({ coffeeShopSlug: 'coffee-slug', visibility: isPublic ? 'Public' : 'Private', text: 'Хороший кофе', rating: draft.rating, photos: [] });
   for (const key of ['shop', 'header', 'note', 'isPublic', 'reviewId']) expect(request).not.toHaveProperty(key);
-  for (const note of ['', '   ', 'a'.repeat(1001)]) expect(() => buildCheckInRequest({ ...draft, isPublic, note }, now)).toThrow(/1 до 1000/);
-  for (const note of ['a', 'a'.repeat(1000)]) expect(buildCheckInRequest({ ...draft, isPublic, note }, now).text).toBe(note);
+  expect(() => buildCheckInRequest({ ...draft, isPublic, note: 'a'.repeat(1001) }, now)).toThrow(/1000/);
+  for (const note of ['', '   ', 'a', 'a'.repeat(1000)]) expect(buildCheckInRequest({ ...draft, isPublic, note }, now).text).toBe(note.trim());
 });
 
 test.each([0, 6, 1.5, NaN])('rejects non-integer or out-of-range ratings: %s', coffee => {
