@@ -26,9 +26,10 @@ const LandingPage: React.FC = () => {
 
   const footerCols = [
     { t: 'Продукт', items: ['Кофейни', 'Карта'] },
-    { t: 'Помощь',  items: ['Условия', 'Политика'] },
+    { t: 'Помощь',  items: ['Поддержка', 'Условия', 'Политика'] },
   ];
   const footerLinks: Record<string, string> = {
+    Поддержка: '/support',
     Кофейни: '/shops',
     Карта: '/map',
     Условия: LEGAL_ROUTES.terms,
@@ -235,6 +236,9 @@ const LandingPage: React.FC = () => {
                           <span key={item} className="font-body text-[13px]" style={{ color: c.textSecondary }}>{item}</span>
                         );
                       }
+                      if (href === '/support') {
+                        return <a key={item} href={href} className="font-body text-[13px] text-center hover:text-[#EAB308] transition-colors" style={{ color: c.textPrimary }}>{item}</a>;
+                      }
                       return (
                         <button
                           key={item}
@@ -279,6 +283,9 @@ const LandingPage: React.FC = () => {
                       return (
                         <span key={item} className="font-body text-[13px]" style={{ color: c.textSecondary }}>{item}</span>
                       );
+                    }
+                    if (href === '/support') {
+                      return <a key={item} href={href} className="font-body text-[13px] text-center hover:text-[#EAB308] transition-colors" style={{ color: c.textPrimary }}>{item}</a>;
                     }
                     return (
                       <button
