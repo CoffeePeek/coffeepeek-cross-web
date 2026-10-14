@@ -91,12 +91,23 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
     prices.set(offer.currency, weights);
   }
   const tastes = coffee.classification.tasteGroups.map(value => label('taste', value));
+  const alternative = coffee.classification.roastLevel
+    ? `Обжарка: ${label('roast', coffee.classification.roastLevel)}`
+    : coffee.classification.defaultBrewPurposes[0]
+      ? label('brew', coffee.classification.defaultBrewPurposes[0])
+      : coffee.classification.processing[0]
+        ? `Обработка: ${label('processing', coffee.classification.processing[0])}`
+        : coffee.roaster.name?.trim()
+          ? `Обжарщик: ${coffee.roaster.name}`
+          : 'Характеристики не указаны';
   return <ShopCard coffee={coffee} colors={colors} onSelect={() => navigate(coffee.address.canonicalPath)}>
       <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs leading-5" style={{ color: colors.textSecondary }} title={coffee.countries.map(country => country.nameRu).join(', ')}>
         {coffee.countries.map(country => countryFlagUrl(country.code) && <img key={country.code} src={countryFlagUrl(country.code)} alt="" width={20} height={15} loading="lazy" className="h-3.5 w-5 shrink-0 rounded-sm object-cover" onError={event => { event.currentTarget.hidden = true; }} />)}
         <span className="truncate">{coffee.countries.map(country => country.nameRu).join(', ') || 'Происхождение не указано'}</span>
       </p>
-      {!!tastes.length && <div className="mb-3 flex flex-wrap gap-1.5">{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</div>}
+      <div className="mb-3 flex flex-wrap gap-1.5">{tastes.length
+        ? <>{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</>
+        : <InfoChip colors={colors}><span className="max-w-[240px] truncate" title={alternative}>{alternative}</span></InfoChip>}</div>
       <div className="mt-auto space-y-2 border-t pt-3" style={{ borderColor: colors.border }}>
         {[...prices.entries()].map(([currency, offersByWeight]) => {
           const weights = [...offersByWeight.keys()].sort((a, b) => (a ?? Infinity) - (b ?? Infinity));
