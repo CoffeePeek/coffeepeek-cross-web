@@ -26,6 +26,8 @@
   ],
   "rewrites": [
     {"source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json"},
+    {"source": "/api/support/:path*", "destination": "https://api.coffeepeek.by/api/support/:path*"},
+    {"source": "/support", "destination": "/support.html"},
     {"source": "/coffee-shops/new", "destination": "/index.html"},
     {"source": "/roasters/new", "destination": "/index.html"},
     {"source": "/coffee-shops/:shopId", "destination": "/api/public-page?page=address&kind=shops&segment=:shopId&path=/coffee-shops/:shopId"},
@@ -70,6 +72,12 @@
     },
     {
       "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/support",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]

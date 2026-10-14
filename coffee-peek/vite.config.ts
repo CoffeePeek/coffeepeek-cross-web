@@ -4,13 +4,20 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(({ mode }) => {
-  const apiTarget = loadEnv(mode, process.cwd(), '').VITE_API_URL?.trim();
+  const configuredApiUrl = loadEnv(mode, process.cwd(), '').VITE_API_URL?.trim();
+  const productionApiUrl = loadEnv('production', process.cwd(), '').VITE_API_URL?.trim();
+  const apiTarget = [configuredApiUrl, productionApiUrl].find(url => url && /^https?:\/\//.test(url));
   return {
     server: {
       port: parseInt(process.env.PORT || "5173"),
       strictPort: true,
       host: "0.0.0.0",
-      proxy: apiTarget && /^https?:\/\//.test(apiTarget) ? {
+      proxy: apiTarget ? {
+        '/api/support': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: true,
+        },
         '/backend': {
           target: apiTarget,
           changeOrigin: true,
@@ -33,6 +40,10 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          support: path.resolve(__dirname, 'support.html'),
+        },
         output: {
           manualChunks: {
             'vendor-router': ['react-router-dom'],
