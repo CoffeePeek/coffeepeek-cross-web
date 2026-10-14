@@ -450,6 +450,7 @@
   flex: 1 1 270px;
   max-width: var(--discovery-card-width);
   min-width: 0;
+  height: auto;
 }
 .discovery-map {
   grid-area: panel;
