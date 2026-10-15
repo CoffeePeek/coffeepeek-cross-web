@@ -4,6 +4,9 @@ The customer app sends product analytics to the EU PostHog project
 [CoffeePeek / 306763](https://eu.posthog.com/project/306763).
 The admin app is not instrumented. Existing Vercel Analytics and Speed Insights remain enabled.
 
+For a standalone Russian specification and instructions for matching Android/iOS analytics,
+see [PostHog mobile implementation](POSTHOG-MOBILE-IMPLEMENTATION.md).
+
 ## Configuration
 
 Production configuration is in `.env.production`:
