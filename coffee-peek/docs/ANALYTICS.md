@@ -28,8 +28,11 @@ flag, PostHog remains disabled. Production preview uses the production configura
 
 The SDK loads only after the visitor accepts the new analytics consent banner.
 The previous hosting-metrics banner's acceptance does not enable PostHog.
-Visitors can change their choice on `/privacy`; revocation disables capture and
-clears the SDK identity. Consent is stored under `coffeepeek.analyticsConsent.v1`.
+Visitors can change their choice in the shared controls on
+[`/privacy#analytics-settings`](https://coffeepeek.by/privacy#analytics-settings) or
+[`/terms#analytics-settings`](https://coffeepeek.by/terms#analytics-settings); revocation disables
+capture and clears the SDK identity. This choice applies to the current browser; mobile app
+consent is managed separately. Consent is stored under `coffeepeek.analyticsConsent.v1`.
 
 Signed-in visitors are identified by internal user ID, without name or email.
 Logout and account changes reset the previous identity. Query strings and hashes
@@ -40,6 +43,42 @@ coordinates or raw API payloads are explicitly sent.
 Autocapture, session recording, automatic exception/stack capture, surveys and feature flags are disabled.
 API and check-in failures send controlled categories and HTTP status, never error messages or bodies.
 This is product diagnostics, not a replacement for backend logs or a stack-trace error tracker.
+
+## Data deletion requests: operator procedure
+
+Withdrawing consent in either legal page's analytics settings stops further capture and resets the local SDK identity;
+it does not delete events already stored in PostHog. The `/profile/delete` flow sends an
+email confirmation link before deleting the CoffeePeek account. This frontend does not
+implement or establish an automatic PostHog purge as part of that flow.
+
+For deletion of stored PostHog data, users can write to `info@coffeepeek.by` with the subject
+`Удаление данных PostHog` and their account email or internal account ID. Handle requests as follows:
+
+1. Verify the requester's identity using the existing account/support process. Never request a password.
+2. Resolve the account email to its internal backend user ID within CoffeePeek; do not send the
+   email to PostHog. Locate that ID and its linked distinct IDs in the EU project above. If account
+   deletion is also requested, preserve only the identifiers needed to complete this lookup before
+   removing the backend account.
+3. For guest activity, an existing analytics distinct ID from the relevant browser or device may
+   be needed. Explain any identification limitation if it is unavailable; do not attempt to identify
+   the person through IP addresses or device fingerprinting.
+4. Delete the matching person profile **and associated events**, including activity under its linked
+   distinct IDs, through the authorized PostHog project interface or management API. Resetting the
+   SDK, unlinking an ID, or deleting only profile properties is insufficient. For an API deletion,
+   request event deletion explicitly with `delete_events=true`. A personal API key is an operator
+   secret: use it only in a protected server-side environment, never in browser code or `VITE_*`.
+5. Verify the deletion result and confirm it to the requester; explain any data that cannot be
+   identified or any applicable legal retention exception. Do not promise that consent withdrawal
+   recalls requests already sent or in flight.
+
+The operator confirmed that the EU project uses PostHog's default retention. As of 15 October 2026,
+the [pricing FAQ](https://posthog.com/pricing) guarantees retention of events and metadata for
+one year on a free plan and seven years on a paid plan; older data may then be deleted. These are
+provider guarantees, not scheduled deletion deadlines. The exact active tariff is not established
+by this repository. Check the actual project and billing settings before stating a project-specific
+period or changing the public policy. No deletion SLA has been independently verified.
+Follow the current PostHog guidance on [data storage and deletion](https://posthog.com/docs/privacy/data-storage)
+and [persons](https://posthog.com/docs/data/persons) when carrying out an authorized request.
 
 ## Common context and counting
 
@@ -158,7 +197,9 @@ People who decline analytics and users blocked by browser/network are absent fro
 1. Open the app in a fresh browser session. No PostHog requests should occur before consent.
 2. Accept, navigate between pages, then check the project's Activity view for `$pageview`.
 3. Verify the page URL contains no query/hash; attempts and server-confirmed results remain separate.
-4. Disable analytics in `/privacy` and verify subsequent navigation produces no captures.
+4. Disable analytics in `/privacy#analytics-settings` and verify subsequent navigation produces no
+   captures. Verify the `/terms#analytics-settings` control reflects the same browser choice,
+   including changes in another tab, and that each page's direct settings link reaches the control.
 5. Check logout/account switching does not attach a new visitor to the old account.
 6. Scroll past a feature briefly, then keep it visible: only the latter should produce an exposure.
 7. Search, paginate and refocus: only changed criteria create a new search ID. Open a result
