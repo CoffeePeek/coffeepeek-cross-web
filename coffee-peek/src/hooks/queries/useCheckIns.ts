@@ -1,6 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '../../contexts/UserContext';
 import { getCatalogScope } from '../../lib/catalogSession';
+import { captureAnalyticsEvent } from '../../lib/analytics';
+import type { CheckInFlow } from '../../lib/checkInAnalytics';
 import {
   createCheckIn, getCheckIns, getCheckInsByDateRange, getCheckInById, getPublicCheckIns, getFeed,
   updateCheckIn, changeCheckInVisibility, deleteCheckIn, setCheckInHelpful,
@@ -52,9 +54,20 @@ export function useInvalidateCheckIns() {
   ]);
 }
 
-export function useCreateCheckIn() {
+export function useCreateCheckIn(flow?: CheckInFlow) {
   const invalidate = useInvalidateCheckIns();
-  return useMutation({ mutationFn: createCheckIn, onSuccess: invalidate });
+  return useMutation({
+    mutationFn: createCheckIn,
+    onSuccess: (response, request) => {
+      if (response.data) {
+        captureAnalyticsEvent('check_in_created', {
+          kind: 'visit', visibility: response.data.visibility, has_photos: !!request.photos?.length,
+          ...(flow ? { flow_id: flow.flow_id, source: flow.source, duration_ms: Math.max(0, Date.now() - flow.started_at) } : {}),
+        });
+      }
+      return invalidate();
+    },
+  });
 }
 
 export function useUpdateCheckIn() {

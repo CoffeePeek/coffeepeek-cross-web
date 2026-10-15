@@ -7,6 +7,8 @@ import { getThemeClasses } from '../../utils/theme';
 import { AppIcon, StarIcon, BeanPriceMarks } from '../icons';
 import { getPriceRangeTier } from '../../utils/priceRange';
 import { isShopOpenNow } from '../../utils/shopUtils';
+import { captureAnalyticsEvent } from '../../lib/analytics';
+import { useFeatureExposure } from '../../hooks/useFeatureExposure';
 
 interface ShopHeaderProps {
   shop: DetailedCoffeeShop;
@@ -65,8 +67,12 @@ export const ShopHeader: React.FC<ShopHeaderProps> = ({
   const priceTiers = getPriceRangeTier(shop.priceRange);
   const iconMuted = theme === 'dark' ? '#E7E5E4' : '#44403C';
   const openNow = isShopOpenNow(shop);
+  const checkInRef = useFeatureExposure<HTMLButtonElement>('check_in', 'shop_detail');
+  const favoriteRef = useFeatureExposure<HTMLButtonElement>('favorites', 'shop_detail');
+  const shareRef = useFeatureExposure<HTMLButtonElement>('share', 'shop_detail');
 
   const handleShare = async () => {
+    captureAnalyticsEvent('shop_action_clicked', { action: 'share', entry_point: 'shop_header' });
     let path: string;
     try { if (!shop.publicAddress) throw new Error('Address unavailable'); path = shop.publicAddress.canonicalPath; }
     catch { showToast('Адрес временно недоступен. Попробуйте ещё раз.', 'error'); return; }
@@ -111,6 +117,7 @@ export const ShopHeader: React.FC<ShopHeaderProps> = ({
       <div className="hidden gap-2 lg:flex lg:w-auto lg:gap-3">
         {onCheckIn && (
           <button
+            ref={checkInRef}
             onClick={onCheckIn}
             className={`flex-1 sm:flex-none px-4 py-2 rounded-2xl border ${borderColor} flex items-center justify-center gap-2 ${themeClasses.primary.bgLight} hover:opacity-90 transition-all ${themeClasses.primary.text} font-semibold text-sm`}
             style={{ padding: '8px 16px' }}
@@ -120,6 +127,7 @@ export const ShopHeader: React.FC<ShopHeaderProps> = ({
           </button>
         )}
         <button
+          ref={favoriteRef}
           type="button"
           onClick={onToggleFavorite}
           disabled={isCheckingFavorite}
@@ -141,6 +149,7 @@ export const ShopHeader: React.FC<ShopHeaderProps> = ({
           />
         </button>
         <button
+          ref={shareRef}
           type="button"
           onClick={handleShare}
           aria-label="Поделиться"

@@ -19,6 +19,9 @@ import { AppIcon } from '../components/icons';
 import Button from '../components/Button';
 import { InfoChip } from '../components/ShopCard';
 import { getThemeColors } from '../constants/colors';
+import { useEntityDetailAnalytics } from '../hooks/useEntityDetailAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
+import { captureAnalyticsEvent } from '../lib/analytics';
 
 const RoasterDetailPage: React.FC = () => {
   const { roasterId } = useParams<{ roasterId: string }>();
@@ -32,6 +35,11 @@ const RoasterDetailPage: React.FC = () => {
   const { data: roaster, isLoading, error } = resolution ? { data: resolution.data as RoasterDetails, isLoading: false, error: null } : legacy;
 
   usePageTitle(roaster?.name || 'Обжарщик');
+  useEntityDetailAnalytics('roaster', !isLoading && !error ? roaster?.id : undefined);
+  const assortmentRef = useFeatureExposure<HTMLHeadingElement>('roaster_assortment', 'roaster_detail');
+  const shopsRef = useFeatureExposure<HTMLHeadingElement>('roaster_shops', 'roaster_detail');
+  const photosRef = useFeatureExposure<HTMLDivElement>('roaster_photos', 'roaster_detail');
+  const contactsRef = useFeatureExposure<HTMLDivElement>('roaster_contacts', 'roaster_detail');
   const slug = roaster?.publicAddress?.slug ?? roasterId ?? '';
   useEffect(() => {
     const address = roaster?.publicAddress;
@@ -92,7 +100,7 @@ const RoasterDetailPage: React.FC = () => {
         <section aria-labelledby="roaster-name" className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="flex min-w-0 items-start gap-4 sm:gap-5">
             <div className={`flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border sm:h-32 sm:w-32 ${cardBg} ${borderColor}`}>
-              {roaster.photos.length ? <div className="h-full w-full"><PhotoCarousel images={roaster.photos} shopName={roaster.name} isCardView /></div> : <AppIcon name="factory" size={48} className={textMuted} />}
+              {roaster.photos.length ? <div ref={photosRef} className="h-full w-full" onClickCapture={event => { if ((event.target as HTMLElement).closest('button')) captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'photos', action: 'select' }); }}><PhotoCarousel images={roaster.photos} shopName={roaster.name} isCardView /></div> : <AppIcon name="factory" size={48} className={textMuted} />}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-start gap-3">
@@ -100,9 +108,9 @@ const RoasterDetailPage: React.FC = () => {
                 {roaster.publicAddress && <FavoriteButton kind="roaster" address={roaster.publicAddress} value={roaster.isFavorite} className={`${catalogButton} flex h-11 w-11 shrink-0 items-center justify-center rounded-full`} />}
               </div>
               {roaster.location?.address && <p className={`mt-2 flex items-start gap-1.5 text-sm ${textMuted}`}><AppIcon name="pin_drop" size={18} className={`${tc.primary.text} mt-0.5 shrink-0`} /><span className="min-w-0 break-words">{roaster.location.address}</span></p>}
-              {(websiteHref || roaster.contact?.instagramLink) && <div className="mt-3 flex flex-wrap gap-2">
-                {websiteHref && <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="language" size={18} className="shrink-0" /><span className="truncate">{websiteLabel || 'Сайт обжарщика'}</span><AppIcon name="arrow_forward" size={18} className="shrink-0" /></a>}
-                {roaster.contact?.instagramLink && <a href={instagramUrl(roaster.contact.instagramLink)} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="instagram-logo" size={18} className="shrink-0" /><span className="truncate">{instagramHandle(roaster.contact.instagramLink)}</span></a>}
+              {(websiteHref || roaster.contact?.instagramLink) && <div ref={contactsRef} className="mt-3 flex flex-wrap gap-2">
+                {websiteHref && <a href={websiteHref} onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'contacts', action: 'website' })} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="language" size={18} className="shrink-0" /><span className="truncate">{websiteLabel || 'Сайт обжарщика'}</span><AppIcon name="arrow_forward" size={18} className="shrink-0" /></a>}
+                {roaster.contact?.instagramLink && <a href={instagramUrl(roaster.contact.instagramLink)} onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'contacts', action: 'instagram' })} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex max-w-full items-center gap-2 text-sm`}><AppIcon name="instagram-logo" size={18} className="shrink-0" /><span className="truncate">{instagramHandle(roaster.contact.instagramLink)}</span></a>}
               </div>}
               {!!roaster.tags?.length && <div className="mt-3 flex flex-wrap gap-2">{roaster.tags.map(tag => <InfoChip key={tag.slug} colors={colors}>{tag.name}</InfoChip>)}</div>}
             </div>
@@ -125,30 +133,31 @@ const RoasterDetailPage: React.FC = () => {
 
       <section className={textMain}>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div><h2 className="text-2xl font-bold">Кофе в ассортименте</h2>{assortment.data && <p className={`mt-1 text-sm ${textMuted}`}>Доступных товаров: {assortment.data.totalItems}</p>}</div>
-          <Link className={`inline-flex min-h-11 items-center gap-2 font-semibold ${tc.primary.text} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`} to={catalogPath}>Весь кофе обжарщика<AppIcon name="arrow_forward" size={18} /></Link>
+          <div><h2 ref={assortmentRef} className="text-2xl font-bold">Кофе в ассортименте</h2>{assortment.data && <p className={`mt-1 text-sm ${textMuted}`}>Доступных товаров: {assortment.data.totalItems}</p>}</div>
+          <Link className={`inline-flex min-h-11 items-center gap-2 font-semibold ${tc.primary.text} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`} to={catalogPath} onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'assortment', action: 'view_all' })}>Весь кофе обжарщика<AppIcon name="arrow_forward" size={18} /></Link>
         </div>
         {assortment.isPending && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-label="Загрузка ассортимента"><ShopCardSkeleton variant="coffee" count={3} /></div>}
         {assortment.isError && <div className={catalogPanel} role="alert"><p>Ассортимент временно недоступен.</p><Button variant="secondary" className="mt-3" onClick={() => void assortment.refetch()}>Повторить</Button></div>}
         {assortment.data && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {assortment.data.items.map(coffee => <CoffeeCatalogCard key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}
+          {assortment.data.items.map(coffee => <CoffeeCatalogCard analytics={{ source: 'related' }} key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}
           {!assortment.isError && assortment.data.items.length < 6 && assortment.data.totalItems <= assortment.data.items.length && <div className={`${catalogPanel} flex min-h-64 flex-col items-center justify-center gap-4 py-8 text-center`}>
             <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${tc.primary.bgLight}`}><AppIcon name="coffee-bean" size={32} className={tc.primary.text} /></div>
             <h3 className="text-xl font-bold">{assortment.data.items.length ? 'Пока это весь ассортимент' : 'Ассортимент пока пуст'}</h3>
             <p className={`max-w-xs text-sm leading-relaxed ${textMuted}`}>Следите за обновлениями обжарщика.</p>
-            {websiteHref && <a href={websiteHref} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex items-center gap-2 ${tc.primary.bg} ${tc.text.inverse}`}>Перейти на сайт<AppIcon name="arrow_forward" size={18} /></a>}
+            {websiteHref && <a href={websiteHref} onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'contacts', action: 'website' })} target="_blank" rel="noopener noreferrer" className={`${catalogButton} inline-flex items-center gap-2 ${tc.primary.bg} ${tc.text.inverse}`}>Перейти на сайт<AppIcon name="arrow_forward" size={18} /></a>}
           </div>}
         </div>}
         {roaster.coffeeCatalogUpdatedAtUtc && <p className={`mt-3 text-xs ${textMuted}`}>{checkedTime(roaster.coffeeCatalogUpdatedAtUtc)}</p>}
       </section>
       {roaster.shops.length > 0 && (
         <section>
-          <h2 className={`mb-4 text-2xl font-bold ${textMain}`}>Где используют</h2>
+          <h2 ref={shopsRef} className={`mb-4 text-2xl font-bold ${textMain}`}>Где используют</h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {roaster.shops.map((shop) => (
               <PublicEntityLink
                 key={shop.id}
                 kind="shops" entityId={shop.id} address={shop.publicAddress}
+                onClickCapture={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'shops', action: 'select' })}
                 className={`flex min-h-[86px] items-center gap-4 rounded-2xl border p-3 text-left transition-colors hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${cardBg} ${borderColor} ${textMain}`}
               >
                 {shop.photoUrl

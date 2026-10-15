@@ -11,6 +11,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { logger } from '../utils/logger';
 import { getErrorMessage } from '../utils/errorHandler';
+import { captureAnalyticsEvent } from '../lib/analytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
 import {
   CaretRight,
   Camera,
@@ -243,16 +245,20 @@ const ProfileSection: React.FC<{ title: string; activities: ProfileActivity[]; c
   </>
 );
 
-const ProfileActivityList: React.FC<{ activities: ProfileActivity[]; colors: ProfileColors; onNavigate: (route: string) => void }> = ({ activities, colors, onNavigate }) => (
-  <section className="overflow-hidden rounded-[20px] border sm:rounded-3xl" style={{ borderColor: colors.border, background: colors.surface }}>
+const ProfileActivityList: React.FC<{ activities: ProfileActivity[]; colors: ProfileColors; onNavigate: (route: string) => void }> = ({ activities, colors, onNavigate }) => {
+  const favoriteExposure = useFeatureExposure<HTMLElement>('favorites', 'profile', activities.some(item => item.route.includes('filter=favorite')));
+  return <section ref={favoriteExposure} className="overflow-hidden rounded-[20px] border sm:rounded-3xl" style={{ borderColor: colors.border, background: colors.surface }}>
     {activities.map(({ title, subtitle, Icon, color, bg, route }, index) => (
-      <button key={title} type="button" onClick={() => onNavigate(route)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80 sm:px-5 sm:py-3.5" style={{ borderTop: index ? `1px solid ${colors.border}` : undefined }}>
+      <button key={title} type="button" onClick={() => {
+        if (route.includes('filter=favorite')) captureAnalyticsEvent('favorites_opened', { entry_point: 'profile' });
+        onNavigate(route);
+      }} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80 sm:px-5 sm:py-3.5" style={{ borderTop: index ? `1px solid ${colors.border}` : undefined }}>
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: bg, color }}><Icon className="h-[22px] w-[22px]" /></span>
         <span className="min-w-0 flex-1"><span className="block text-base font-medium" style={{ color: colors.text }}>{title}</span><span className="mt-0.5 block text-xs leading-snug" style={{ color: colors.muted }}>{subtitle}</span></span>
         <CaretRight className="h-5 w-5" color={colors.muted} />
       </button>
     ))}
-  </section>
-);
+  </section>;
+};
 
 export default ProfilePage;

@@ -15,6 +15,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import Mascot from '../components/Mascot';
 import { forceLogoutMessage } from '../realtime/forceLogout';
 import { TokenManager } from '../api/core/interceptors';
+import { captureAnalyticsEvent } from '../lib/analytics';
 
 interface AuthFieldProps {
   icon?: React.ReactNode;
@@ -153,6 +154,7 @@ const LoginPage: React.FC = () => {
       getUserRoles(accessToken);
       TokenManager.setAccessToken(accessToken);
       updateUserFromToken(accessToken);
+      captureAnalyticsEvent('sign_in_completed', { method: 'password', entry_point: 'login' });
       navigate(from, { replace: true });
     } catch (err: unknown) {
       const rawMsg = (err as any)?.message || '';
@@ -348,6 +350,7 @@ const LoginPage: React.FC = () => {
                 parseJWT(accessToken);
                 getUserRoles(accessToken);
                 updateUserFromToken(accessToken);
+                captureAnalyticsEvent('sign_in_completed', { method: 'google', entry_point: 'login' });
                 navigate(from, { replace: true });
               }}
               onError={setError}

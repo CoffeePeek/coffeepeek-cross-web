@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/Button';
@@ -6,11 +6,31 @@ import { Icons } from '../constants';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { goBackOrHome, LEGAL_ROUTES } from '../constants/legalRoutes';
 import { LEGAL, legalOperatorBlock } from '../constants/legal';
+import {
+  ANALYTICS_CONSENT_EVENT,
+  ANALYTICS_CONSENT_KEY,
+  getAnalyticsConsent,
+  setAnalyticsConsent,
+} from '../lib/analyticsConsent';
 
 const PrivacyPolicyPage: React.FC = () => {
   usePageTitle('Политика конфиденциальности');
   const navigate = useNavigate();
   const { theme } = useTheme();
+  const [analyticsConsent, updateAnalyticsConsent] = useState(getAnalyticsConsent);
+
+  useEffect(() => {
+    const syncConsent = () => updateAnalyticsConsent(getAnalyticsConsent());
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === ANALYTICS_CONSENT_KEY || event.key === null) syncConsent();
+    };
+    window.addEventListener(ANALYTICS_CONSENT_EVENT, syncConsent);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(ANALYTICS_CONSENT_EVENT, syncConsent);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   const bgClass = theme === 'dark' ? 'bg-[#1A1412]' : 'bg-white';
   const textClass = theme === 'dark' ? 'text-white' : 'text-gray-900';
@@ -98,6 +118,12 @@ const PrivacyPolicyPage: React.FC = () => {
                   обработку / использование локального хранилища, технические метрики производительности
                   и посещаемости на стороне хостинга).
                 </li>
+                <li>
+                  <strong>Аналитика PostHog — только после согласия:</strong> пути посещённых
+                  страниц, категории действий, технические данные браузера и внутренний
+                  идентификатор пользователя при входе в аккаунт. Содержимое форм и записи
+                  сессий в PostHog не передаются. До согласия эта аналитика отключена.
+                </li>
               </ul>
               <p className={`${textSecondaryClass} leading-relaxed mt-3`}>
                 Номер телефона пользователя в профиле Сервисом в настоящее время не запрашивается.
@@ -119,6 +145,7 @@ const PrivacyPolicyPage: React.FC = () => {
                 <li>связи с вами по вопросам работы Сервиса (подтверждение email, сброс пароля);</li>
                 <li>обеспечения безопасности, предотвращения злоупотреблений;</li>
                 <li>улучшения стабильности и удобства Сервиса (техническая аналитика хостинга).</li>
+                <li>изучения посещений и использования функций Сайта с помощью PostHog — с вашего согласия.</li>
               </ul>
               <p className={`${textSecondaryClass} leading-relaxed mt-3`}>
                 Правовые основания: согласие субъекта персональных данных; необходимость исполнения
@@ -162,6 +189,12 @@ const PrivacyPolicyPage: React.FC = () => {
                   технические сведения о запросе/устройстве; передача за пределы Республики Беларусь
                   возможна в объёме, необходимом для работы сервиса мониторинга.
                 </li>
+                <li>
+                  С вашего согласия используется {LEGAL.infra.analytics}. Технические данные
+                  могут обрабатываться за пределами Республики Беларусь. Отказ или отзыв
+                  согласия отключает дальнейшую отправку аналитики PostHog и не ограничивает
+                  функции Сайта.
+                </li>
               </ul>
             </section>
 
@@ -180,10 +213,27 @@ const PrivacyPolicyPage: React.FC = () => {
               </ul>
               <p className={`${textSecondaryClass} leading-relaxed mt-3`}>
                 Очистка данных сайта в браузере приведёт к выходу из аккаунта и сбросу локальных
-                настроек. Баннер согласия информирует о использовании локального хранилища; отказ
-                от баннера не отключает обязательные для авторизованного режима механизмы сессии,
-                если вы уже вошли в аккаунт.
+                настроек. Баннер позволяет принять или отклонить аналитику PostHog. Отказ
+                не отключает обязательные для авторизованного режима механизмы сессии,
+                если вы уже вошли в аккаунт. При согласии PostHog также сохраняет в браузере
+                идентификаторы, необходимые для аналитики.
               </p>
+              <div className={`mt-4 rounded-xl border ${borderClass} p-4`}>
+                <h3 className={`font-semibold ${textClass}`}>Настройки аналитики PostHog</h3>
+                <p className={`${textSecondaryClass} mt-2 mb-3`} role="status">
+                  {analyticsConsent === 'accepted'
+                    ? 'Вы разрешили аналитику PostHog. Согласие можно отозвать в любой момент.'
+                    : analyticsConsent === 'declined'
+                      ? 'Вы отклонили аналитику PostHog. Данные о посещениях и действиях в неё не отправляются.'
+                      : 'Аналитика PostHog отключена, пока вы не дадите согласие.'}
+                </p>
+                <Button
+                  variant="secondary"
+                  onClick={() => setAnalyticsConsent(analyticsConsent === 'accepted' ? 'declined' : 'accepted')}
+                >
+                  {analyticsConsent === 'accepted' ? 'Отозвать согласие' : 'Разрешить аналитику PostHog'}
+                </Button>
+              </div>
             </section>
 
             <section>
@@ -193,7 +243,7 @@ const PrivacyPolicyPage: React.FC = () => {
               <p className={`${textSecondaryClass} leading-relaxed`}>
                 Мы не продаём персональные данные. Передача (в том числе с возможным размещением
                 вне Республики Беларусь) возможна: провайдерам инфраструктуры — Vercel (фронтенд),
-                Timeweb (бэкенд), Sentry (логи ошибок); провайдерам карт и геокодирования;
+                Timeweb (бэкенд), Sentry (логи ошибок), PostHog (аналитика с вашего согласия); провайдерам карт и геокодирования;
                 провайдеру Google — при выборе входа через Google; сервисам отправки почты — если
                 они используются для писем Сервиса; уполномоченным государственным органам
                 Республики Беларусь — в случаях и порядке, установленных законодательством.

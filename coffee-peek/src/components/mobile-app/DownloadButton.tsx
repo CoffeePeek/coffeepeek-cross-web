@@ -1,5 +1,6 @@
 import React from 'react';
 import { DownloadSimple } from '@phosphor-icons/react';
+import { captureAnalyticsEvent } from '../../lib/analytics';
 
 interface DownloadButtonProps {
   channel: string;
@@ -10,6 +11,7 @@ interface DownloadButtonProps {
 const DownloadButton: React.FC<DownloadButtonProps> = ({ channel, href, label }) => (
   <a
     href={href}
+    onClick={() => captureAnalyticsEvent('app_download_clicked', { channel })}
     aria-label={label}
     className={`inline-flex h-12 ${channel === 'app-store' ? 'w-[144px]' : 'w-[162px]'} shrink-0 items-center justify-center overflow-hidden rounded-lg ${channel === 'apk' ? 'border border-[#A6A6A6]' : ''} bg-black text-white transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]`}
     style={{ color: '#fff' }}

@@ -8,6 +8,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { getThemeColors } from '../constants/colors';
 import { getCatalogScope } from '../lib/catalogSession';
+import { captureAnalyticsEvent, isAnalyticsReady } from '../lib/analytics';
+import { analyticsFilterKeys, changedAnalyticsFilterKeys } from '../utils/discoveryAnalytics';
+import { useDiscoveryAnalytics } from '../hooks/useDiscoveryAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
 import { useLocalCity } from '../hooks/useLocalCity';
 import { useCities } from '../hooks/queries/useCatalogs';
 import { useFavorites } from '../hooks/useFavorites';
@@ -68,7 +72,12 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const expandButton = useRef<HTMLButtonElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const toolbar = useRef<HTMLDivElement>(null);
+  const searchExposure = useFeatureExposure<HTMLDivElement>('search', 'discovery', !mapExpanded);
+  const roastersExposure = useFeatureExposure<HTMLDivElement>('roaster_catalog', 'discovery', !mapExpanded);
+  const shopsExposure = useFeatureExposure<HTMLDivElement>('shop_catalog', 'discovery', !mapExpanded);
+  const filterExposure = useFeatureExposure<HTMLElement>('filters', 'discovery', showFilters);
   const closeMap = () => {
+    captureAnalyticsEvent('map_interaction', { action: 'collapsed' });
     setMapExpanded(false);
     requestAnimationFrame(() => Array.from(toolbar.current?.querySelectorAll<HTMLInputElement>('input[type="search"]') ?? []).find(input => input.offsetParent)?.focus());
   };
@@ -139,26 +148,52 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const removed = pending.filter(change => !change.favorite && change.kind === 'coffee_shop' && favorites.isFavorite('coffee_shop', change.address.slug, true) === false);
   const shops = enabled ? [...new Map((query.data?.pages.flatMap(page => page.items) ?? []).filter(shop => !filters.favoritesOnly || !removed.some(change => change.address.slug === shop.address.slug)).map(shop => [shop.address.slug, shop])).values()] : [];
   const total = Math.max(0, (query.data?.pages[0]?.totalItems ?? 0) - (filters.favoritesOnly ? removed.length : 0));
+  const allLoaded = (section === 'roasters' || query.isSuccess) && (section === 'shops' || roasters.isSuccess);
+  const analytics = useDiscoveryAnalytics({
+    catalog: section === 'all' ? 'discovery' : section, state: searchState, enabled,
+    source: filters.favoritesOnly ? 'favorites' : 'list',
+    citySlug: filters.city ? cities.data?.find(city => city.id === filters.city || city.publicAddress?.slug === filters.city)?.publicAddress?.slug : undefined,
+    ready: allLoaded && (section === 'roasters' || !query.isFetching) && (section === 'shops' || !roasters.isFetching),
+    resultCount: (section === 'roasters' ? 0 : total) + (section === 'shops' ? 0 : localRoasters.length),
+    error: section !== 'roasters' && query.isError ? query.error : section !== 'shops' && roasters.isError ? roasters.error : undefined,
+  });
+  const locationTracked = useRef(false);
+  useEffect(() => {
+    const report = () => {
+      if (!autoNearby || deviceLocation.isPending || deviceLocation.isFetching || locationTracked.current || !isAnalyticsReady()) return;
+      locationTracked.current = captureAnalyticsEvent('geolocation_result', { placement: 'discovery', trigger: 'automatic', outcome: deviceLocation.data ? 'available' : 'unavailable' });
+    };
+    report();
+    window.addEventListener('coffeepeek:analytics-ready', report);
+    return () => window.removeEventListener('coffeepeek:analytics-ready', report);
+  }, [autoNearby, deviceLocation.isPending, deviceLocation.isFetching, deviceLocation.data]);
   const loadMoreRef = useLoadMoreOnScroll((desktop || !overview) && !mapVisibleExpanded && section !== 'roasters' && enabled && !!query.hasNextPage && !query.isFetching && !query.isError, () => { void query.fetchNextPage(); });
   const loadMoreShops = (event: React.UIEvent<HTMLDivElement>) => {
     const row = event.currentTarget;
     if (!desktop && overview && query.hasNextPage && !query.isFetching && !query.isError && row.scrollLeft + row.clientWidth >= row.scrollWidth - 200) void query.fetchNextPage();
   };
   const apply = (nextFilters: Record<string, unknown>) => {
+    captureAnalyticsEvent('filters_applied', { catalog: section === 'all' ? 'discovery' : section, filter_keys: analyticsFilterKeys(nextFilters), changed_filter_keys: changedAnalyticsFilterKeys(filters, nextFilters), action: 'apply' });
     const next = applyCriteria(searchState, { filters: nextFilters, sort: nextFilters.origin ? 'distance_asc' : state.q ? 'relevance' : 'name_asc' });
     update(next);
     setMapExpanded(false);
-    if (!user && (nextFilters.favoritesOnly || nextFilters.visitedOnly)) navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, 'shops')}` } } });
+    if (!user && (nextFilters.favoritesOnly || nextFilters.visitedOnly)) {
+      captureAnalyticsEvent('auth_gate_shown', { feature: nextFilters.favoritesOnly ? 'favorites_filter' : 'visited_filter' });
+      navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, 'shops')}` } } });
+    }
   };
-  const reset = () => { setInput(''); update(applyCriteria(state, { filters: defaultCity ? { city: defaultCity } : {}, q: '', sort: 'name_asc' }), 'all'); };
+  const reset = () => {
+    const nextFilters = defaultCity ? { city: defaultCity } : {};
+    captureAnalyticsEvent('filters_applied', { catalog: section === 'all' ? 'discovery' : section, filter_keys: analyticsFilterKeys(nextFilters), changed_filter_keys: changedAnalyticsFilterKeys(filters, nextFilters), action: 'reset' });
+    setInput(''); update(applyCriteria(state, { filters: nextFilters, q: '', sort: 'name_asc' }), 'all');
+  };
   const closeFilters = () => { dialog.current?.close(); setShowFilters(false); };
   const panel = { filters, onApply: apply, resultCount: (section === 'roasters' ? 0 : total) + (section === 'shops' ? 0 : localRoasters.length) };
   const showSection = (nextSection: Section) => update(applyCriteria(nextSection === 'roasters' ? state : searchState, {}), nextSection);
-  const allLoaded = (section === 'roasters' || query.isSuccess) && (section === 'shops' || roasters.isSuccess);
   const empty = <div className="flex min-h-[240px] flex-col items-center justify-center rounded-2xl border px-6 py-12 text-center" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
     <Mascot pose="search" size={132} /><p className="mt-3 text-sm" style={{ color: colors.textSecondary }}>Ничего не найдено. Попробуйте другой фильтр.</p>
   </div>;
-  const sectionHeading = (title: string, count: number, nextSection: Section) => <div className="mb-4 flex items-center justify-between gap-3">
+  const sectionHeading = (title: string, count: number, nextSection: Section) => <div ref={nextSection === 'roasters' ? roastersExposure : shopsExposure} className="mb-4 flex items-center justify-between gap-3">
     <h2 className="text-2xl font-bold tracking-tight">{title} <span className="ml-1 text-sm font-medium" style={{ color: colors.textSecondary }}>{count || ''}</span></h2>
     {overview && <button type="button" onClick={() => showSection(nextSection)} className="flex min-h-11 shrink-0 items-center gap-2 rounded-full px-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Показать все <AppIcon name="arrow_forward" size={18} /></button>}
   </div>;
@@ -166,8 +201,8 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     <main className={`discovery-layout ${overview ? 'discovery-layout--overview' : ''} ${mapVisibleExpanded ? 'discovery-layout--expanded' : showFilters && desktop ? 'discovery-layout--filters' : mapHidden ? 'discovery-layout--search' : ''}`} style={{ color: colors.textPrimary }}>
       <div ref={toolbar} className="discovery-toolbar" inert={mapVisibleExpanded} aria-hidden={mapVisibleExpanded || undefined}>
         <h1 className="sr-only">Поиск кофеен и обжарщиков</h1>
-        <div className="mb-2 flex items-end gap-2">
-          <ShopSearchBar className="min-w-0 flex-1" desktopFilters searchQuery={input} onSearchChange={value => { setInput(value); setMapExpanded(false); }} showFilters={showFilters} onFilterToggle={() => { setShowFilters(value => !value); setMapExpanded(false); }} activeFilterCount={activeFilterCount({ ...filters, city: undefined })} colors={colors} dark={theme === 'dark'} placeholder={section === 'roasters' ? 'Поиск обжарщиков…' : 'Поиск кофеен и обжарщиков'} ariaLabel={section === 'roasters' ? 'Поиск обжарщиков' : 'Поиск кофеен и обжарщиков'} onBack={filtering || showFilters ? () => { reset(); closeFilters(); } : undefined} />
+        <div ref={searchExposure} className="mb-2 flex items-end gap-2">
+          <ShopSearchBar className="min-w-0 flex-1" desktopFilters searchQuery={input} onSearchChange={value => { setInput(value); setMapExpanded(false); }} showFilters={showFilters} onFilterToggle={() => { if (!showFilters) captureAnalyticsEvent('filters_opened', { catalog: section === 'all' ? 'discovery' : section, placement: desktop ? 'desktop' : 'mobile' }); setShowFilters(value => !value); setMapExpanded(false); }} activeFilterCount={activeFilterCount({ ...filters, city: undefined })} colors={colors} dark={theme === 'dark'} placeholder={section === 'roasters' ? 'Поиск обжарщиков…' : 'Поиск кофеен и обжарщиков'} ariaLabel={section === 'roasters' ? 'Поиск обжарщиков' : 'Поиск кофеен и обжарщиков'} onBack={filtering || showFilters ? () => { reset(); closeFilters(); } : undefined} />
         </div>
         <ShopCatalogFilters mode="chips" {...panel} />
         {(filters.menu || filters.minRating !== undefined) && <FilterChips filters={{ menu: filters.menu, minRating: filters.minRating }} groups={[]} onChange={extra => apply({ ...filters, menu: undefined, minRating: undefined, ...extra })} />}
@@ -181,11 +216,11 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
         <div className="discovery-results" aria-live="polite" aria-busy={query.isFetching || roasters.isFetching}>
           {section !== 'shops' && (localRoasters.length > 0 || roasters.isPending && enabled) && <section aria-label="Обжарщики" className="discovery-roasters">
             {sectionHeading('Обжарщики', localRoasters.length, 'roasters')}
-            <div className="discovery-cards discovery-cards--roasters" role="group" aria-label="Карточки обжарщиков" tabIndex={overview && !desktop ? 0 : undefined}>{roasters.isPending && enabled ? <ShopCardSkeleton variant="roaster" count={columns} /> : (overview && desktop ? localRoasters.slice(0, columns) : localRoasters).map((roaster, index) => <RoasterCatalogCard key={roaster.address.slug ?? index} roaster={roaster} />)}</div>
+            <div className="discovery-cards discovery-cards--roasters" role="group" aria-label="Карточки обжарщиков" tabIndex={overview && !desktop ? 0 : undefined}>{roasters.isPending && enabled ? <ShopCardSkeleton variant="roaster" count={columns} /> : (overview && desktop ? localRoasters.slice(0, columns) : localRoasters).map((roaster, index) => <RoasterCatalogCard key={roaster.address.slug ?? index} roaster={roaster} analytics={{ ...analytics, position: index + 1 }} />)}</div>
           </section>}
           {section !== 'roasters' && <section aria-label="Кофейни" className="discovery-shops">
             {sectionHeading('Кофейни', total, 'shops')}
-            {query.isPending && enabled ? <div className="discovery-cards discovery-cards--shops"><ShopCardSkeleton count={columns * 2} /></div> : shops.length ? <div className="discovery-cards discovery-cards--shops" role="group" aria-label="Карточки кофеен" tabIndex={overview && !desktop ? 0 : undefined} onScroll={loadMoreShops}>{shops.map(shop => <ShopCatalogCard key={shop.address.slug} shop={shop} />)}{!desktop && overview && query.isFetchingNextPage && <ShopCardSkeleton count={1} />}</div> : query.isSuccess && enabled && localRoasters.length > 0 ? <p className="py-6 text-sm" style={{ color: colors.textSecondary }}>Кофейни по этим условиям не найдены.</p> : null}
+            {query.isPending && enabled ? <div className="discovery-cards discovery-cards--shops"><ShopCardSkeleton count={columns * 2} /></div> : shops.length ? <div className="discovery-cards discovery-cards--shops" role="group" aria-label="Карточки кофеен" tabIndex={overview && !desktop ? 0 : undefined} onScroll={loadMoreShops}>{shops.map((shop, index) => <ShopCatalogCard key={shop.address.slug} shop={shop} analytics={{ ...analytics, position: index + 1 }} />)}{!desktop && overview && query.isFetchingNextPage && <ShopCardSkeleton count={1} />}</div> : query.isSuccess && enabled && localRoasters.length > 0 ? <p className="py-6 text-sm" style={{ color: colors.textSecondary }}>Кофейни по этим условиям не найдены.</p> : null}
           </section>}
           {allLoaded && enabled && (section === 'roasters' || !shops.length) && (section === 'shops' || !localRoasters.length) && empty}
         </div>
@@ -193,19 +228,19 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
       </div>
       <section className={`discovery-map ${mapHidden ? 'discovery-map--hidden' : ''}`} aria-label="Карта кофеен" inert={mapHidden} aria-hidden={mapHidden || undefined}>
         <div className="discovery-map-frame" style={{ borderColor: colors.border }}>
-          <Suspense fallback={<div className="flex h-full items-center justify-center"><WobbleRing size={48} /></div>}><MapPage fillContainer showSearch={false} compactPreview={!mapVisibleExpanded} /></Suspense>
+          <Suspense fallback={<div className="flex h-full items-center justify-center"><WobbleRing size={48} /></div>}><MapPage fillContainer showSearch={false} compactPreview={!mapVisibleExpanded} analyticsVisible={!mapHidden} analytics={analytics} /></Suspense>
           <div className="pointer-events-none absolute right-4 top-4 z-[600]">
-            <button ref={expandButton} type="button" onClick={() => { if (mapVisibleExpanded) closeMap(); else { window.scrollTo({ top: 0 }); setMapExpanded(true); } }} aria-label={mapVisibleExpanded ? 'Свернуть карту' : 'Развернуть карту'} aria-expanded={mapVisibleExpanded} className="discovery-map-expand pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ background: colors.surface, borderColor: colors.border }}>{mapVisibleExpanded ? <ArrowsIn size={32} className="h-8 w-8 shrink-0" /> : <ArrowsOut size={32} className="h-8 w-8 shrink-0" />}</button>
+            <button ref={expandButton} type="button" onClick={() => { if (mapVisibleExpanded) closeMap(); else { captureAnalyticsEvent('map_interaction', { action: 'expanded' }); window.scrollTo({ top: 0 }); setMapExpanded(true); } }} aria-label={mapVisibleExpanded ? 'Свернуть карту' : 'Развернуть карту'} aria-expanded={mapVisibleExpanded} className="discovery-map-expand pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full border shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ background: colors.surface, borderColor: colors.border }}>{mapVisibleExpanded ? <ArrowsIn size={32} className="h-8 w-8 shrink-0" /> : <ArrowsOut size={32} className="h-8 w-8 shrink-0" />}</button>
           </div>
         </div>
       </section>
-      {showFilters && desktop && !mapVisibleExpanded && <section aria-label="Фильтры поиска" className="discovery-filter-panel rounded-[28px] border p-4" style={{ background: colors.surface, borderColor: colors.border }}>
+      {showFilters && desktop && !mapVisibleExpanded && <section ref={filterExposure} aria-label="Фильтры поиска" className="discovery-filter-panel rounded-[28px] border p-4" style={{ background: colors.surface, borderColor: colors.border }}>
         <ShopCatalogFilters mode="sidebar" {...panel} onClose={closeFilters} />
       </section>}
     </main>
     <dialog ref={dialog} aria-label="Фильтры" onClose={() => { if (!desktop) setShowFilters(false); }} className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 backdrop:bg-black/50">
       <button type="button" aria-label="Закрыть фильтры" className="absolute inset-0" onClick={closeFilters} />
-      <aside className="absolute inset-x-0 bottom-0 max-h-[min(86dvh,760px)] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: '0 -16px 48px rgba(0,0,0,.18)' }}>
+      <aside ref={filterExposure} className="absolute inset-x-0 bottom-0 max-h-[min(86dvh,760px)] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" style={{ background: colors.surface, border: `1px solid ${colors.border}`, boxShadow: '0 -16px 48px rgba(0,0,0,.18)' }}>
         {showFilters && !desktop && <ShopCatalogFilters mode="sidebar" {...panel} onClose={closeFilters} />}
       </aside>
     </dialog>

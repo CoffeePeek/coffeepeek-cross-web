@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { type DetailedCoffeeShop, getPhotoUrl } from '../../api/coffeeshop';
 import PhotoLightbox from '../PhotoLightbox';
 import { AppIcon } from '../icons';
+import { captureAnalyticsEvent } from '../../lib/analytics';
+import { useFeatureExposure } from '../../hooks/useFeatureExposure';
 
 interface PhotoGalleryProps {
   shop: DetailedCoffeeShop;
@@ -12,6 +14,7 @@ interface PhotoGalleryProps {
 
 export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ shop }) => {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const exposureRef = useFeatureExposure<HTMLButtonElement>('shop_photos', 'shop_detail', !!shop.photos?.length);
 
   if (!shop.photos || shop.photos.length === 0) {
     return null;
@@ -22,12 +25,16 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ shop }) => {
   );
   const photoCount = photos.length;
 
-  const openAt = (index: number) => setLightboxIndex(index);
+  const openAt = (index: number) => {
+    captureAnalyticsEvent('shop_content_interacted', { section: 'photos', action: 'open' });
+    setLightboxIndex(index);
+  };
 
   const tile = (index: number, className: string, showAllBadge = false) => (
     <button
       type="button"
       key={photos[index].storageKey ?? photos[index].fullUrl ?? index}
+      ref={index === 0 ? exposureRef : undefined}
       onClick={() => openAt(index)}
       className={`${className} overflow-hidden relative group cursor-pointer border-0 p-0 text-left`}
       aria-label={`Открыть фото ${index + 1} в полном размере`}

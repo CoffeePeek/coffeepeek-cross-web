@@ -18,6 +18,9 @@ import PhotoLightbox from './PhotoLightbox';
 import ReportCheckInButton from './ReportCheckInButton';
 import HomeCheckInCard from './HomeCheckInCard';
 import CheckInDrinkPhoto from './CheckInDrinkPhoto';
+import { captureAnalyticsEvent } from '../lib/analytics';
+import type { EngagementAnalyticsEvents } from '../lib/engagementAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
 
 export default function CheckInCard({ item, own = false, showShop = true, feed = false }: { item: CheckInDto; own?: boolean; showShop?: boolean; feed?: boolean }) {
   if (item.kind === 'Home') return <HomeCheckInCard item={item} own={own} feed={feed} />;
@@ -43,13 +46,17 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
   const drinkPhoto = getMockDrinkPhoto(item);
   const avatar = isOwn ? user?.avatarUrl : undefined;
   const menuActionClass = 'flex min-h-11 w-full items-center rounded-xl px-3 text-left hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50';
+  const exposureRef = useFeatureExposure<HTMLElement>('feed_shop_check_in', 'feed', feed);
+  const trackFeedAction = (action: EngagementAnalyticsEvents['feed_item_interacted']['action']) => {
+    if (feed) captureAnalyticsEvent('feed_item_interacted', { action, check_in_kind: 'shop' });
+  };
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
     return () => window.clearInterval(timer);
   }, []);
 
-  return <article className={`min-w-0 rounded-[20px] border p-4 sm:p-5 ${classes.bg.card} ${classes.border.default} ${classes.text.primary} ${feed ? 'feed-check-in-card' : ''}`}>
+  return <article ref={exposureRef} className={`min-w-0 rounded-[20px] border p-4 sm:p-5 ${classes.bg.card} ${classes.border.default} ${classes.text.primary} ${feed ? 'feed-check-in-card' : ''}`}>
     <header className="mb-4 flex items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-3">
         <span aria-hidden="true" className={`relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-semibold ${classes.bg.tertiary} ${classes.text.secondary} ${feed ? 'feed-check-in-avatar' : ''}`}>
@@ -57,7 +64,7 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
           {avatar && <img key={avatar} src={avatar} alt="" className={`absolute inset-0 h-full w-full object-cover ${feed ? 'hidden sm:block' : ''}`} onError={event => { event.currentTarget.style.display = 'none'; }} />}
         </span>
         <div className="min-w-0">
-          {item.author ? <Link to={item.author.canonicalPath} className={`block truncate font-semibold hover:underline ${feed ? 'text-base sm:text-sm' : 'text-sm'}`}>{username}</Link> : <p className={`truncate font-semibold ${feed ? 'text-base sm:text-sm' : 'text-sm'}`}>{username}</p>}
+          {item.author ? <Link to={item.author.canonicalPath} onClick={() => trackFeedAction('author')} className={`block truncate font-semibold hover:underline ${feed ? 'text-base sm:text-sm' : 'text-sm'}`}>{username}</Link> : <p className={`truncate font-semibold ${feed ? 'text-base sm:text-sm' : 'text-sm'}`}>{username}</p>}
           <p className={`mt-0.5 text-xs sm:text-sm ${classes.text.secondary}`}>{formatCheckInDate(item, now)}</p>
         </div>
       </div>
@@ -67,7 +74,7 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
         <button type="button" disabled={deletion.isPending} className={`${menuActionClass} text-red-500`} onClick={() => { if (window.confirm('Удалить этот чекин?')) deletion.mutate(item.id, { onSuccess: close }); }}>Удалить</button>
       </> : undefined} />}
     </header>
-    {showShop && (item.shop ? <Link to={item.shop.canonicalPath} className="mb-2 block break-words text-xl font-bold leading-snug hover:underline">{item.shopName || 'Кофейня'}</Link> : <p className="mb-2 break-words text-xl font-bold leading-snug">{item.shopName || 'Кофейня'}</p>)}
+    {showShop && (item.shop ? <Link to={item.shop.canonicalPath} state={{ analytics: { source: 'related' } }} onClick={() => trackFeedAction('shop')} className="mb-2 block break-words text-xl font-bold leading-snug hover:underline">{item.shopName || 'Кофейня'}</Link> : <p className="mb-2 break-words text-xl font-bold leading-snug">{item.shopName || 'Кофейня'}</p>)}
     {item.rating && average !== null ? <div className="mb-3 flex items-center gap-2" role="img" aria-label={`Оценка ${average.toFixed(1)} из 5. Кофе ${item.rating.coffee}, сервис ${item.rating.service}, атмосфера ${item.rating.place}`}>
       <div aria-hidden="true" className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, index) => <span key={index} className="relative block h-5 w-5">
@@ -78,17 +85,17 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
       <span aria-hidden="true" className="text-sm font-medium tabular-nums">{average.toFixed(1)}</span>
     </div> : <p className={`mb-3 text-sm ${classes.text.secondary}`}>Без оценки</p>}
     {isOwn && <div className={`mb-3 ${feed && published ? 'hidden sm:block' : ''}`}><CheckInStatus item={item} /></div>}
-    {drinkName && <button type="button" onClick={() => setDrinkOpen(true)} aria-label={`Посмотреть фото напитка: ${drinkName}`} className={`mb-4 min-h-14 w-full items-center gap-3 rounded-2xl p-1.5 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${feed ? 'hidden sm:flex' : 'flex'} ${theme === 'light' ? classes.bg.secondary : classes.bg.tertiary}`}>
+    {drinkName && <button type="button" onClick={() => { trackFeedAction('drink_photo'); setDrinkOpen(true); }} aria-label={`Посмотреть фото напитка: ${drinkName}`} className={`mb-4 min-h-14 w-full items-center gap-3 rounded-2xl p-1.5 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${feed ? 'hidden sm:flex' : 'flex'} ${theme === 'light' ? classes.bg.secondary : classes.bg.tertiary}`}>
       <img src={drinkPhoto} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
       <span className="min-w-0 flex-1 break-words text-sm font-medium">{drinkName}</span>
       <CaretRight aria-hidden="true" size={18} className="mr-2 shrink-0" />
     </button>}
     <p className="whitespace-pre-line break-words text-base leading-[1.55]">{item.text}</p>
     <CheckInDrinkPhoto url={item.drinkPhotoUrl} alt="Изображение напитка" />
-    <CheckInPhotos photos={item.photos} shopName={item.shopName} feed={feed} />
+    <div onClickCapture={event => { if ((event.target as HTMLElement).closest('button')?.querySelector('img')) trackFeedAction('photo'); }}><CheckInPhotos photos={item.photos} shopName={item.shopName} feed={feed} /></div>
     {feed && drinkName && <div className={`mt-2 flex items-center gap-1.5 text-sm sm:hidden ${classes.text.secondary}`}><Coffee aria-hidden="true" size={17} className="shrink-0" /><span className="min-w-0 break-words">{drinkName}</span></div>}
     {(published || isOwn) && <div className="mt-3">
-      {!isOwn && user && published ? <button type="button" aria-label={item.isHelpfulByCurrentUser ? 'Убрать отметку «Нравится»' : 'Нравится'} aria-pressed={item.isHelpfulByCurrentUser} disabled={helpful.isPending} className={`-ml-2 inline-flex min-h-11 items-center gap-2 rounded-full px-2 pr-3 text-sm transition-colors hover:bg-red-500/10 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${item.isHelpfulByCurrentUser ? 'bg-red-500/10' : ''}`} onClick={() => helpful.mutate({ id: item.id, helpful: !item.isHelpfulByCurrentUser })}>
+      {!isOwn && user && published ? <button type="button" aria-label={item.isHelpfulByCurrentUser ? 'Убрать отметку «Нравится»' : 'Нравится'} aria-pressed={item.isHelpfulByCurrentUser} disabled={helpful.isPending} className={`-ml-2 inline-flex min-h-11 items-center gap-2 rounded-full px-2 pr-3 text-sm transition-colors hover:bg-red-500/10 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${item.isHelpfulByCurrentUser ? 'bg-red-500/10' : ''}`} onClick={() => { trackFeedAction(item.isHelpfulByCurrentUser ? 'unlike' : 'like'); helpful.mutate({ id: item.id, helpful: !item.isHelpfulByCurrentUser }); }}>
         <Heart aria-hidden="true" size={26} weight={feed && !item.isHelpfulByCurrentUser ? 'regular' : 'fill'} className="text-red-500" /><span className="tabular-nums">{item.helpfulCount}</span>
       </button> : <span aria-label={`Отметок «Нравится»: ${item.helpfulCount}`} className="inline-flex min-h-11 items-center gap-2 text-sm"><Heart aria-hidden="true" size={26} weight={feed && !item.helpfulCount ? 'regular' : 'fill'} className="text-red-500" /><span className="tabular-nums">{item.helpfulCount}</span></span>}
     </div>}

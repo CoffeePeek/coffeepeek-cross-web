@@ -18,7 +18,12 @@ import { CoffeeCatalogCard, RoasterCatalogCard, ShopCatalogCard, CatalogPaginati
 import { Shimmer, ShopCardSkeleton } from '../components/skeletons';
 import { useFavorites } from '../hooks/useFavorites';
 import { useLocalCity } from '../hooks/useLocalCity';
+import { useCities } from '../hooks/queries/useCatalogs';
 import { useLoadMoreOnScroll } from '../hooks/useLoadMoreOnScroll';
+import { useDiscoveryAnalytics } from '../hooks/useDiscoveryAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
+import { captureAnalyticsEvent } from '../lib/analytics';
+import { analyticsFilterKeys, changedAnalyticsFilterKeys } from '../utils/discoveryAnalytics';
 
 const titles = { discovery: 'Поиск кофеен и обжарщиков', shops: 'Кофейни', roasters: 'Обжарщики', coffees: 'Кофе' };
 export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
@@ -27,6 +32,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
   const location = useLocation();
   const favorites = useFavorites();
   const { cityId } = useLocalCity();
+  const cities = useCities(false);
   const { user, isLoading: authLoading } = useUser();
   const { requireAuth } = useRequireAuth();
   const { theme } = useTheme();
@@ -45,6 +51,10 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
   const [input, setInput] = useState(state.q);
   const dialog = useRef<HTMLDialogElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const searchExposure = useFeatureExposure<HTMLDivElement>('search', kind);
+  const catalogExposure = useFeatureExposure<HTMLDivElement>(kind === 'coffees' ? 'coffee_catalog' : kind === 'roasters' ? 'roaster_catalog' : 'shop_catalog', 'catalog');
+  const filterExposure = useFeatureExposure<HTMLElement>('filters', kind);
+  const mobileFilterExposure = useFeatureExposure<HTMLDivElement>('filters', kind, mobileOpen);
   usePageTitle(titles[kind]);
   useEffect(() => { setInput(state.q); }, [state.q]);
   const update = (next: SearchState, replace = false) => setParams(writeSearchState(next, kind), { replace });
@@ -93,19 +103,25 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
   const groups = facets.data?.groups ?? [];
   const errors = { ...localErrors, ...Object.fromEntries(Object.entries((resultsQuery.error as { errors?: Record<string, string[]> } | null)?.errors ?? {}).map(([key, value]) => [key, value.join(' ')])) };
   const apply = (filters: Record<string, unknown>) => {
+    captureAnalyticsEvent('filters_applied', { catalog: kind, filter_keys: analyticsFilterKeys(filters), changed_filter_keys: changedAnalyticsFilterKeys(state.filters, filters), action: 'apply' });
     const next = applyCriteria(state, { filters });
     update(next);
     if (kind !== 'roasters' && kind !== 'coffees') { dialog.current?.close(); setMobileOpen(false); }
-    if (!user && (filters.favoritesOnly || filters.visitedOnly)) navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, kind)}` } } });
+    if (!user && (filters.favoritesOnly || filters.visitedOnly)) {
+      captureAnalyticsEvent('auth_gate_shown', { feature: filters.favoritesOnly ? 'favorites_filter' : 'visited_filter' });
+      navigate('/login', { state: { from: { ...location, search: `?${writeSearchState(next, kind)}` } } });
+    }
   };
   const filterForm = () => kind === 'coffees' && facets.isPending && enabled
     ? <div role="status" aria-label="Загрузка фильтров" className="overflow-hidden rounded-[22px] border" style={{ background: colors.surface, borderColor: colors.border }}>
       {[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="flex h-14 items-center justify-between gap-4 px-4" style={{ borderTop: i ? `1px solid ${colors.border}` : undefined }}><Shimmer width={`${60 + i % 3 * 10}%`} height={16} /><Shimmer width={12} height={12} /></div>)}
     </div>
     : kind === 'shops' ? <ShopCatalogFilters filters={state.filters as ShopFilters} onApply={apply} /> : <CatalogFilters kind={kind} filters={state.filters} groups={groups} errors={errors} onApply={apply} />;
-  const reset = () => update(applyCriteria(state, { filters: kind === 'coffees' ? { availableOnly: true } : {}, q: '', sort: 'name_asc' }));
-  const cards = (items: (CoffeeCard | RoasterCard | ShopCard)[], section: CatalogKind) => <div className={section === 'coffees' ? 'coffee-catalog-cards' : 'grid grid-cols-1 gap-4 md:grid-cols-2 min-[1180px]:grid-cols-3'}>{items.map((item, index) => section === 'coffees' ? <CoffeeCatalogCard key={item.address.slug} coffee={item as CoffeeCard} groups={dictionary.data ?? []} />
-    : section === 'roasters' ? <RoasterCatalogCard key={item.address.slug ?? index} roaster={item as RoasterCard} /> : <ShopCatalogCard key={item.address.slug} shop={item as ShopCard} />)}</div>;
+  const reset = () => {
+    const filters = kind === 'coffees' ? { availableOnly: true } : {};
+    captureAnalyticsEvent('filters_applied', { catalog: kind, filter_keys: analyticsFilterKeys(filters), changed_filter_keys: changedAnalyticsFilterKeys(state.filters, filters), action: 'reset' });
+    update(applyCriteria(state, { filters, q: '', sort: 'name_asc' }));
+  };
   const result = query.data?.pages[0];
   const rawPage = kind === 'roasters' ? roasters.data ? { items: localRoasters, totalItems: localRoasters.length, totalPages: 1, currentPage: 1, pageSize: localRoasters.length } : undefined
     : result && 'items' in result ? scroll ? { ...result, items: [...new Map(query.data!.pages.flatMap(page => 'items' in page ? page.items : []).map(item => [item.address.slug, item])).values()] } : result : undefined;
@@ -115,17 +131,26 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
     items: localRoasters.slice((state.roastersPage - 1) * 10, state.roastersPage * 10), totalItems: localRoasters.length,
     totalPages: Math.ceil(localRoasters.length / 10), currentPage: state.roastersPage, pageSize: 10,
   } : null } : undefined;
+  const analytics = useDiscoveryAnalytics({ catalog: kind, state, enabled, source: state.filters.favoritesOnly ? 'favorites' : 'list',
+    citySlug: state.filters.city ? cities.data?.find(city => city.id === state.filters.city || city.publicAddress?.slug === state.filters.city)?.publicAddress?.slug : undefined,
+    ready: resultsQuery.isSuccess && !resultsQuery.isFetching && (kind === 'roasters' || !query.isPlaceholderData) && (kind !== 'discovery' || roasters.isSuccess && !roasters.isFetching),
+    resultCount: kind === 'discovery' ? (discovery?.coffeeShops?.totalItems ?? 0) + (discovery?.roasters?.totalItems ?? 0) : page?.totalItems ?? 0,
+    error: resultsQuery.isError ? resultsQuery.error : kind === 'discovery' && roasters.isError ? roasters.error : undefined,
+  });
+  const cards = (items: (CoffeeCard | RoasterCard | ShopCard)[], section: CatalogKind) => <div className={section === 'coffees' ? 'coffee-catalog-cards' : 'grid grid-cols-1 gap-4 md:grid-cols-2 min-[1180px]:grid-cols-3'}>{items.map((item, index) => section === 'coffees' ? <CoffeeCatalogCard key={item.address.slug} coffee={item as CoffeeCard} groups={dictionary.data ?? []} analytics={{ ...analytics, position: index + 1 }} />
+    : section === 'roasters' ? <RoasterCatalogCard key={item.address.slug ?? index} roaster={item as RoasterCard} analytics={{ ...analytics, position: index + 1 }} /> : <ShopCatalogCard key={item.address.slug} shop={item as ShopCard} analytics={{ ...analytics, position: index + 1 }} />)}</div>;
+  const openFilters = () => { captureAnalyticsEvent('filters_opened', { catalog: kind, placement: 'mobile' }); setMobileOpen(true); dialog.current?.showModal(); };
   const loadMoreRef = useLoadMoreOnScroll(kind === 'coffees' && enabled && !!query.hasNextPage && !query.isFetching && !query.isError, () => { void query.fetchNextPage(); });
   return <main className={`mx-auto max-w-[1680px] px-4 pb-28 sm:px-6 lg:px-8 ${kind === 'roasters' ? 'pt-4' : ''} ${theme === 'dark' ? 'text-white' : 'text-stone-900'}`}>
     <h1 className={kind === 'coffees' || kind === 'roasters' ? 'sr-only' : 'mb-5 pt-6 text-3xl font-bold'}>{titles[kind]}</h1>
-    {kind === 'coffees' ? <ShopSearchBar className="mb-5" searchQuery={input} onSearchChange={setInput} placeholder="Название кофе или обжарщика" ariaLabel="Поиск кофе" colors={colors} dark={theme === 'dark'} showFilters={mobileOpen} activeFilterCount={activeFilterCount(state.filters)} onFilterToggle={() => { setMobileOpen(true); dialog.current?.showModal(); }} />
+    <div ref={searchExposure}><div ref={catalogExposure}>{kind === 'coffees' ? <ShopSearchBar className="mb-5" searchQuery={input} onSearchChange={setInput} placeholder="Название кофе или обжарщика" ariaLabel="Поиск кофе" colors={colors} dark={theme === 'dark'} showFilters={mobileOpen} activeFilterCount={activeFilterCount(state.filters)} onFilterToggle={openFilters} />
       : <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="min-w-0 flex-1 text-sm">{kind === 'roasters' ? 'Поиск обжарщика' : 'Поиск'}<input type="search" className={catalogInput} value={input} maxLength={100} onChange={event => setInput(event.target.value)} /></label>
-        {kind !== 'roasters' && <button type="button" className={`${catalogButton} lg:hidden`} onClick={() => { setMobileOpen(true); dialog.current?.showModal(); }}>Фильтры ({activeFilterCount(state.filters)})</button>}
+        {kind !== 'roasters' && <button type="button" className={`${catalogButton} lg:hidden`} onClick={openFilters}>Фильтры ({activeFilterCount(state.filters)})</button>}
         {kind === 'roasters' && Object.keys(state.filters).length > 0 && <button type="button" className={catalogButton} onClick={reset}>Сбросить фильтры</button>}
-      </div>}
-    {(kind === 'discovery' || kind === 'shops') && <FilterChips filters={state.filters} groups={groups} onChange={filters => update(applyCriteria(state, { filters }))} />}
-    <div className="flex items-start gap-6">{kind !== 'roasters' && <aside className={`${kind === 'discovery' ? catalogPanel : ''} hidden w-72 shrink-0 lg:block`}>{filterForm()}</aside>}<div className="min-w-0 flex-1 space-y-5">
+      </div>}</div></div>
+    {(kind === 'discovery' || kind === 'shops') && <FilterChips filters={state.filters} groups={groups} onChange={apply} />}
+    <div className="flex items-start gap-6">{kind !== 'roasters' && <aside ref={filterExposure} className={`${kind === 'discovery' ? catalogPanel : ''} hidden w-72 shrink-0 lg:block`}>{filterForm()}</aside>}<div className="min-w-0 flex-1 space-y-5">
       {parsed.error && <p role="alert">{parsed.error} <button className={catalogButton} onClick={reset}>Сбросить</button></p>}
       {!!Object.keys(errors).length && <div role="alert" className="space-y-2 text-red-700 dark:text-red-300">{Object.entries(errors).map(([key, value]) => <p key={key}>{key}: {value}</p>)}</div>}
       {!user && personal && <div className={catalogPanel}><p>Войдите, чтобы использовать личные фильтры.</p><button className={catalogButton} onClick={requireAuth}>Войти</button></div>}
@@ -146,7 +171,7 @@ export default function CatalogSearchPage({ kind }: { kind: CatalogKind }) {
       })}
     </div></div>
     {kind !== 'roasters' && <dialog ref={dialog} onClose={() => setMobileOpen(false)} className={`max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg rounded-2xl p-5 backdrop:bg-black/60 ${theme === 'dark' ? 'bg-[#2D241F] text-white' : 'bg-white text-stone-900'}`}>
-      <div className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Фильтры</h2><button type="button" className={catalogButton} onClick={() => dialog.current?.close()} aria-label="Закрыть фильтры">×</button></div>{(mobileOpen || kind === 'coffees') && filterForm()}
+      <div ref={mobileFilterExposure} className="mb-4 flex items-center justify-between"><h2 className="text-xl font-bold">Фильтры</h2><button type="button" className={catalogButton} onClick={() => dialog.current?.close()} aria-label="Закрыть фильтры">×</button></div>{(mobileOpen || kind === 'coffees') && filterForm()}
     </dialog>}
   </main>;
 }

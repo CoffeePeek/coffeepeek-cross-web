@@ -9,6 +9,7 @@ import { useToast } from '../contexts/ToastContext';
 import { getThemeColors } from '../constants/colors';
 import { getDeviceLocation } from '../utils/geolocation';
 import ShopFilterPanel from './ShopFilterPanel';
+import { captureAnalyticsEvent } from '../lib/analytics';
 
 export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar', resultCount, onClose }: {
   filters: ShopFilters; onApply: (filters: Record<string, unknown>) => void;
@@ -41,7 +42,9 @@ export default function ShopCatalogFilters({ filters, onApply, mode = 'sidebar',
       if (key === 'all') { patch({ isOpen: undefined, isNew: undefined, visitedOnly: undefined, favoritesOnly: undefined, origin: undefined, radiusKm: undefined, type: undefined }); return; }
       if (key === 'nearby') {
         if (draft.origin) { patch({ origin: undefined, radiusKm: undefined }); return; }
+        const startedAt = performance.now();
         const location = (await deviceLocation.refetch()).data;
+        captureAnalyticsEvent('geolocation_result', { placement: 'filters', trigger: 'user', outcome: location ? 'available' : 'unavailable', duration_ms: Math.round(performance.now() - startedAt) });
         if (location) patch({ origin: { latitude: location.coords.latitude, longitude: location.coords.longitude }, radiusKm: undefined });
         else showToast('Геолокация недоступна. Обычный поиск продолжает работать.', 'warning');
         return;

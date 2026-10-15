@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
   const productionApiUrl = loadEnv('production', process.cwd(), '').VITE_API_URL?.trim();
   const apiTarget = [configuredApiUrl, productionApiUrl].find(url => url && /^https?:\/\//.test(url));
   return {
+    define: {
+      __APP_VERSION__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || process.env.APP_VERSION || `local-${new Date().toISOString()}`),
+    },
     server: {
       port: parseInt(process.env.PORT || "5173"),
       strictPort: true,

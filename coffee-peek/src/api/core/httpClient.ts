@@ -18,6 +18,9 @@ import {
 import { ApiRequestError } from './apiError';
 import { emitSessionInvalidated } from '../../realtime/forceLogout';
 import { getCatalogScope } from '../../lib/catalogSession';
+import { captureAnalyticsEvent } from '../../lib/analytics';
+import { analyticsApiCategory } from '../../lib/analyticsContext';
+import { getAnalyticsError } from '../../lib/analyticsError';
 
 /**
  * Базовый HTTP клиент
@@ -78,6 +81,32 @@ class HttpClient {
     endpoint: string,
     options: RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean } = {}
   ): Promise<ApiResponse<T>> {
+    const startedAt = Date.now();
+    const scope = getCatalogScope();
+    const trace = { authRetried: false };
+    const base = { category: analyticsApiCategory(endpoint), method: options.method ?? 'GET' };
+    try {
+      const response = await this.executeRequest<T>(endpoint, options, trace);
+      if (scope === getCatalogScope()) captureAnalyticsEvent('api_request_completed', {
+        ...base, outcome: 'success', duration_ms: Date.now() - startedAt,
+        auth_retried: trace.authRetried, status_code: typeof response.statusCode === 'number' ? response.statusCode : undefined,
+      });
+      return response;
+    } catch (error) {
+      const diagnostic = getAnalyticsError(error);
+      if (scope === getCatalogScope() && diagnostic.error_category !== 'cancelled') captureAnalyticsEvent('api_request_completed', {
+        ...base, outcome: 'failure', duration_ms: Date.now() - startedAt,
+        auth_retried: trace.authRetried, ...diagnostic,
+      });
+      throw error;
+    }
+  }
+
+  private async executeRequest<T>(
+    endpoint: string,
+    options: RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean },
+    trace: { authRetried: boolean },
+  ): Promise<ApiResponse<T>> {
     const { params, requiresAuth = true, skipAuthHeader, _retry, raw, binary, ...fetchOptions } = options;
     const scope = getCatalogScope();
     const checkSession = () => { if (scope !== getCatalogScope() || fetchOptions.signal?.aborted) throw new DOMException('Session changed or request cancelled', 'AbortError'); };
@@ -114,7 +143,8 @@ class HttpClient {
         const refreshed = await tryRefreshAccessToken(this.baseURL);
         checkSession();
         if (refreshed === 'ok') {
-          return this.request<T>(endpoint, { ...options, _retry: true });
+          trace.authRetried = true;
+          return this.executeRequest<T>(endpoint, { ...options, _retry: true }, trace);
         }
         // Сеть/5xx/429 при refresh — сессия может быть жива, не разлогиниваем.
         if (hadSession && refreshed === 'rejected') {
@@ -126,7 +156,7 @@ class HttpClient {
       if (binary && response.ok) {
         const blob = await response.blob();
         checkSession();
-        return { success: true, message: '', data: blob as T };
+        return { success: true, message: '', data: blob as T, statusCode: response.status };
       }
 
       // Применяем response interceptor

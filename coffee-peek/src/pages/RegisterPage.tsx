@@ -4,6 +4,7 @@ import { register, checkEmailExists } from '../api/auth';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { LEGAL_ROUTES } from '../constants/legalRoutes';
 import { logger } from '../utils/logger';
+import { captureAnalyticsEvent } from '../lib/analytics';
 import { useUser } from '../contexts/UserContext';
 import { parseJWT, isTokenExpired, getUserRoles } from '../utils/jwt';
 import GoogleSignInButton from '../components/GoogleSignInButton';
@@ -187,6 +188,7 @@ const RegisterPage: React.FC = () => {
     try {
       const response = await register({ email: email.trim(), password, userName: userName.trim() });
       if (!response.isSuccess) throw new Error(response.message || 'Ошибка при регистрации');
+      captureAnalyticsEvent('sign_up_completed', { method: 'password' });
       localStorage.setItem('privacyConsent', 'accepted');
       localStorage.setItem('privacyConsentDate', new Date().toISOString());
       setStep('success');
@@ -293,6 +295,7 @@ const RegisterPage: React.FC = () => {
                         parseJWT(accessToken);
                         getUserRoles(accessToken);
                         updateUserFromToken(accessToken);
+                        captureAnalyticsEvent('sign_in_completed', { method: 'google', entry_point: 'register' });
                         navigate(from, { replace: true });
                       }}
                       onError={setGlobalError}
