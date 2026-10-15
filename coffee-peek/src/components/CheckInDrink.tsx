@@ -10,7 +10,7 @@ export default function CheckInDrink({ name, photoUrl, onPhotoOpen }: { name: st
   const label = name || 'Напиток';
 
   return <div className={`ml-auto flex min-w-0 max-w-[65%] items-center gap-2 text-left text-sm font-medium ${classes.text.secondary}`}>
-    <CheckInDrinkPhoto url={photoUrl} alt={label} thumbnail thumbnailSize={80} preview onOpen={onPhotoOpen} fallback={<Coffee aria-hidden="true" size={32} />} />
+    <CheckInDrinkPhoto url={photoUrl} alt={label} thumbnail thumbnailSize={photoUrl ? 80 : 32} preview onOpen={onPhotoOpen} fallback={<Coffee aria-hidden="true" size={32} />} />
     <span className="min-w-0 break-words">{label}</span>
   </div>;
 }

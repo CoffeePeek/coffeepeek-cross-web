@@ -83,7 +83,7 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
     {isOwn && <div className={`mb-3 ${feed && published ? 'hidden sm:block' : ''}`}><CheckInStatus item={item} /></div>}
     <p className="whitespace-pre-line break-words text-base leading-[1.55]">{item.text}</p>
     <div onClickCapture={event => { if ((event.target as HTMLElement).closest('button')?.querySelector('img')) trackFeedAction('photo'); }}><CheckInPhotos photos={item.photos} shopName={item.shopName} feed={feed} /></div>
-    {(published || isOwn || drinkName || item.drinkPhotoUrl) && <div className="mt-4 flex items-center justify-between gap-4">
+    {(published || isOwn || drinkName || item.drinkPhotoUrl) && <div className={`mt-4 flex items-center justify-between gap-4 ${feed ? 'feed-check-in-footer' : ''}`}>
       {(published || isOwn) && <div className="shrink-0">
       {!isOwn && user && published ? <button type="button" aria-label={item.isHelpfulByCurrentUser ? 'Убрать отметку «Нравится»' : 'Нравится'} aria-pressed={item.isHelpfulByCurrentUser} disabled={helpful.isPending} className={`-ml-2 inline-flex min-h-11 items-center gap-2 rounded-full px-2 pr-3 text-sm transition-colors hover:bg-red-500/10 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${item.isHelpfulByCurrentUser ? 'bg-red-500/10' : ''}`} onClick={() => { trackFeedAction(item.isHelpfulByCurrentUser ? 'unlike' : 'like'); helpful.mutate({ id: item.id, helpful: !item.isHelpfulByCurrentUser }); }}>
         <Heart aria-hidden="true" size={26} weight={feed && !item.isHelpfulByCurrentUser ? 'regular' : 'fill'} className="text-red-500" /><span className="tabular-nums">{item.helpfulCount}</span>
