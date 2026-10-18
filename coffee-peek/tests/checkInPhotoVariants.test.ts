@@ -73,3 +73,21 @@ test('logout, account change and local mutations synchronously invalidate displa
   expect(listener).toHaveBeenCalledTimes(1);
   unsubscribe();
 });
+
+test('cancelling just after a queue wake passes the available slot to the next subscriber', async () => {
+  let complete!: (value: Blob) => void;
+  const load = jest.fn((url: string) => url === '/active'
+    ? new Promise<Blob>(resolve => { complete = resolve; }) : Promise.resolve(new Blob([url])));
+  const pool = new PhotoRequests(load, 1);
+  const active = pool.acquire('/active', 1);
+  const cancelled = pool.acquire('/cancelled', 1);
+  const next = pool.acquire('/next', 1);
+  const rejected = expect(cancelled.promise).rejects.toMatchObject({ name: 'AbortError' });
+  complete(new Blob(['active']));
+  queueMicrotask(() => cancelled.release());
+  await active.promise;
+  await rejected;
+  await next.promise;
+  expect(load.mock.calls.map(call => call[0])).toEqual(['/active', '/next']);
+  active.release(); next.release();
+});

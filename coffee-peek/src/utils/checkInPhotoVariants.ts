@@ -7,7 +7,7 @@ export function selectCheckInPhoto(
   photo: Pick<CheckInPhoto, 'url' | 'variants'>,
   purpose: PhotoPurpose,
   targetPixels = purpose === 'thumb' ? 320 : purpose === 'feed' ? 960 : 1600,
-): { url: string; width?: number; height?: number } | null {
+): { url: string; width?: number; height?: number; cacheBinding?: string } | null {
   if (photo.variants == null) return photo.url ? { url: photo.url } : null;
   const supported = photo.variants.filter(variant => variant.purpose === purpose && variant.url
     && variant.width > 0 && variant.height > 0 && variant.sizeBytes > 0
@@ -18,5 +18,7 @@ export function selectCheckInPhoto(
     .sort((a, b) => Math.max(a.width, a.height) - Math.max(b.width, b.height));
   const chosen: CheckInPhotoVariant | undefined = candidates.find(variant => Math.max(variant.width, variant.height) >= targetPixels)
     ?? candidates[candidates.length - 1];
-  return chosen ? { url: chosen.url, width: chosen.width, height: chosen.height } : null;
+  return chosen ? { url: chosen.url, width: chosen.width, height: chosen.height,
+    cacheBinding: JSON.stringify([chosen.sourceVersion, chosen.recipeVersion, chosen.purpose, chosen.format, chosen.url]),
+  } : null;
 }

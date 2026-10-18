@@ -1,13 +1,13 @@
-type Entry = { controller: AbortController; promise: Promise<Blob>; users: number };
+type Entry<T> = { controller: AbortController; promise: Promise<T>; users: number };
 
 /** Shares only in-flight requests. Bytes and object URLs are never retained here. */
-export class PhotoRequests {
+export class PhotoRequests<T = Blob> {
   private active = 0;
   private waiting = new Set<() => void>();
-  private entries = new Map<string, Entry>();
-  private load: (url: string, signal: AbortSignal) => Promise<Blob>;
+  private entries = new Map<string, Entry<T>>();
+  private load: (url: string, signal: AbortSignal) => Promise<T>;
   private limit: number;
-  constructor(load: (url: string, signal: AbortSignal) => Promise<Blob>, limit = 4) {
+  constructor(load: (url: string, signal: AbortSignal) => Promise<T>, limit = 4) {
     this.load = load;
     this.limit = limit;
   }
@@ -36,7 +36,12 @@ export class PhotoRequests {
     } };
   }
 
-  private async run(url: string, signal: AbortSignal): Promise<Blob> {
+  clear() {
+    this.entries.forEach(entry => entry.controller.abort());
+    this.entries.clear();
+  }
+
+  private async run(url: string, signal: AbortSignal): Promise<T> {
     while (this.active >= this.limit) {
       await new Promise<void>((resolve, reject) => {
         const wake = () => { signal.removeEventListener('abort', cancel); this.waiting.delete(wake); resolve(); };
@@ -46,9 +51,17 @@ export class PhotoRequests {
         signal.addEventListener('abort', cancel, { once: true });
       });
     }
-    if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+    if (signal.aborted) {
+      // Cancellation can arrive after wake() removed its listener but before this continuation.
+      this.waiting.values().next().value?.();
+      throw new DOMException('Cancelled', 'AbortError');
+    }
     this.active++;
-    try { return await this.load(url, signal); }
+    try {
+      const result = await this.load(url, signal);
+      if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+      return result;
+    }
     finally { this.active--; this.waiting.values().next().value?.(); }
   }
 }

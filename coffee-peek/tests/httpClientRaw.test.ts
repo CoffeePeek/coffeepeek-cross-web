@@ -3,14 +3,14 @@ jest.mock('../src/api/core/interceptors', () => ({
   requestInterceptor: (_url: string, options: RequestInit) => options,
   ensureFreshAccessToken: jest.fn(), isAuthTokenEndpoint: () => false,
   responseInterceptor: jest.fn(), normalizeResponseData: (data: unknown) => data,
-  TokenManager: { getAccessToken: () => null },
+  TokenManager: { getAccessToken: jest.fn(() => null) },
 }));
 jest.mock('../src/realtime/forceLogout', () => ({ emitSessionInvalidated: jest.fn() }));
 import HttpClient from '../src/api/core/httpClient';
-import { responseInterceptor } from '../src/api/core/interceptors';
+import { responseInterceptor, TokenManager } from '../src/api/core/interceptors';
 const client = new HttpClient('https://api.example');
 const original = globalThis.fetch;
-afterEach(() => { globalThis.fetch = original; });
+afterEach(() => { globalThis.fetch = original; jest.mocked(TokenManager.getAccessToken).mockReturnValue(null); });
 test('raw GET preserves envelope, metadata and array and disables fetch caching', async () => {
   for (const body of [{ data: { shopDto: { name: 'Coffee' } }, address: { entityId: 'id' } }, { entityId: 'id' }, []]) {
     globalThis.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify(body)));
@@ -66,4 +66,26 @@ test('deleting a check-in preserves null data and uses the HTTP success status',
   globalThis.fetch = jest.fn().mockResolvedValue(new Response('{}', { status: 200 }));
   jest.mocked(responseInterceptor).mockResolvedValueOnce({ data: null, isSuccess: true, statusCode: null });
   expect(await client.delete('/api/v1/check-ins/id')).toMatchObject({ data: null, statusCode: 200, success: true });
+});
+
+test('conditional photo GET preserves 304 metadata without JSON or body parsing and bypasses implicit caches', async () => {
+  const headers = new Headers({ ETag: '"variant"', 'Cache-Control': 'private,max-age=20', Date: new Date().toUTCString(), Age: '3' });
+  const json = jest.fn(), blob = jest.fn();
+  globalThis.fetch = jest.fn().mockResolvedValue({ status: 304, ok: false, headers, json, blob });
+  const result = await client.getPhotoResponse('/api/v1/check-ins/id/photos/photo/variants/source/1/feed.webp', undefined, '"variant"');
+  expect(result).toMatchObject({ status: 304, headers, blob: undefined });
+  expect(result.responseMono).toBeGreaterThanOrEqual(result.requestMono);
+  expect(json).not.toHaveBeenCalled(); expect(blob).not.toHaveBeenCalled();
+  expect(globalThis.fetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+    cache: 'no-store', redirect: 'error', headers: { 'If-None-Match': '"variant"' },
+  }));
+});
+
+test('expired or malformed current credentials never fall back to an anonymous photo request', async () => {
+  for (const token of ['malformed', `e30.${btoa(JSON.stringify({ exp: 1 }))}.signature`]) {
+    jest.mocked(TokenManager.getAccessToken).mockReturnValue(token);
+    globalThis.fetch = jest.fn();
+    await expect(client.getPhotoResponse('/api/v1/check-ins/id/photos/photo')).rejects.toThrow('credentials expired');
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  }
 });

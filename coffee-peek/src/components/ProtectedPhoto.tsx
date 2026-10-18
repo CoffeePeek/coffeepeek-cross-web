@@ -24,7 +24,7 @@ export default function ProtectedPhoto({ photo, purpose, alt = '', className = '
   }, []);
   const candidate = selectCheckInPhoto({ ...photo, variants: photo.variants?.filter(variant => !decodeFailures.includes(variant.url)) }, purpose, pixels);
   const selected = candidate && !decodeFailures.includes(candidate.url) ? candidate : null;
-  const image = useProtectedPhoto(selected?.url, visible);
+  const image = useProtectedPhoto(selected?.url, visible, selected?.cacheBinding);
   return <div ref={host} className={`relative ${className}`}>
     {image.src ? <img src={image.src} alt={alt} width={selected?.width} height={selected?.height}
       decoding="async" onError={() => { if (selected) setDecodeFailures(previous => [...previous, selected.url]); }} className="h-full w-full object-contain" />

@@ -162,7 +162,7 @@ export function requestInterceptor(
   }
 
   logger.log(`[API Request] ${options.method || 'GET'} ${url}`, {
-    headers: Object.fromEntries(headers.entries()),
+    headers: Object.fromEntries(Array.from(headers.entries(), ([name, value]) => [name, name.toLowerCase() === 'authorization' ? '[redacted]' : value])),
     body: options.body,
   });
 
