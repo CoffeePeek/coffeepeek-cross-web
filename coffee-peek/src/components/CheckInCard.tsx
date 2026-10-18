@@ -12,7 +12,8 @@ import { savedDrinkName } from '../utils/consumedDrinks';
 import { getMockDrinkPhoto } from '../utils/drinkPhotos';
 import { getErrorMessage } from '../utils/errorHandler';
 import { StarIcon } from './icons';
-import CheckInPhotos from './CheckInPhotos';
+import CheckInPhotos, { CheckInPhotoViewer } from './CheckInPhotos';
+import ProtectedPhoto from './ProtectedPhoto';
 import CheckInStatus from './CheckInStatus';
 import PhotoLightbox from './PhotoLightbox';
 import ReportCheckInButton from './ReportCheckInButton';
@@ -72,7 +73,7 @@ export default function CheckInCard({ item, own = false, showShop = true }: { it
     </div>
     {isOwn && <div className="mb-3"><CheckInStatus item={item} /></div>}
     {drinkName && <button type="button" onClick={() => setDrinkOpen(true)} aria-label={`Посмотреть фото напитка: ${drinkName}`} className={`mb-4 flex min-h-14 w-full items-center gap-3 rounded-2xl p-1.5 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${theme === 'light' ? classes.bg.secondary : classes.bg.tertiary}`}>
-      <img src={drinkPhoto} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
+      {item.drinkPhotoUrl ? <ProtectedPhoto photo={{ url: item.drinkPhotoUrl, variants: item.drinkPhotoVariants }} purpose="thumb" className="h-11 w-11 shrink-0 rounded-xl" /> : <img src={drinkPhoto} alt="" loading="lazy" className="h-11 w-11 shrink-0 rounded-xl object-cover" />}
       <span className="min-w-0 flex-1 break-words text-sm font-medium">{drinkName}</span>
       <CaretRight aria-hidden="true" size={18} className="mr-2 shrink-0" />
     </button>}
@@ -84,6 +85,6 @@ export default function CheckInCard({ item, own = false, showShop = true }: { it
       </button> : <span aria-label={`Отметок «Нравится»: ${item.helpfulCount}`} className="inline-flex min-h-11 items-center gap-2 text-sm"><Heart aria-hidden="true" size={26} weight="fill" className="text-red-500" /><span className="tabular-nums">{item.helpfulCount}</span></span>}
     </div>}
     {actionError && <p role="alert" className="mt-2 text-sm text-red-500">{getErrorMessage(actionError)}</p>}
-    {drinkOpen && <PhotoLightbox images={[drinkPhoto]} shopName={drinkName} onClose={() => setDrinkOpen(false)} />}
+    {drinkOpen && (item.drinkPhotoUrl ? <CheckInPhotoViewer photos={[{ url: item.drinkPhotoUrl, variants: item.drinkPhotoVariants }]} title={drinkName} onClose={() => setDrinkOpen(false)} /> : <PhotoLightbox images={[drinkPhoto]} shopName={drinkName} onClose={() => setDrinkOpen(false)} />)}
   </article>;
 }

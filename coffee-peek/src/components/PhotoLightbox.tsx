@@ -10,6 +10,8 @@ interface PhotoLightboxProps {
   shopName: string;
   initialIndex?: number;
   onClose: () => void;
+  renderImage?: (index: number) => React.ReactNode;
+  onOriginal?: (index: number) => void;
 }
 
 function toUrl(img: PhotoInput): string {
@@ -25,6 +27,8 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
   shopName,
   initialIndex = 0,
   onClose,
+  renderImage,
+  onOriginal,
 }) => {
   const dialog = useRef<HTMLDialogElement>(null);
   const urls = images.map(toUrl).filter((url) => url.length > 0);
@@ -127,13 +131,14 @@ const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
       )}
 
       <div className="relative z-10 flex h-full w-full max-w-6xl items-center justify-center pointer-events-none">
-        <img
+        {renderImage ? <div className="h-[85vh] w-full pointer-events-auto">{renderImage(index)}</div> : <img
           src={current}
           alt={`${shopName} — фото ${index + 1}`}
           className="max-h-[min(90vh,900px)] max-w-full object-contain select-none pointer-events-auto"
           draggable={false}
-        />
+        />}
       </div>
+      {onOriginal && <button type="button" className="absolute bottom-5 left-1/2 z-30 min-h-11 -translate-x-1/2 rounded-xl bg-black/70 px-4 text-white" onClick={() => onOriginal(index)}>Открыть оригинал</button>}
     </dialog>,
     document.body
   );

@@ -403,6 +403,19 @@ export interface CheckInPhoto {
   sizeBytes: number;
   sortIndex: number;
   url: string;
+  variants?: CheckInPhotoVariant[] | null;
+}
+
+export interface CheckInPhotoVariant {
+  purpose: string;
+  format: string;
+  contentType: string;
+  width: number;
+  height: number;
+  sizeBytes: number;
+  sourceVersion: string;
+  recipeVersion: number;
+  url: string;
 }
 
 export interface CheckInDto extends SavedDrink {
@@ -420,6 +433,8 @@ export interface CheckInDto extends SavedDrink {
   contentRevision: number;
   rejectionReason: string | null;
   photos: CheckInPhoto[];
+  drinkPhotoUrl?: string | null;
+  drinkPhotoVariants?: CheckInPhotoVariant[] | null;
   helpfulCount: number;
   isHelpfulByCurrentUser: boolean;
 }

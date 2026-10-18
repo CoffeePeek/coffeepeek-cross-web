@@ -9,6 +9,7 @@ import { getErrorMessageByStatus } from '../../utils/errorHandler';
 import { logger } from '../../utils/logger';
 import { isTokenExpired } from '../../utils/jwt';
 import { normalizeCheckInDto } from './checkInNormalize';
+import { invalidateProtectedPhotos } from '../../lib/photoSession';
 import { normalizeDayOfWeek } from '../../utils/shopUtils';
 
 /**
@@ -26,12 +27,14 @@ export class TokenManager {
   static setAccessToken(accessToken: string): void {
     this.revision++;
     this.accessToken = accessToken;
+    invalidateProtectedPhotos();
     sessionAbsent = false;
   }
 
   static clearTokens(): void {
     this.revision++;
     this.accessToken = null;
+    invalidateProtectedPhotos();
   }
 
   static isAuthenticated(): boolean {

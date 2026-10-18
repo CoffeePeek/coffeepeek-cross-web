@@ -181,7 +181,7 @@ class HttpClient {
     if (target.origin !== base.origin && target.origin !== configuredOrigin) throw new Error('Недоступный адрес фотографии');
     const endpoint = target.pathname.startsWith('/backend/') ? target.pathname.slice(8) : target.pathname;
     return (await this.request<Blob>(`${endpoint}${target.search}`, {
-      method: 'GET', binary: true, cache: 'no-store', signal,
+      method: 'GET', binary: true, cache: 'no-store', redirect: 'error', signal,
     })).data;
   }
 

@@ -1,3 +1,5 @@
+import { invalidateProtectedPhotos } from './photoSession';
+
 let scope = 'guest:0';
 let generation = 0;
 let identity: string | null = null;
@@ -8,6 +10,7 @@ export function changeCatalogSession(userId: string | null, force = false): stri
   if (identity === userId && !force) return scope;
   identity = userId;
   scope = `${userId ?? 'guest'}:${++generation}`;
+  invalidateProtectedPhotos();
   requests.forEach(controller => controller.abort());
   requests.clear();
   return scope;
