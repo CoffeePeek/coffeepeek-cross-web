@@ -22,6 +22,10 @@ import { useFavorite } from '../hooks/useFavorites';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useRequireAuth } from '../hooks/useRequireAuth';
 import { useShopData } from '../hooks/useShopData';
+import { useEntityDetailAnalytics } from '../hooks/useEntityDetailAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
+import { captureAnalyticsEvent } from '../lib/analytics';
+import { createCheckInFlow } from '../lib/checkInAnalytics';
 import { distanceKm, formatDistance } from '../utils/distance';
 import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { getPriceRangeTier } from '../utils/priceRange';
@@ -60,6 +64,12 @@ const CoffeeShopPage: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   usePageTitle(shop?.name || 'Кофейня');
+  useEntityDetailAnalytics('coffee_shop', !isLoading && !error && shop ? shop.id : undefined);
+  const directionsRef = useFeatureExposure<HTMLAnchorElement>('directions', 'shop_detail');
+  const checkInRef = useFeatureExposure<HTMLButtonElement>('check_in', 'shop_detail');
+  const roastersRef = useFeatureExposure<HTMLElement>('shop_roasters', 'shop_detail');
+  const favoriteRef = useFeatureExposure<HTMLButtonElement>('favorites', 'shop_detail');
+  const shareRef = useFeatureExposure<HTMLButtonElement>('share', 'shop_detail');
 
   useEffect(() => {
     let cancelled = false;
@@ -129,16 +139,19 @@ const CoffeeShopPage: React.FC = () => {
   };
 
   const handleCheckIn = () => {
-    if (!requireAuth()) return;
-    void openPublic('shops', shop.publicAddress ?? shopId, '/check-ins/new');
+    captureAnalyticsEvent('check_in_start_attempted', { source: 'shop_detail' });
+    if (!requireAuth('check_in')) return;
+    void openPublic('shops', shop.publicAddress ?? shopId, '/check-ins/new', { state: { checkInFlow: createCheckInFlow('shop_detail') } });
   };
 
   const handleEditShop = () => {
-    if (!requireAuth()) return;
+    captureAnalyticsEvent('shop_action_clicked', { action: 'edit', entry_point: 'shop_detail' });
+    if (!requireAuth('edit_shop')) return;
     openPublic('shops', shopId!, '/edit');
   };
 
   const handleShare = async () => {
+    captureAnalyticsEvent('shop_action_clicked', { action: 'share', entry_point: 'mobile_actions' });
     try {
       const address = shop.publicAddress;
       if (!address) throw new Error('Address unavailable');
@@ -166,8 +179,8 @@ const CoffeeShopPage: React.FC = () => {
           <CircleButton label="Назад" onClick={() => navigate(-1)}><ArrowLeft /></CircleButton>
           <div className="flex gap-2">
             <CircleButton label="Предложить изменение" onClick={handleEditShop}><NotePencil /></CircleButton>
-            <CircleButton label={shopIsFavorite ? 'Убрать из избранного' : 'Добавить в избранное'} onClick={handleToggleFavorite} disabled={favoritePending} pressed={shopIsFavorite}><Heart weight={shopIsFavorite ? 'fill' : 'regular'} color={shopIsFavorite ? colors.gold : 'currentColor'} /></CircleButton>
-            <CircleButton label="Поделиться" onClick={() => { void handleShare(); }}><ShareNetwork /></CircleButton>
+            <CircleButton exposureRef={favoriteRef} label={shopIsFavorite ? 'Убрать из избранного' : 'Добавить в избранное'} onClick={handleToggleFavorite} disabled={favoritePending} pressed={shopIsFavorite}><Heart weight={shopIsFavorite ? 'fill' : 'regular'} color={shopIsFavorite ? colors.gold : 'currentColor'} /></CircleButton>
+            <CircleButton exposureRef={shareRef} label="Поделиться" onClick={() => { void handleShare(); }}><ShareNetwork /></CircleButton>
           </div>
         </div>
         <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-3 text-white">
@@ -182,7 +195,7 @@ const CoffeeShopPage: React.FC = () => {
 
       <main className="mx-auto max-w-[920px] space-y-7 px-4 py-6 sm:px-6 sm:py-8">
         <section>
-          <ShopHeader shop={shop} avgRating={shop.rating || 0} checkInsTotalCount={checkInsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={favoritePending} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => setShowReportModal(true)} textMuted={textMuted} borderColor={borderColor} />
+          <ShopHeader shop={shop} avgRating={shop.rating || 0} checkInsTotalCount={checkInsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={favoritePending} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => { captureAnalyticsEvent('shop_action_clicked', { action: 'report_issue', entry_point: 'shop_header' }); setShowReportModal(true); }} textMuted={textMuted} borderColor={borderColor} />
           <div className="grid grid-cols-3 gap-2.5">
             <div className="rounded-[22px] p-4" style={{ background: isDark ? '#382F1E' : '#FFF9E8', color: colors.text }}><div className="flex items-center gap-2"><Star size={23} weight="fill" color={colors.gold} /><strong className="text-lg sm:text-xl">{(shop.rating || 0).toFixed(1)}</strong></div><p className="mt-1 text-xs" style={{ color: colors.muted }}>{checkInsTotalCount} чекинов</p></div>
             <div className="rounded-[22px] p-4" style={{ background: status?.isOpen ? (isDark ? '#183B2A' : '#DCF7E7') : (isDark ? '#442727' : '#FEE2E2'), color: status?.isOpen ? '#22C55E' : '#EF4444' }}><strong className="block text-sm sm:text-xl">● {status?.isOpen ? 'Открыта' : 'Закрыта'}</strong>{statusTime && <p className="mt-1 text-xs opacity-75">{status?.isOpen ? 'до' : 'с'} {statusTime}</p>}</div>
@@ -195,7 +208,7 @@ const CoffeeShopPage: React.FC = () => {
         <ShopMenuSection menu={shop.menu ?? null} textMain={textMain} textMuted={textMuted} cardBg={cardBg} borderColor={borderColor} />
         {!!shop.schedules?.length && <HoursCard shop={shop} schedules={localSchedules} colors={colors} />}
 
-        {!!shop.roasters?.length && <section><SectionTitle colors={colors}>Обжарщики</SectionTitle><div className="overflow-hidden rounded-[24px] border" style={{ background: colors.surface, borderColor: colors.border }}>{shop.roasters.map((roaster, index) => <PublicEntityLink key={roaster.id} kind="roasters" entityId={roaster.id} address={roaster.publicAddress} className="flex min-h-[72px] w-full items-center gap-4 px-5 py-3 text-left" style={{ borderTop: index ? `1px solid ${colors.border}` : undefined, color: colors.text }}>{roaster.photoUrl ? <img src={roaster.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 font-bold text-stone-700">{roaster.name[0]}</span>}<span className="flex-1 font-semibold">{roaster.name}</span><AppIcon name="chevron_right" size={20} color={colors.muted} /></PublicEntityLink>)}</div></section>}
+        {!!shop.roasters?.length && <section ref={roastersRef}><SectionTitle colors={colors}>Обжарщики</SectionTitle><div className="overflow-hidden rounded-[24px] border" style={{ background: colors.surface, borderColor: colors.border }}>{shop.roasters.map((roaster, index) => <PublicEntityLink onClickCapture={() => captureAnalyticsEvent('shop_content_interacted', { section: 'roasters', action: 'select' })} key={roaster.id} kind="roasters" entityId={roaster.id} address={roaster.publicAddress} className="flex min-h-[72px] w-full items-center gap-4 px-5 py-3 text-left" style={{ borderTop: index ? `1px solid ${colors.border}` : undefined, color: colors.text }}>{roaster.photoUrl ? <img src={roaster.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 font-bold text-stone-700">{roaster.name[0]}</span>}<span className="flex-1 font-semibold">{roaster.name}</span><AppIcon name="chevron_right" size={20} color={colors.muted} /></PublicEntityLink>)}</div></section>}
 
         {!!shop.brewMethods?.length && <section><SectionTitle colors={colors}>Методы заваривания</SectionTitle><div className="flex flex-wrap gap-2 rounded-[24px] border p-5" style={{ background: colors.surface, borderColor: colors.border }}>{shop.brewMethods.map(method => <span key={method.id} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold" style={{ background: isDark ? '#3A321F' : '#FBF4DF', color: '#B38B32' }}><AppIcon name={`brew:${method.name}`} size={24} />{method.name}</span>)}</div></section>}
 
@@ -208,8 +221,8 @@ const CoffeeShopPage: React.FC = () => {
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-[1150] flex items-center gap-2 border-t px-4 py-3 backdrop-blur-xl lg:hidden" style={{ background: isDark ? 'rgba(23,18,16,.9)' : 'rgba(248,247,245,.9)', borderColor: colors.border, paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
-        <a href={directionsUrl} target="_blank" rel="noopener noreferrer" aria-label="Построить маршрут" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg" style={{ background: colors.gold, color: '#1A1412' }}><NavigationArrow size={22} weight="fill" /></a>
-        <button type="button" onClick={handleCheckIn} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><Check size={20} />Чекин</button>
+        <a ref={directionsRef} href={directionsUrl} onClick={() => captureAnalyticsEvent('shop_action_clicked', { action: 'directions', entry_point: 'mobile_actions' })} target="_blank" rel="noopener noreferrer" aria-label="Построить маршрут" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-lg" style={{ background: colors.gold, color: '#1A1412' }}><NavigationArrow size={22} weight="fill" /></a>
+        <button ref={checkInRef} type="button" onClick={handleCheckIn} className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-bold shadow-lg" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}><Check size={20} />Чекин</button>
       </div>
 
       <ReportShopIssueModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} shopId={shopId} shopName={shop.name} />
@@ -217,8 +230,8 @@ const CoffeeShopPage: React.FC = () => {
   );
 };
 
-const CircleButton: React.FC<{ label: string; onClick: () => void; pressed?: boolean; disabled?: boolean; children: React.ReactNode }> = ({ label, onClick, pressed, disabled, children }) => (
-  <button type="button" disabled={disabled} onClick={onClick} aria-label={label} aria-pressed={pressed} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg backdrop-blur [&_svg]:h-7 [&_svg]:w-7 [&_svg]:shrink-0">{children}</button>
+const CircleButton: React.FC<{ label: string; onClick: () => void; pressed?: boolean; disabled?: boolean; exposureRef?: React.RefCallback<HTMLButtonElement>; children: React.ReactNode }> = ({ label, onClick, pressed, disabled, exposureRef, children }) => (
+  <button ref={exposureRef} type="button" disabled={disabled} onClick={onClick} aria-label={label} aria-pressed={pressed} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-lg backdrop-blur [&_svg]:h-7 [&_svg]:w-7 [&_svg]:shrink-0">{children}</button>
 );
 
 const SectionTitle: React.FC<{ colors: DetailColors; children: React.ReactNode }> = ({ colors, children }) => (
@@ -227,11 +240,12 @@ const SectionTitle: React.FC<{ colors: DetailColors; children: React.ReactNode }
 
 const HoursCard: React.FC<{ shop: DetailedCoffeeShop; schedules: ReturnType<typeof toLocalSchedules>; colors: DetailColors }> = ({ shop, schedules, colors }) => {
   const [open, setOpen] = useState(false);
+  const exposureRef = useFeatureExposure<HTMLButtonElement>('shop_hours', 'shop_detail');
   const currentDay = getCurrentDayOfWeek();
   const today = schedules.find(schedule => schedule.dayOfWeek === currentDay);
   return (
     <section className="overflow-hidden rounded-[24px] border" style={{ background: colors.surface, borderColor: colors.border }}>
-      <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="flex min-h-[76px] w-full items-center gap-4 border-0 bg-transparent px-5 text-left" style={{ color: colors.text }}>
+      <button ref={exposureRef} type="button" onClick={() => { captureAnalyticsEvent('shop_content_interacted', { section: 'hours', action: open ? 'close' : 'open' }); setOpen(!open); }} aria-expanded={open} className="flex min-h-[76px] w-full items-center gap-4 border-0 bg-transparent px-5 text-left" style={{ color: colors.text }}>
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${colors.gold}18`, color: colors.gold }}><Clock size={24} /></span>
         <strong className="flex-1 text-lg">Часы работы</strong>
         {!open && <span className="text-sm tabular-nums" style={{ color: colors.muted }}>{today?.openTime && today?.closeTime ? `${today.openTime}–${today.closeTime}` : shop.isOpen ? 'Открыто' : 'Закрыто'}</span>}

@@ -14,13 +14,14 @@ interface ShopSearchBarProps {
   ariaLabel?: string;
   className?: string;
   desktopFilters?: boolean;
+  onBack?: () => void;
 }
 
 const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
   searchQuery, onSearchChange, showFilters, onFilterToggle, activeFilterCount,
   colors, dark,
   placeholder = 'Поиск кофейни…', ariaLabel = 'Поиск кофейни', className = 'mx-auto max-w-[1680px] px-4 sm:px-6 lg:px-8',
-  desktopFilters = false,
+  desktopFilters = false, onBack,
 }) => {
   const gold = COLORS.primary;
   const goldWarm = '#D4A84B';
@@ -58,6 +59,9 @@ const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
       {/* ── Desktop ───────────────────────────────────────────── */}
       <div className="hidden pb-1 pt-4 lg:block">
         <div className="flex items-center gap-2">
+        {onBack && <button type="button" aria-label="Назад к поиску" onClick={onBack} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ ...filterBtn(desktopFilters ? 52 : 44), background: colors.surface, color: gold, border: `1px solid ${borderColor}` }}>
+          <AppIcon name="chevron_left" size={26} />
+        </button>}
         <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
           <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}>
             <AppIcon name="search" size={18} color={goldWarm} />
@@ -83,6 +87,9 @@ const ShopSearchBar: React.FC<ShopSearchBarProps> = ({
       {/* ── Mobile search — Search left, Фильтры right ─────── */}
       <div className="lg:hidden pb-4 pt-7">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {onBack && <button type="button" aria-label="Назад к поиску" onClick={onBack} className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" style={{ ...filterBtn(56), background: colors.surface, color: gold, border: `1px solid ${borderColor}` }}>
+            <AppIcon name="chevron_left" size={28} />
+          </button>}
           {/* Search — fills remaining */}
           <div style={{ flex: '1 1 0', minWidth: 0, position: 'relative' }}>
             <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>

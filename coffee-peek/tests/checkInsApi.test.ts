@@ -15,6 +15,12 @@ test('mine sends query pagination and reads totalCount, with header totals takin
   expect(httpClient.get).toHaveBeenCalledWith('/api/v1/check-ins/mine', { params: { pageNumber: 2, pageSize: 10 }, requiresAuth: true });
 });
 
+test('mine preserves check-ins without a rating for display', async () => {
+  const unrated = { ...item, id: 'unrated', rating: null };
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [unrated], totalCount: 1 } } as never);
+  expect((await getCheckIns()).data.items).toEqual([unrated]);
+});
+
 test('calendar fetches every page in a half-open date range', async () => {
   const range = { from: '2026-09-01T00:00:00+03:00', to: '2026-10-01T00:00:00+03:00' };
   jest.mocked(httpClient.get).mockResolvedValueOnce({ data: { items: [item], totalCount: 101 } } as never).mockResolvedValueOnce({ data: { items: [{ ...item, id: 'second' }], totalCount: 101 } } as never);
@@ -23,13 +29,14 @@ test('calendar fetches every page in a half-open date range', async () => {
 });
 
 test('public lists and feed use separate cursors, slug filters and optional authorization', async () => {
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [], nextCursor: null } } as never);
   const filters = { authorSlug: 'author', coffeeShopSlug: 'coffee', citySlug: 'minsk', cursor: 'public-cursor', pageSize: 20 };
   await getPublicCheckIns(filters);
   expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/check-ins', { params: filters, requiresAuth: false });
   await getFeed({ ...filters, cursor: 'feed-cursor' });
-  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { ...filters, cursor: 'feed-cursor' }, requiresAuth: false });
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { ...filters, cursor: 'feed-cursor' }, requiresAuth: false, headers: { 'Cache-Control': 'no-store' } });
   await getFeed({ citySlug: 'another-city' });
-  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { citySlug: 'another-city' }, requiresAuth: false });
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/feed', { params: { citySlug: 'another-city' }, requiresAuth: false, headers: { 'Cache-Control': 'no-store' } });
 });
 
 test('creation returns the whole card and update uses the check-in ID with no mutable photos/date', async () => {
@@ -47,6 +54,7 @@ test('creation returns the whole card and update uses the check-in ID with no mu
 });
 
 test('visibility, helpful and deletion use explicit idempotent commands', async () => {
+  jest.mocked(httpClient.put).mockResolvedValue({ data: item } as never);
   await changeCheckInVisibility('id', 'Private');
   expect(httpClient.put).toHaveBeenLastCalledWith('/api/v1/check-ins/id/visibility', { visibility: 'Private' }, { requiresAuth: true });
   await setCheckInHelpful('id', true);

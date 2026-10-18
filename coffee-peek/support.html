@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ru" class="dark" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Помощь с приложением CoffeePeek. Свяжитесь с нами по адресу info@coffeepeek.by." />
+  <link rel="canonical" href="https://coffeepeek.by/support" />
+  <link rel="icon" type="image/x-icon" href="/favicon/favicon.ico" />
+  <title>Поддержка — CoffeePeek</title>
+  <script>
+    (function () {
+      try {
+        var theme = localStorage.getItem('theme');
+        if (theme !== 'light' && theme !== 'dark') theme = 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.classList.toggle('dark', theme === 'dark');
+        document.documentElement.classList.toggle('light', theme === 'light');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #1A1412;
+      --surface: #2D241F;
+      --input: #1A1412;
+      --text: #FFFFFF;
+      --secondary: #A39E93;
+      --border: #3D2F28;
+      --header: rgba(26, 20, 18, .78);
+      --nav: rgba(255, 255, 255, .07);
+      --button-secondary: rgba(255, 255, 255, .04);
+      --card-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+      --dots: #2D241F;
+    }
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg: #FAFAF9;
+      --surface: #FFFFFF;
+      --input: #FFFFFF;
+      --text: #1C1917;
+      --secondary: #78716C;
+      --border: #E7E5E4;
+      --header: rgba(250, 250, 249, .78);
+      --nav: rgba(120, 113, 108, .09);
+      --button-secondary: #FFFFFF;
+      --card-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 3px 14px rgba(0, 0, 0, .04);
+      --dots: #FFFFFF;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; font-family: Manrope, sans-serif; background: var(--bg); color: var(--text); }
+    body { min-width: 320px; margin: 0; -webkit-font-smoothing: antialiased; }
+    button, input, textarea { font: inherit; }
+    a { color: inherit; }
+    a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #EAB308; outline-offset: 3px; }
+    .page { position: relative; min-height: 100dvh; overflow: clip; background: var(--bg); }
+    .page::before {
+      position: absolute; inset: 0; content: ""; pointer-events: none;
+      background-image: radial-gradient(var(--dots) 1px, transparent 1px);
+      background-size: 40px 40px; opacity: .55;
+    }
+    html[data-theme="light"] .page::before { opacity: .9; }
+    .glow {
+      position: absolute; top: -80px; left: 50%; width: 720px; height: 480px;
+      transform: translateX(-50%); border-radius: 50%; pointer-events: none;
+      background: radial-gradient(ellipse, rgba(234, 179, 8, .12), transparent 60%);
+      filter: blur(60px);
+    }
+    .content { position: relative; }
+    .wrap { width: min(100% - 40px, 1216px); margin-inline: auto; }
+    .site-header {
+      position: relative; z-index: 2; height: 65px; border-bottom: 1px solid var(--border);
+      background: var(--header); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; gap: 16px; }
+    .header-side { display: flex; flex: 1; align-items: center; min-width: 0; }
+    .header-side:last-child { justify-content: flex-end; }
+    .brand { display: inline-flex; align-items: center; gap: 8px; height: 52px; text-decoration: none; white-space: nowrap; }
+    .brand-mark { display: block; width: 52px; height: 52px; border-radius: 15px; background: var(--bg); overflow: hidden; flex: none; }
+    .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .wordmark { font-size: 20px; font-weight: 800; letter-spacing: -.045em; }
+    .wordmark span, .footer-brand span { color: #EAB308; }
+    .header-nav { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--nav); }
+    .header-nav a { min-height: 34px; padding: 7px 14px; border-radius: 999px; color: var(--secondary); font-size: 14px; font-weight: 600; line-height: 20px; text-decoration: none; transition: color .2s, background .2s; }
+    .header-nav a:hover { color: #EAB308; background: var(--button-secondary); }
+    .home-link { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--button-secondary); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: border-color .2s, color .2s; }
+    .home-link:hover { border-color: #EAB308; color: #EAB308; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 56px; padding-block: 64px 52px; }
+    .hero-copy { min-width: 0; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid rgba(234, 179, 8, .2); border-radius: 999px; background: rgba(234, 179, 8, .1); color: #EAB308; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #22C55E; }
+    h1 { margin: 24px 0 0; font-size: clamp(40px, 4.9vw, 68px); font-weight: 800; line-height: 1.06; letter-spacing: -.045em; }
+    h1 span { display: block; color: #EAB308; }
+    .intro { max-width: 520px; margin: 24px 0 0; color: var(--secondary); font-size: 17px; line-height: 1.55; }
+    .contact-card {
+      position: relative; min-height: 340px; overflow: hidden; padding: 32px;
+      border: 1px solid rgba(180, 140, 75, .35); border-radius: 28px;
+      background: linear-gradient(135deg, var(--surface), rgba(180, 140, 75, .16));
+      box-shadow: var(--card-shadow);
+    }
+    .contact-card::before {
+      position: absolute; top: -80px; right: -80px; width: 320px; height: 320px;
+      border-radius: 50%; background: radial-gradient(circle, rgba(234, 179, 8, .18), transparent 60%);
+      filter: blur(40px); content: ""; pointer-events: none;
+    }
+    .contact-top { position: relative; display: flex; align-items: flex-start; justify-content: space-between; height: 112px; }
+    .contact-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border: 1px solid rgba(234, 179, 8, .3); border-radius: 16px; background: rgba(234, 179, 8, .1); color: #EAB308; }
+    .contact-mascot { position: absolute; top: -18px; right: 4px; width: 148px; height: 148px; object-fit: contain; pointer-events: none; user-select: none; }
+    .contact-card h2 { position: relative; margin: 0; font-size: 29px; font-weight: 800; line-height: 1.15; letter-spacing: -.025em; }
+    .contact-card p { position: relative; max-width: 350px; margin: 10px 0 22px; color: var(--secondary); font-size: 15px; line-height: 1.55; }
+    .email { position: relative; display: inline-block; max-width: 100%; color: #EAB308; font-size: clamp(18px, 2vw, 23px); font-weight: 800; letter-spacing: -.025em; text-decoration-thickness: 1px; text-underline-offset: 5px; overflow-wrap: anywhere; }
+    .email:hover { color: #FACC15; }
+    .request-card { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 56px; padding: 40px; border: 1px solid var(--border); border-radius: 28px; background: var(--surface); box-shadow: var(--card-shadow); }
+    .section-label { margin: 0; color: #EAB308; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .request-card h2 { max-width: 370px; margin: 11px 0 12px; font-size: clamp(25px, 3vw, 36px); font-weight: 800; line-height: 1.15; letter-spacing: -.025em; }
+    .request-card .section-copy { max-width: 350px; margin: 0; color: var(--secondary); font-size: 15px; line-height: 1.55; }
+    form { display: grid; gap: 20px; }
+    label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; }
+    input, textarea { display: block; width: 100%; padding: 16px; border: 1px solid var(--border); border-radius: 26px; background: var(--input); color: var(--text); font-size: 16px; line-height: 24px; transition: border-color .2s, box-shadow .2s; }
+    input::placeholder, textarea::placeholder { color: var(--secondary); opacity: .75; }
+    input:focus, textarea:focus { border-color: #EAB308; outline: none; box-shadow: 0 0 0 3px rgba(234, 179, 8, .1); }
+    input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: #EF4444; }
+    textarea { min-height: 156px; resize: vertical; }
+    .field-error { margin: 7px 0 0; color: #EF4444; font-size: 13px; line-height: 1.4; }
+    .submit { justify-self: start; display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 28px; border: 0; border-radius: 14px; background: #EAB308; color: #1A1412; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 4px 6px -4px rgba(180, 140, 75, .4), 0 10px 25px -3px rgba(234, 179, 8, .35); transition: background .2s, transform .15s; }
+    .submit::after { margin-left: 10px; content: "→"; font-size: 19px; font-weight: 500; }
+    .submit:hover { background: #FACC15; }
+    .submit:active { transform: scale(.98); }
+    .submit:disabled { opacity: .5; cursor: wait; }
+    .form-status { margin: 0; font-size: 14px; line-height: 1.5; }
+    .form-status.error { color: #EF4444; }
+    .form-status.success { color: #22C55E; }
+    .noscript-copy { margin: 18px 0 0; color: var(--secondary); font-size: 14px; }
+    .noscript-copy a { color: #EAB308; }
+    .site-footer { margin-top: 76px; padding-block: 30px 42px; border-top: 1px solid var(--border); }
+    .footer-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 40px; }
+    .footer-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; letter-spacing: -.045em; text-decoration: none; }
+    .footer-brand img { width: 32px; height: 32px; border-radius: 9px; background: var(--bg); }
+    .site-footer p { max-width: 340px; margin: 10px 0 0; color: var(--secondary); font-size: 13px; line-height: 1.55; }
+    .footer-sections { display: grid; grid-template-columns: repeat(3, max-content); gap: 56px; }
+    .footer-column { display: flex; align-items: center; flex-direction: column; gap: 8px; }
+    .footer-column h2 { margin: 0 0 4px; color: var(--secondary); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .footer-column a { font-size: 13px; text-align: center; text-decoration: none; }
+    .footer-column a:hover { color: #EAB308; }
+    .footer-bottom { display: flex; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--secondary); font-size: 12px; }
+    @media (max-width: 1023px) {
+      .header-nav { display: none; }
+      .hero { gap: 32px; }
+      .request-card { gap: 32px; }
+    }
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 40px 32px; }
+      .hero-copy { text-align: center; }
+      .intro { margin-inline: auto; font-size: 14px; }
+      h1 { margin-top: 20px; font-size: clamp(36px, 9vw, 50px); }
+      .contact-card { min-height: 0; padding: 24px; }
+      .contact-top { height: 96px; }
+      .contact-mascot { width: 126px; height: 126px; }
+      .contact-card h2 { font-size: 24px; }
+      .request-card { grid-template-columns: 1fr; gap: 26px; padding: 24px; }
+      .request-card h2 { font-size: 25px; }
+      .site-footer { margin-top: 48px; }
+      .footer-main { flex-direction: column; gap: 28px; }
+      .footer-sections { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+      .footer-column:last-child { grid-column: span 2; }
+      .footer-bottom { flex-wrap: wrap; }
+    }
+    @media (max-width: 420px) {
+      .home-link { padding-inline: 12px; font-size: 12px; }
+      .brand-mark { width: 44px; height: 44px; border-radius: 12px; }
+      .wordmark { font-size: 18px; }
+      .badge { font-size: 10px; }
+      .submit { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="content">
+      <header class="site-header">
+        <div class="wrap header-inner">
+          <div class="header-side">
+            <a class="brand" href="/" aria-label="CoffeePeek — главная">
+              <span class="brand-mark"><img src="/logo/logo.png" alt="" /></span>
+              <span class="wordmark">Coffee<span>Peek</span></span>
+            </a>
+          </div>
+          <nav class="header-nav" aria-label="Основные разделы">
+            <a href="/feed">Лента</a>
+            <a href="/search">Поиск</a>
+            <a href="/coffees">Кофе</a>
+          </nav>
+          <div class="header-side"><a class="home-link" href="/">На главную</a></div>
+        </div>
+      </header>
+      <main class="wrap">
+        <section class="hero" aria-labelledby="page-title">
+          <div class="hero-copy">
+            <span class="badge"><span class="badge-dot" aria-hidden="true"></span>Мы на связи</span>
+            <h1 id="page-title">Поддержка <span>CoffeePeek</span></h1>
+            <p class="intro">Поможем с приложением CoffeePeek: входом в аккаунт, поиском кофеен, отзывами и другими вопросами. Напишите нам, если что-то не работает или у вас есть предложение.</p>
+          </div>
+          <section class="contact-card" aria-labelledby="contact-title">
+            <div class="contact-top">
+              <span class="contact-icon" aria-hidden="true">
+                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="3"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>
+              </span>
+              <img class="contact-mascot" src="/maskot-emotion/maskot-happy.png" alt="" width="148" height="148" />
+            </div>
+            <h2 id="contact-title">Напишите нам</h2>
+            <p>Расскажите о своём вопросе по электронной почте. Мы ответим вам на этот адрес.</p>
+            <a class="email" href="mailto:info@coffeepeek.by">info@coffeepeek.by</a>
+          </section>
+        </section>
+        <section class="request-card" aria-labelledby="form-title">
+          <div>
+            <p class="section-label">Форма обращения</p>
+            <h2 id="form-title">Расскажите, что случилось</h2>
+            <p class="section-copy">Опишите вопрос в форме. Укажите email, чтобы мы могли ответить вам.</p>
+          </div>
+          <div>
+            <div id="support-form"></div>
+            <noscript><p class="noscript-copy">Для отправки формы включите JavaScript или напишите на <a href="mailto:info@coffeepeek.by">info@coffeepeek.by</a>.</p></noscript>
+          </div>
+        </section>
+      </main>
+      <footer class="wrap site-footer">
+        <div class="footer-main">
+          <div>
+            <a class="footer-brand" href="/"><img src="/logo/logo.png" alt="" />Coffee<span>Peek</span></a>
+            <p>Проводник в мире кофе. Карта, чекины, инструменты и сообщество — в одном приложении.</p>
+          </div>
+          <div class="footer-sections">
+            <nav class="footer-column" aria-label="Продукт">
+              <h2>Продукт</h2>
+              <a href="/shops">Кофейни</a>
+              <a href="/map">Карта</a>
+              <a href="/coffees">Кофе</a>
+              <a href="/roasters">Обжарщики</a>
+              <a href="/feed">Лента</a>
+            </nav>
+            <nav class="footer-column" aria-label="Помощь">
+              <h2>Помощь</h2>
+              <a href="/support">Поддержка</a>
+              <a href="mailto:info@coffeepeek.by">Написать нам</a>
+              <a href="/terms">Условия</a>
+              <a href="/privacy">Политика</a>
+            </nav>
+            <nav class="footer-column" aria-label="Соцсети">
+              <h2>Соцсети</h2>
+              <a href="https://www.instagram.com/coffeepeek.by/" target="_blank" rel="noopener noreferrer">Instagram</a>
+              <a href="https://www.threads.com/@coffeepeek.by" target="_blank" rel="noopener noreferrer">Threads</a>
+            </nav>
+          </div>
+        </div>
+        <div class="footer-bottom"><span>© 2026 CoffeePeek</span><span>Русский · Минск</span></div>
+      </footer>
+    </div>
+  </div>
+  <script type="module" src="/src/support.tsx"></script>
+</body>
+</html>

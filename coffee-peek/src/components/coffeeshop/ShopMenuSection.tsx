@@ -7,6 +7,8 @@ import {
 } from '../../api/menu';
 import PhotoLightbox from '../PhotoLightbox';
 import { getPhotoUrl } from '../../api/coffeeshop';
+import { captureAnalyticsEvent } from '../../lib/analytics';
+import { useFeatureExposure } from '../../hooks/useFeatureExposure';
 
 interface ShopMenuSectionProps {
   menu: ShopMenuDto | null | undefined;
@@ -61,6 +63,7 @@ export const ShopMenuSection: React.FC<ShopMenuSectionProps> = ({
 
   // Empty menu → hide the whole section (title included).
   const hasContent = grouped.espresso.length > 0 || grouped.filter.length > 0 || photos.length > 0;
+  const exposureRef = useFeatureExposure<HTMLElement>('shop_menu', 'shop_detail', hasContent);
   if (!menu || !hasContent) return null;
 
   const captured = menu.capturedAtUtc ? formatMenuCapturedAt(menu.capturedAtUtc) : null;
@@ -72,7 +75,7 @@ export const ShopMenuSection: React.FC<ShopMenuSectionProps> = ({
       : null;
 
   return (
-    <section className="min-w-0">
+    <section ref={exposureRef} className="min-w-0">
       <h2 className={`mb-3 text-2xl font-bold ${textMain}`}>Меню</h2>
       <div className={`${cardBg} space-y-5 rounded-[24px] border p-4 sm:p-6 ${borderColor}`}>
 
@@ -87,7 +90,7 @@ export const ShopMenuSection: React.FC<ShopMenuSectionProps> = ({
               <button
                 key={photo.id ?? photo.storageKey ?? index}
                 type="button"
-                onClick={() => setLightboxIndex(index)}
+                onClick={() => { captureAnalyticsEvent('shop_content_interacted', { section: 'menu', action: 'open' }); setLightboxIndex(index); }}
                 className="relative block aspect-[3/4] overflow-hidden rounded-2xl bg-black/5"
               >
                 {/* detail, not card: card is a 4:3 crop and these tiles are portrait */}

@@ -11,7 +11,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { getErrorMessage } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import {
-  CaretRight, CoffeeBean, Lock, MapPin, Moon, Plus, ShareNetwork,
+  CaretRight, ChatCenteredText, CoffeeBean, Lock, MapPin, Moon, Plus, ShareNetwork,
 } from '@phosphor-icons/react';
 
 type Colors = { bg: string; surface: string; border: string; text: string; muted: string; gold: string };
@@ -99,6 +99,7 @@ const SettingsPage: React.FC = () => {
         </SettingsSection>
 
         <SettingsSection title="Другие настройки" description="Управление полезными дополнениями и настройками конфиденциальности" colors={colors}>
+          <SettingsRow title="Связаться с поддержкой" subtitle="Поможем с вопросами и проблемами" Icon={ChatCenteredText} color="#D8A743" iconBg="rgba(202,145,28,.16)" colors={colors} href="/support" />
           <SettingsRow title="Политика использования" Icon={Lock} color="#79D2B2" iconBg="rgba(27,155,111,.16)" colors={colors} onClick={() => navigate('/terms')} />
           <SettingsRow title="Поделиться" Icon={ShareNetwork} color="#6CCBE4" iconBg="rgba(32,163,193,.17)" colors={colors} onClick={() => { void shareApp(); }} />
         </SettingsSection>
@@ -123,13 +124,15 @@ const SettingsSection: React.FC<{ title: string; description?: string; colors: C
 
 interface SettingsRowProps {
   title: string; subtitle?: string; Icon: React.ComponentType<{ size?: number; weight?: 'regular' | 'bold' }>;
-  value?: string; color: string; iconBg: string; colors: Colors; onClick?: () => void; children?: React.ReactNode;
+  value?: string; color: string; iconBg: string; colors: Colors; href?: string; onClick?: () => void; children?: React.ReactNode;
 }
 
-const SettingsRow: React.FC<SettingsRowProps> = ({ title, subtitle, value, Icon, color, iconBg, colors, onClick, children }) => {
-  const content = <><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ color, background: iconBg }}><Icon size={22} /></span><span className="min-w-0 flex-1"><span className="block text-base font-medium" style={{ color: colors.text }}>{title}</span>{subtitle && <span className="mt-0.5 block text-xs leading-snug" style={{ color: colors.muted }}>{subtitle}</span>}</span>{children ?? <>{value && <span className="text-base" style={{ color: colors.muted }}>{value}</span>}{onClick && <CaretRight size={20} color={colors.muted} />}</>}</>;
+const SettingsRow: React.FC<SettingsRowProps> = ({ title, subtitle, value, Icon, color, iconBg, colors, href, onClick, children }) => {
+  const className = 'flex w-full items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#EAB308] sm:px-5 sm:py-3.5';
+  const content = <><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ color, background: iconBg }}><Icon size={22} /></span><span className="min-w-0 flex-1"><span className="block text-base font-medium" style={{ color: colors.text }}>{title}</span>{subtitle && <span className="mt-0.5 block text-xs leading-snug" style={{ color: colors.muted }}>{subtitle}</span>}</span>{children ?? <>{value && <span className="text-base" style={{ color: colors.muted }}>{value}</span>}{(href || onClick) && <CaretRight size={20} color={colors.muted} />}</>}</>;
+  if (href) return <a href={href} className={className}>{content}</a>;
   return onClick
-    ? <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-opacity hover:opacity-80 sm:px-5 sm:py-3.5">{content}</button>
+    ? <button type="button" onClick={onClick} className={className}>{content}</button>
     : <div className="flex w-full items-center gap-3 px-4 py-3 sm:px-5 sm:py-3.5">{content}</div>;
 };
 

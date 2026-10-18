@@ -1,0 +1,28 @@
+@media (max-width: 639px) {
+  .feed-check-in-card {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    padding: 18px 0 16px;
+    background: transparent;
+  }
+
+  .feed-check-in-card:first-child {
+    padding-top: 0;
+  }
+
+  .feed-check-in-footer {
+    margin-top: 8px;
+  }
+
+  html[data-theme="light"] .feed-check-in-card {
+    border-color: #e7e5e4;
+  }
+
+  html[data-theme="dark"] .feed-check-in-card {
+    border-color: #3d2f28;
+  }
+
+  html[data-theme="light"] .feed-check-in-avatar {
+    background: #f8f2de;
+  }
+}

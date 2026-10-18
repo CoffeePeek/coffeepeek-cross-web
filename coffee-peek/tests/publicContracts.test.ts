@@ -8,7 +8,7 @@ jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
   MODERATION: { SHOP: '/api/ModerationShops', ROASTER: '/api/ModerationRoasters', REVIEWS: '/api/ModerationReviews' },
 } }));
 import { normalizeResponseData } from '../src/api/core/interceptors';
-import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapShops, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
+import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapShops, getMapZones, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
 import { sendCoffeeShopToModeration, sendRoasterToModeration } from '../src/api/moderation';
 import { createShopChangeRequest } from '../src/api/shopChangeRequests';
 import { httpClient } from '../src/api/core/httpClient';
@@ -87,6 +87,14 @@ test('map markers and zones use addresses without losing clusters', async () => 
   const result = await getMapShops({ minLat: 52, maxLat: 54, minLon: 26, maxLon: 28 });
   expect(result.data).toMatchObject({ shops: [{ id: 'coffee', publicAddress: address, primaryZoneId: 'petr' }], zones: [{ id: 'petr' }], isTruncated: true });
 });
+
+test.each([['#b45a78', '#b45a78'], [undefined, undefined], ['invalid', undefined]])('map zones validate the server color %s', async (color, expected) => {
+  jest.mocked(httpClient.get).mockResolvedValue({ data: {
+    zones: [{ address: author, name: 'Zone', color, latitude: 53, longitude: 27, radiusMeters: 100, shopCount: 1, polygon: [] }],
+  } } as never);
+  const zones = await getMapZones({ minLat: 52, maxLat: 54, minLon: 26, maxLon: 28 });
+  expect(zones[0].color).toBe(expected);
+});
 test('moderation, reviews and changes send slug fields and preserve empty/null lists', async () => {
   jest.mocked(httpClient.post).mockResolvedValue({ success: true, data: {} } as never);
   await sendCoffeeShopToModeration({ name: 'Coffee', notValidatedAddress: 'Street 1', cityId: 'minsk', coffeeBeanIds: ['arabica'], equipmentIds: [], roasterIds: [], brewMethodIds: ['v60'] });
@@ -95,6 +103,7 @@ test('moderation, reviews and changes send slug fields and preserve empty/null l
   await sendRoasterToModeration({ name: 'Roaster' });
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/ModerationRoasters', expect.objectContaining({ city: null }), { requiresAuth: false });
   const checkIn = { coffeeShopSlug: 'coffee', text: 'Great', rating: { coffee: 5, place: 4, service: 5 } };
+  jest.mocked(httpClient.post).mockResolvedValueOnce({ success: true, data: { id: 'check-in-1', visibility: 'Private' } } as never);
   await createCheckIn(checkIn);
   expect(httpClient.post).toHaveBeenLastCalledWith('/api/v1/check-ins', checkIn, { requiresAuth: true });
   const change = { shop: 'coffee', section: 'Tags' as const, payload: { tags: [], roasters: null } };

@@ -1,6 +1,6 @@
 /** Shared legal copy metadata for Privacy Policy / Terms (РБ, Закон № 99-З). */
 export const LEGAL = {
-  updatedAt: '27.08.2026',
+  updatedAt: '15.10.2026',
   siteUrl: 'https://coffeepeek.by',
   serviceName: 'CoffeePeek',
   /**
@@ -19,6 +19,7 @@ export const LEGAL = {
     frontend: 'Vercel (размещение клиентской части Сайта; инфраструктура преимущественно за пределами Республики Беларусь)',
     backend: 'Timeweb (размещение серверной части API и связанных данных)',
     errors: 'Sentry (сбор технических логов и сведений об ошибках для диагностики)',
+    analytics: 'PostHog Cloud EU (продуктовая аналитика с согласия пользователя; европейский регион, Германия)',
   },
   pdAuthority:
     'Национальный центр защиты персональных данных Республики Беларусь (https://cpd.by)',

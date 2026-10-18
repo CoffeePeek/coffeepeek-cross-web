@@ -6,6 +6,8 @@ import { useUser } from '../contexts/UserContext';
 import { useRequireAuth } from './useRequireAuth';
 import { useToast } from '../contexts/ToastContext';
 import { catalogMutationSignal, getCatalogScope } from '../lib/catalogSession';
+import { captureAnalyticsEvent } from '../lib/analytics';
+import { getAnalyticsError } from '../lib/analyticsError';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const intentKey = 'coffeepeek.favoriteIntent';
@@ -23,10 +25,11 @@ export function useFavorites() {
   const query = useQuery({ queryKey, queryFn: ({ signal }) => getFavorites(signal), enabled: !!user && !isLoading, retry: false, staleTime: 0 });
   const mutation = useMutation({
     mutationKey: ['favorite-change', scope],
-    mutationFn: async ({ kind, address, favorite }: { kind: FavoriteKind; address: PublicAddress; favorite: boolean }) => {
+    mutationFn: async ({ kind, address, favorite, resumedAfterAuth = false }: { kind: FavoriteKind; address: PublicAddress; favorite: boolean; resumedAfterAuth?: boolean }) => {
       const lock = `${scope}:${kind}:${address.slug}`;
       if (locks.has(lock) || scope !== getCatalogScope()) return;
       locks.add(lock);
+      const startedAt = Date.now();
       const { signal, release } = catalogMutationSignal();
       let previous: FavoriteItem[] | undefined;
       let wasFavorite = !favorite;
@@ -39,9 +42,12 @@ export function useFavorites() {
         window.dispatchEvent(new CustomEvent('coffeepeek:favorite-changed', { detail: { scope, kind, slug: address.slug, favorite } }));
         await setFavorite(kind, address.slug, favorite, signal);
         if (scope !== getCatalogScope()) return;
+        captureAnalyticsEvent('favorite_changed', { entity_type: kind, is_favorite: favorite, duration_ms: Date.now() - startedAt, resumed_after_auth: resumedAfterAuth });
         showToast(favorite ? 'Добавлено в избранное' : 'Удалено из избранного', 'success');
       } catch (error) {
         if (scope !== getCatalogScope()) return;
+        const diagnostic = getAnalyticsError(error);
+        if (diagnostic.error_category !== 'cancelled') captureAnalyticsEvent('favorite_failed', { entity_type: kind, duration_ms: Date.now() - startedAt, ...diagnostic });
         if (previous) qc.setQueryData<FavoriteItem[]>(queryKey, current => updateFavoriteList(current ?? [], kind, address, wasFavorite));
         else qc.removeQueries({ queryKey, exact: true });
         showToast('Не удалось сохранить избранное. Повторите нажатие.', 'error');
@@ -57,13 +63,18 @@ export function useFavorites() {
   });
   const toggle = (kind: FavoriteKind, address: PublicAddress, serverValue?: boolean | null) => {
     if (isLoading) return;
-    if (!user) {
-      sessionStorage.setItem(intentKey, JSON.stringify({ kind, address }));
-      requireAuth(); return;
-    }
     if (locks.has(`${scope}:${kind}:${address.slug}`)) return;
+    if (!user) {
+      captureAnalyticsEvent('favorite_attempted', { entity_type: kind, is_favorite: true });
+      sessionStorage.setItem(intentKey, JSON.stringify({ kind, address }));
+      requireAuth('favorites'); return;
+    }
     const favorite = query.data ? query.data.some(item => item.kind === kind && item.address.slug === address.slug) : serverValue;
-    if (favorite == null) { showToast('Состояние избранного недоступно. Повторите загрузку.', 'error'); void query.refetch(); return; }
+    captureAnalyticsEvent('favorite_attempted', { entity_type: kind, ...(favorite != null ? { is_favorite: !favorite } : {}) });
+    if (favorite == null) {
+      captureAnalyticsEvent('favorite_failed', { entity_type: kind, duration_ms: 0, error_category: 'unknown' });
+      showToast('Состояние избранного недоступно. Повторите загрузку.', 'error'); void query.refetch(); return;
+    }
     mutation.mutate({ kind, address, favorite: !favorite });
   };
   useEffect(() => {
@@ -74,7 +85,7 @@ export function useFavorites() {
     try {
       const intent = JSON.parse(raw) as { kind: FavoriteKind; address: PublicAddress };
       if (['coffee_shop', 'roaster'].includes(intent.kind) && typeof intent.address?.slug === 'string')
-        mutation.mutate({ ...intent, favorite: true });
+        mutation.mutate({ ...intent, favorite: true, resumedAfterAuth: true });
     } catch { /* Discard a malformed session intent. */ }
   }, [user?.id, isLoading, scope]);
   return { ...query, scope, toggle, isFavorite: (kind: FavoriteKind, slug: string, serverValue?: boolean | null) =>

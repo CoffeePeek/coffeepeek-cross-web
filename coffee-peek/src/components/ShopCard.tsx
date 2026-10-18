@@ -2,6 +2,7 @@ import React, { memo, useState } from 'react';
 import { type CoffeeShop, getPhotoUrl } from '../api/coffeeshop';
 import { COLORS } from '../constants/colors';
 import { useFavorite } from '../hooks/useFavorites';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
 import { distanceKm, formatDistance } from '../utils/distance';
 import { getPriceRangeTier } from '../utils/priceRange';
 import { isShopOpenNow } from '../utils/shopUtils';
@@ -45,6 +46,7 @@ const SHOP_TYPE_LABELS: Record<string, string> = {
 
 const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors, userLocation, onSelect, children }) => {
   const [hovered, setHovered] = useState(false);
+  const favoriteExposure = useFeatureExposure<HTMLButtonElement>('favorites', 'catalog_card');
   const publicAddress = roaster?.address.slug && roaster.address.canonicalPath ? { ...roaster.address, slug: roaster.address.slug, canonicalPath: roaster.address.canonicalPath } : shop?.publicAddress;
   const { favorite, pending, toggle } = useFavorite(roaster ? 'roaster' : 'coffee_shop', publicAddress, roaster ? roaster.isFavorite : shop?.isFavorite);
   const name = coffee?.name ?? roaster?.name ?? shop?.name ?? 'Обжарщик';
@@ -107,6 +109,7 @@ const ShopCard: React.FC<ShopCardProps> = memo(({ shop, coffee, roaster, colors,
             </span>
           )}
           <button
+            ref={favoriteExposure}
             type="button"
             aria-label={favorite ? 'Убрать из избранного' : 'Добавить в избранное'}
             disabled={pending}

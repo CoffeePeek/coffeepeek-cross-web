@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "./tailwind.config.js";
+@custom-variant dark (&:where(.dark, .dark *));
+@source inline("bg-[#1A1412] bg-[#2D241F] bg-[#3D2F28] bg-[#FAFAF9] bg-[#FFFFFF] bg-[#F9F8F6] bg-[#F3F4F6] bg-[#EAB308] bg-[#FACC15] bg-[#1A1412]/90 bg-[#FAFAF9]/90 bg-[#2D241F]/60 bg-[#EAB308]/10 bg-[#EAB308]/5 hover:bg-[#FACC15] hover:bg-[#3D2F28] text-[#FFFFFF] text-[#A39E93] text-[#A8A8A8] text-[#5C544F] text-[#1C1917] text-[#78716C] text-[#75706B] text-[#6B7280] text-[#EAB308] text-[#1A1412] hover:text-[#EAB308] hover:text-[#FFFFFF] border-[#3D2F28] border-[#4A3D35] border-[#E7E5E4] border-[#E5E1DA] border-[#D1D5DB] border-[#EAB308] border-[#EAB308]/30 border-[#EAB308]/20 hover:border-[#EAB308] hover:border-[#EAB308]/30 focus:ring-[#EAB308]/10 focus:ring-[3px]");
 
 @layer base {
   html,
@@ -131,7 +132,7 @@ html {
 }
 
 /* ── Magazine Stamp typography system ──────────────────────────── */
-/* Wordmark: Manrope Ultrabold, tight tracking                       */
+/* Base wordmark class: Manrope Regular, tight tracking             */
 .wordmark {
   font-family: "Manrope", sans-serif;
   font-weight: 400;
@@ -147,13 +148,13 @@ html {
   line-height: 0.92;
 }
 
-/* Accent word inside hero: Ultrabold gold                         */
+/* Accent word inside hero: Regular gold                          */
 .accent-word {
   font-weight: 400;
   color: #EAB308;
 }
 
-/* Large numeral (ratings, stats): Ultrabold, tabular              */
+/* Large numeral (ratings, stats): Regular, tabular                */
 .numeral {
   font-family: "Manrope", sans-serif;
   font-weight: 400;

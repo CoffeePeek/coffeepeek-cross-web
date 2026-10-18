@@ -25,8 +25,12 @@ import {
 import { getCurrentDayOfWeek, toLocalSchedules } from '../utils/shopUtils';
 import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { useSearchCoffeeShops } from '../hooks/queries/useCoffeeShops';
+import { captureAnalyticsEvent, isAnalyticsReady } from '../lib/analytics';
+import { useDiscoveryAnalytics } from '../hooks/useDiscoveryAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
+import type { CatalogAnalyticsContext } from '../utils/discoveryAnalytics';
 
-const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean; fillContainer?: boolean; showSearch?: boolean; compactPreview?: boolean }> = ({ embedded = false, autoPreview = false, reduceMotion = false, fillContainer = false, showSearch = true, compactPreview = false }) => {
+const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean; fillContainer?: boolean; showSearch?: boolean; compactPreview?: boolean; analyticsVisible?: boolean; analytics?: CatalogAnalyticsContext }> = ({ embedded = false, autoPreview = false, reduceMotion = false, fillContainer = false, showSearch = true, compactPreview = false, analyticsVisible = true, analytics }) => {
   const openPublic = usePublicNavigate();
   const [searchParams] = useSearchParams();
   const { theme } = useTheme();
@@ -45,6 +49,14 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
   const themeRef = useRef(theme);
   const previewShopsRef = useRef<MapShop[]>([]);
   const [previewPaused, setPreviewPaused] = useState(false);
+  const mapExposure = useFeatureExposure<HTMLDivElement>('map', embedded ? 'home' : 'discovery', analyticsVisible);
+  const mapVisible = useRef(analyticsVisible);
+  mapVisible.current = analyticsVisible;
+  const loadedTracked = useRef(false);
+  const loadStartedAt = useRef(performance.now());
+  const loadDuration = useRef<number | null>(null);
+  const selectedSearch = useRef<{ shopId: string; searchId: string } | null>(null);
+  const nearbyTracked = useRef<unknown>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [mapData, setMapData] = useState<MapSearchData>({ shops: [], clusters: [], zones: [] });
@@ -73,12 +85,38 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
   }, [query]);
   const search = useSearchCoffeeShops(searchQuery, undefined, 1, 3);
   const searchResults = searchQuery && query.trim() === searchQuery ? (search.data?.coffeeShops ?? []).slice(0, 3) : [];
+  const searchAnalytics = useDiscoveryAnalytics({ catalog: 'shops', state: { q: searchQuery, filters: {}, sort: 'relevance' }, source: 'map',
+    enabled: analyticsVisible && showSearch && !!searchQuery && query.trim() === searchQuery,
+    ready: search.isSuccess && !search.isFetching, resultCount: search.data?.totalItems ?? searchResults.length,
+    error: search.isError ? search.error : undefined,
+  });
+  useEffect(() => {
+    const reportLoaded = () => {
+      if (!analyticsVisible || !shopsLoaded || loadedTracked.current || !isAnalyticsReady()) return;
+      loadedTracked.current = true;
+      captureAnalyticsEvent('map_interaction', { action: 'loaded', result_count: mapData.shops.length, duration_ms: loadDuration.current ?? 0 });
+    };
+    reportLoaded();
+    window.addEventListener('coffeepeek:analytics-ready', reportLoaded);
+    return () => window.removeEventListener('coffeepeek:analytics-ready', reportLoaded);
+  }, [analyticsVisible, shopsLoaded, mapData.shops.length]);
+  useEffect(() => {
+    const report = () => {
+      if (!analyticsVisible || !userPosition || nearby.isFetching || nearbyTracked.current === userPosition || !isAnalyticsReady()) return;
+      if (!nearby.isSuccess && !nearby.isError) return;
+      if (captureAnalyticsEvent('map_interaction', { action: nearby.isError ? 'nearby_failed' : 'nearby_loaded', result_count: nearbyShops.length })) nearbyTracked.current = userPosition;
+    };
+    report();
+    window.addEventListener('coffeepeek:analytics-ready', report);
+    return () => window.removeEventListener('coffeepeek:analytics-ready', report);
+  }, [analyticsVisible, userPosition, nearby.isFetching, nearby.isSuccess, nearby.isError, nearbyShops.length]);
   const [showZones, setShowZones] = useState(() => localStorage.getItem('mapShowZones') !== 'false');
   const showZonesRef = useRef(showZones);
 
   const loadCoffeeShops = async (map: MapLibreMap) => {
     mapRequestRef.current?.abort();
     const controller = new AbortController();
+    const startedAt = performance.now();
     mapRequestRef.current = controller;
     try {
       const bounds = getMapBoundsBox(map);
@@ -96,12 +134,14 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
       };
 
       mapDataRef.current = nextData;
+      loadDuration.current ??= Math.round(performance.now() - loadStartedAt.current);
       if (!previewShopsRef.current.length) previewShopsRef.current = nextData.shops.slice(0, 3);
       setMapData(nextData);
       setShopsLoaded(true);
       return nextData;
     } catch (err: unknown) {
-      if ((err as { name?: string })?.name === 'AbortError') return null;
+      if (controller.signal.aborted || (err as { name?: string })?.name === 'AbortError') return null;
+      if (mapVisible.current) captureAnalyticsEvent('map_interaction', { action: 'load_failed', duration_ms: Math.round(performance.now() - startedAt) });
       return null;
     }
   };
@@ -158,8 +198,10 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
     const map = mapInstanceRef.current;
     if (!map) return;
     setIsLocating(true);
+    const startedAt = performance.now();
     const pos = await getDeviceLocation({ requestPermission, enableHighAccuracy: true, timeout: 10000, ...(requestPermission ? { maximumAge: 0 } : {}) });
     if (map !== mapInstanceRef.current) return;
+    if (mapVisible.current) captureAnalyticsEvent('geolocation_result', { placement: 'map', trigger: requestPermission ? 'user' : 'automatic', outcome: pos && getLocationLifetime(pos.timestamp) > 0 ? 'available' : 'unavailable', duration_ms: Math.round(performance.now() - startedAt) });
     if (pos && getLocationLifetime(pos.timestamp) > 0) {
       const { latitude, longitude } = pos.coords;
       userPosRef.current = { lat: latitude, lon: longitude };
@@ -228,7 +270,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
           element.tabIndex = 0;
           element.setAttribute('role', 'button');
           element.setAttribute('aria-label', shop.title);
-          const select = () => selectShop(shop);
+          const select = () => { selectedSearch.current = null; captureAnalyticsEvent('map_interaction', { action: 'marker_selected' }); selectShop(shop); };
           element.addEventListener('click', select);
           element.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -337,6 +379,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
 
   return (
     <div
+      ref={mapExposure}
       className={`relative z-0 isolate overflow-hidden ${compactPreview ? 'coffee-map--compact-preview' : ''} ${themeClasses.bg.primary}`}
       style={{ height: fillContainer ? '100%' : embedded ? 480 : 'var(--app-content-height, 100dvh)', clipPath: embedded ? 'inset(0 round 28px 28px 0 0)' : undefined }}
       onMouseEnter={() => autoPreview && setPreviewPaused(true)}
@@ -369,12 +412,14 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
                   type="button"
                   key={shop.id}
                   onClick={async () => {
+                    captureAnalyticsEvent('map_interaction', { action: 'search_selected' });
                     try {
                       const location = shop.location;
                       const details = location?.latitude == null || location?.longitude == null
                         ? (await getCoffeeShopBySlug(shop.id)).data : shop;
                       const coordinates = details.location;
                       if (coordinates?.latitude == null || coordinates?.longitude == null) return;
+                      selectedSearch.current = { shopId: shop.id, searchId: searchAnalytics.search_id };
                       selectShop({ id: shop.id, publicAddress: shop.publicAddress, title: shop.name,
                         latitude: coordinates.latitude, longitude: coordinates.longitude, type: null, primaryZoneId: null }, true);
                     } catch { /* Keep the map unchanged if the shop cannot be located. */ }
@@ -438,10 +483,10 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
 
       <div className="coffee-map-controls absolute right-4 z-[500] flex flex-col gap-3" style={{ bottom: carouselItems.length ? 164 : 16 }}>
         <div className={`mb-3 flex flex-col overflow-hidden rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
-          <button type="button" onClick={() => mapInstanceRef.current?.zoomIn()} aria-label="Приблизить карту" className={`flex h-14 w-14 items-center justify-center ${themeClasses.text.primary}`}><Plus size={28} className="h-7 w-7 shrink-0" /></button>
-          <button type="button" onClick={() => mapInstanceRef.current?.zoomOut()} aria-label="Отдалить карту" className={`flex h-14 w-14 items-center justify-center border-t ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={28} className="h-7 w-7 shrink-0" /></button>
+          <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomIn(); }} aria-label="Приблизить карту" className={`flex h-14 w-14 items-center justify-center ${themeClasses.text.primary}`}><Plus size={28} className="h-7 w-7 shrink-0" /></button>
+          <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomOut(); }} aria-label="Отдалить карту" className={`flex h-14 w-14 items-center justify-center border-t ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={28} className="h-7 w-7 shrink-0" /></button>
         </div>
-        <button type="button" onClick={() => setShowZones(value => !value)} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`coffee-map-zones flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={28} className="h-7 w-7 shrink-0" weight="regular" /></button>
+        <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zones_toggled', enabled: !showZones }); setShowZones(value => !value); }} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`coffee-map-zones flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={28} className="h-7 w-7 shrink-0" weight="regular" /></button>
         <button type="button" onClick={() => void handleLocate()} disabled={isLocating} aria-label="Моё местоположение" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 disabled:opacity-60 ${themeClasses.bg.card} ${themeClasses.border.default} ${themeClasses.text.primary}`}>
           {isLocating ? <span className="h-7 w-7 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <NavigationArrow size={30} className="h-8 w-8 shrink-0" />}
         </button>
@@ -470,7 +515,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl"><MapShopThumb alt="" src={details?.photos?.[0] ? getPhotoUrl(details.photos[0], 'thumbnail') : undefined} /></div>
               <div className="min-w-0 flex-1">
                 <p className={`mb-1 flex h-5 items-center gap-1 truncate text-sm ${themeClasses.text.secondary}`}><Star size={16} weight="fill" color="#EAB308" />{details ? details.checkInCount ? `${details.rating.toFixed(1)} · ${details.checkInCount} чекинов` : 'Нет чекинов' : userPosition ? 'Кофейня рядом' : 'Кофейня на карте'}</p>
-                <button type="button" onClick={() => openPublic('shops', shop.publicAddress ?? shop.id)} style={{ textAlign: 'left', padding: 0 }} className={`block h-7 w-full truncate text-lg font-bold leading-7 hover:underline ${themeClasses.text.primary}`}>{shop.title}</button>
+                <button type="button" onClick={() => { const context = { source: 'map' as const, search_id: selectedSearch.current?.shopId === shop.id ? selectedSearch.current.searchId : analytics?.search_id }; captureAnalyticsEvent('catalog_item_opened', { ...context, entity_type: 'coffee_shop', position: index + 1 }); void openPublic('shops', shop.publicAddress ?? shop.id, '', { state: { analytics: context } }); }} style={{ textAlign: 'left', padding: 0 }} className={`block h-7 w-full truncate text-lg font-bold leading-7 hover:underline ${themeClasses.text.primary}`}>{shop.title}</button>
                 <p className={`mt-1 h-5 truncate text-sm leading-5 ${themeClasses.text.secondary}`}>{details ? formatWorkingHours(details.schedules) : userPosition ? formatDistance(distanceKm(userPosition.lat, userPosition.lon, shop.latitude, shop.longitude)) : '\u00a0'}</p>
               </div>
             </article>;

@@ -16,6 +16,9 @@ import { InfoChip } from '../components/ShopCard';
 import { AppIcon } from '../components/icons';
 import Button from '../components/Button';
 import PhotoLightbox from '../components/PhotoLightbox';
+import { useEntityDetailAnalytics } from '../hooks/useEntityDetailAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
+import { captureAnalyticsEvent } from '../lib/analytics';
 
 export default function CoffeeDetailPage() {
   const { slug = '' } = useParams();
@@ -38,6 +41,11 @@ export default function CoffeeDetailPage() {
   const similar = useQuery({ queryKey: ['catalog', getCatalogScope(), 'similar-coffees', slug, similarFilters],
     queryFn: ({ signal }) => searchCoffees({ q: '', filters: similarFilters, sort: 'name_asc', page: 1, pageSize: 5 }, signal), enabled: !!query.data && !isLoading, retry: false });
   usePageTitle(query.data?.name ?? 'Кофе');
+  useEntityDetailAnalytics('coffee', query.isSuccess ? query.data.address.slug : undefined);
+  const offersRef = useFeatureExposure<HTMLHeadingElement>('coffee_offers', 'coffee_detail');
+  const similarRef = useFeatureExposure<HTMLHeadingElement>('similar_coffees', 'coffee_detail');
+  const photoRef = useFeatureExposure<HTMLDivElement>('coffee_photos', 'coffee_detail', !!query.data?.photos.length);
+  const roasterRef = useFeatureExposure<HTMLAnchorElement>('coffee_roaster', 'coffee_detail');
   useEffect(() => { setActivePhoto(0); setLightboxIndex(null); }, [slug]);
   useEffect(() => {
     if (!query.data) return;
@@ -53,6 +61,7 @@ export default function CoffeeDetailPage() {
   const roasterPhoto = coffee.roaster.coverPhoto;
   const similarCoffees = similar.data?.items?.filter(item => item.address.slug !== coffee.address.slug).slice(0, 4) ?? [];
   const handleShare = async () => {
+    captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'contacts', action: 'share' });
     try {
       if (await shareCoffee(coffee.name, coffee.address.canonicalPath) === 'copied') showToast('Ссылка на кофе скопирована', 'success');
     } catch { showToast('Не удалось поделиться ссылкой', 'error'); }
@@ -67,19 +76,19 @@ export default function CoffeeDetailPage() {
       <ol className="flex flex-wrap items-center gap-x-2">
         <li><Link to="/coffees" className="inline-flex min-h-11 items-center hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Кофе</Link></li>
         <li aria-hidden="true">/</li>
-        <li className="min-w-0 max-w-full"><Link to={coffee.roaster.address.canonicalPath} className="inline-flex min-h-11 items-center break-words hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{coffee.roaster.name}</Link></li>
+        <li className="min-w-0 max-w-full"><Link to={coffee.roaster.address.canonicalPath} state={{ analytics: { source: 'related' } }} onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'roaster', action: 'select' })} className="inline-flex min-h-11 items-center break-words hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">{coffee.roaster.name}</Link></li>
         <li aria-hidden="true">/</li>
         <li aria-current="page" className="min-w-0 max-w-full break-words">{coffee.name}</li>
       </ol>
     </nav>
     <section aria-labelledby="coffee-name" className="grid items-start gap-7 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-9">
       <div className="min-w-0 space-y-3">
-        <div className="relative">
+        <div ref={photoRef} className="relative">
           <CatalogPhoto photo={coffee.photos[photoIndex]} name={coffee.name} size="detail" loading="eager" className="aspect-[10/11] bg-stone-100 [&_img]:object-contain dark:bg-[#2D241F]" />
-          {!!coffee.photos.length && <Button variant="secondary" aria-label="Открыть фото кофе в полном размере" onClick={() => setLightboxIndex(photoIndex)} className="!absolute bottom-3 right-3 h-11 w-11 !rounded-full !p-0"><AppIcon name="search" size={22} aria-hidden /></Button>}
+          {!!coffee.photos.length && <Button variant="secondary" aria-label="Открыть фото кофе в полном размере" onClick={() => { captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'photos', action: 'open' }); setLightboxIndex(photoIndex); }} className="!absolute bottom-3 right-3 h-11 w-11 !rounded-full !p-0"><AppIcon name="search" size={22} aria-hidden /></Button>}
         </div>
         {coffee.photos.length > 1 && <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Фотографии кофе">
-          {coffee.photos.map((photo, index) => <button key={photo.fullUrl} type="button" onClick={() => setActivePhoto(index)} aria-label={`Фото кофе ${index + 1}`} aria-pressed={index === photoIndex}
+          {coffee.photos.map((photo, index) => <button key={photo.fullUrl} type="button" onClick={() => { captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'photos', action: 'select' }); setActivePhoto(index); }} aria-label={`Фото кофе ${index + 1}`} aria-pressed={index === photoIndex}
             className={`w-20 shrink-0 overflow-hidden rounded-xl border-2 p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-primary ${index === photoIndex ? 'border-primary' : 'border-transparent'}`}>
             <CatalogPhoto photo={photo} name={`${coffee.name} — фото ${index + 1}`} size="thumbnail" className="aspect-square" />
           </button>)}
@@ -87,7 +96,7 @@ export default function CoffeeDetailPage() {
       </div>
       <div className="min-w-0 space-y-6">
         <div className="flex items-start justify-between gap-3">
-          <Link to={coffee.roaster.address.canonicalPath} className="flex min-w-0 items-center gap-3 rounded-xl outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">
+          <Link ref={roasterRef} to={coffee.roaster.address.canonicalPath} state={{ analytics: { source: 'related' } }} onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'roaster', action: 'select' })} className="flex min-w-0 items-center gap-3 rounded-xl outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">
             <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl ${tc.bg.card} ${tc.border.default} border`}>
               {roasterPhoto ? <img src={roasterPhoto.urls?.thumbnail || roasterPhoto.fullUrl} alt="" className="h-full w-full object-contain" /> : <AppIcon name="factory" size={28} aria-hidden />}
             </span>
@@ -102,7 +111,7 @@ export default function CoffeeDetailPage() {
             <InfoChip colors={colors}><AppIcon name="coffee-bean" size={20} className="mr-2 shrink-0" aria-hidden />{productKind} · {productForm}</InfoChip>
           </div>
           {coffee.description && (coffee.description.length > 300 || coffee.description.split('\n').length > 4
-            ? <details key={coffee.address.slug} className="group">
+            ? <details key={coffee.address.slug} className="group" onToggle={event => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'description', action: event.currentTarget.open ? 'open' : 'close' })}>
               <summary className={`inline-flex min-h-11 cursor-pointer list-none items-center rounded-lg text-sm font-semibold underline underline-offset-4 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden ${tc.text.primary}`}>
                 <span className="group-open:hidden">Показать всё</span><span className="hidden group-open:inline">Скрыть</span>
               </summary>
@@ -126,15 +135,15 @@ export default function CoffeeDetailPage() {
       </div>
     </section>
     <section aria-labelledby="coffee-offers" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-3"><h2 id="coffee-offers" className="text-2xl font-bold tracking-tight sm:text-3xl">Варианты покупки</h2><p className={`text-xs ${tc.text.secondary}`}>{checkedTime(coffee.catalogCheckedAtUtc)}</p></div>
+      <div className="flex flex-wrap items-end justify-between gap-3"><h2 ref={offersRef} id="coffee-offers" className="text-2xl font-bold tracking-tight sm:text-3xl">Варианты покупки</h2><p className={`text-xs ${tc.text.secondary}`}>{checkedTime(coffee.catalogCheckedAtUtc)}</p></div>
       <OfferList offers={coffee.offers} defaults={coffee.classification.defaultBrewPurposes} groups={dictionary.data ?? []} />
       {!coffee.offers.length && <p className={tc.text.secondary}>Предложений покупки пока нет.</p>}
     </section>
     <section aria-labelledby="similar-coffees" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><h2 id="similar-coffees" className="text-xl font-bold">Похожие сорта</h2><Link to={`/coffees?filters=${encodeURIComponent(JSON.stringify(similarFilters))}`} className="inline-flex min-h-11 items-center gap-2 text-sm underline outline-none focus-visible:ring-2 focus-visible:ring-primary">Смотреть все<AppIcon name="arrow_forward" size={18} aria-hidden /></Link></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h2 ref={similarRef} id="similar-coffees" className="text-xl font-bold">Похожие сорта</h2><Link onClick={() => captureAnalyticsEvent('entity_content_interacted', { entity_type: 'coffee', section: 'similar_coffees', action: 'view_all' })} to={`/coffees?filters=${encodeURIComponent(JSON.stringify(similarFilters))}`} className="inline-flex min-h-11 items-center gap-2 text-sm underline outline-none focus-visible:ring-2 focus-visible:ring-primary">Смотреть все<AppIcon name="arrow_forward" size={18} aria-hidden /></Link></div>
       {similar.isPending && <div className="relative flex gap-4 overflow-x-auto pb-3 [contain:paint] sm:grid sm:grid-cols-2 lg:grid-cols-4 [&>article]:w-[80%] [&>article]:shrink-0 sm:[&>article]:w-auto" role="status" aria-label="Загрузка похожих сортов"><ShopCardSkeleton variant="coffee" count={4} /></div>}
       {similar.isError && <div className={catalogPanel} role="alert"><p>Похожие сорта временно недоступны.</p><Button variant="secondary" className="mt-3" onClick={() => void similar.refetch()}>Повторить</Button></div>}
-      {!!similarCoffees.length && <div role="group" aria-label="Похожие сорта кофе" tabIndex={0} className="relative flex gap-4 overflow-x-auto pb-3 outline-none [contain:paint] focus-visible:ring-2 focus-visible:ring-primary sm:grid sm:grid-cols-2 lg:grid-cols-4 [&>article]:w-[80%] [&>article]:shrink-0 sm:[&>article]:w-auto">{similarCoffees.map(item => <CoffeeCatalogCard key={item.address.slug} coffee={item} groups={dictionary.data ?? []} />)}</div>}
+      {!!similarCoffees.length && <div role="group" aria-label="Похожие сорта кофе" tabIndex={0} className="relative flex gap-4 overflow-x-auto pb-3 outline-none [contain:paint] focus-visible:ring-2 focus-visible:ring-primary sm:grid sm:grid-cols-2 lg:grid-cols-4 [&>article]:w-[80%] [&>article]:shrink-0 sm:[&>article]:w-auto">{similarCoffees.map(item => <CoffeeCatalogCard analytics={{ source: 'related' }} key={item.address.slug} coffee={item} groups={dictionary.data ?? []} />)}</div>}
       {similar.isSuccess && !similarCoffees.length && <p className={`text-sm ${tc.text.secondary}`}>Похожих сортов пока нет.</p>}
     </section>
     {lightboxIndex !== null && !!coffee.photos.length && <PhotoLightbox images={coffee.photos.map(photo => photo.urls?.fullscreen || photo.fullUrl)} shopName={coffee.name} initialIndex={lightboxIndex} onClose={() => setLightboxIndex(null)} />}

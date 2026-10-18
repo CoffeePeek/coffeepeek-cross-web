@@ -301,7 +301,7 @@
   gap: 6px;
   max-width: 190px;
   padding: 6px 8px 6px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  border: 2px solid var(--zone-color, #eab308) !important;
   border-radius: 999px;
   background: rgba(26, 20, 18, 0.88) !important;
   color: #ffffff;
@@ -321,16 +321,10 @@
 
 .coffee-map-zone-label span {
   display: inline-flex;
-  min-width: 20px;
-  height: 20px;
   align-items: center;
   justify-content: center;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #eab308;
-  color: #1a1412;
-  font-size: 11px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -446,7 +440,18 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--discovery-card-width)), 1fr));
   gap: 16px;
 }
-.discovery-cards--shops { --discovery-card-width: 320px; }
+.discovery-cards--shops, .coffee-catalog-cards { --discovery-card-width: 320px; }
+.coffee-catalog-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.coffee-catalog-cards > article {
+  flex: 1 1 270px;
+  max-width: var(--discovery-card-width);
+  min-width: 0;
+  height: auto;
+}
 .discovery-map {
   grid-area: panel;
   position: sticky;
@@ -520,6 +525,12 @@
     gap: 16px;
     padding: 0 16px 24px;
   }
+  .discovery-layout--search {
+    grid-template-areas: 'toolbar' 'content';
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+  .discovery-layout--search .discovery-map--hidden { display: none; }
   .discovery-map { position: relative; top: 0; }
   .discovery-layout--overview .discovery-shops { order: -1; }
   .discovery-layout--overview .discovery-cards {
@@ -537,8 +548,8 @@
   .discovery-layout--overview .discovery-cards::-webkit-scrollbar { display: none; }
   .discovery-layout:not(.discovery-layout--expanded) .discovery-map-expand { height: 44px; width: 44px; }
   .discovery-layout:not(.discovery-layout--expanded) .discovery-map-expand svg { height: 24px; width: 24px; }
-  .coffee-map--compact-preview .coffee-map-carousel,
-  .coffee-map--compact-preview .coffee-map-zones { display: none; }
+  .coffee-map--compact-preview .coffee-map-carousel { display: none; }
+  .coffee-map--compact-preview .coffee-map-zones { position: absolute; right: 56px; bottom: 0; }
   .coffee-map--compact-preview .coffee-map-controls { bottom: 12px !important; gap: 8px; }
   .coffee-map--compact-preview .coffee-map-controls > div { margin-bottom: 0; }
   .coffee-map--compact-preview .coffee-map-controls button { height: 44px; width: 44px; }

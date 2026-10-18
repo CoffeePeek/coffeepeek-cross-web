@@ -7,6 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { JSDOM } from 'jsdom';
 import { CoffeesPage } from '../src/pages/CoffeesPage';
+import { ToastProvider } from '../src/contexts/ToastContext';
 import { coffeeWarningLabel } from '../src/utils/coffeePresentation';
 import type { AdminCoffee } from '../src/api/coffeeCatalog';
 
@@ -25,7 +26,7 @@ test('coffee list shows identities, photos, translated publication states and ac
     items: [coffee, { ...coffee, id: 'coffee-2', status: 'Published', photos: [], countries: [], reviewWarnings: [] }, { ...coffee, id: 'coffee-3', status: 'Archived', roasterId: 'missing-roaster' }],
     totalItems: 382, totalPages: 20,
   });
-  const markup = renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(MemoryRouter, null, createElement(CoffeesPage))));
+  const markup = renderToStaticMarkup(createElement(QueryClientProvider, { client }, createElement(MemoryRouter, null, createElement(ToastProvider, null, createElement(CoffeesPage)))));
   const document = new JSDOM(markup).window.document;
   const cards = document.querySelectorAll('article');
   expect(cards).toHaveLength(3);

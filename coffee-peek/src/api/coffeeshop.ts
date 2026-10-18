@@ -143,6 +143,7 @@ export interface MapCoffeeZone {
   canonicalPath?: string;
   id: string;
   name: string;
+  color?: string;
   description: string | null;
   latitude: number;
   longitude: number;
@@ -383,6 +384,7 @@ export interface RoasterDetails {
 
 export interface BrewMethod {
   id: string;
+  slug?: string;
   name: string;
 }
 
@@ -420,12 +422,13 @@ export interface CheckInPhotoVariant {
 
 export interface CheckInDto extends SavedDrink {
   id: string;
+  kind?: 'Shop' | 'Home';
   shop: PublicAddress | null;
   author: PublicAddress | null;
   username: string;
   shopName: string;
   text: string;
-  rating: RatingDto;
+  rating: RatingDto | null;
   visitedAt: string;
   createdAtUtc: string;
   visibility: CheckInVisibility;
@@ -433,10 +436,26 @@ export interface CheckInDto extends SavedDrink {
   contentRevision: number;
   rejectionReason: string | null;
   photos: CheckInPhoto[];
-  drinkPhotoUrl?: string | null;
   drinkPhotoVariants?: CheckInPhotoVariant[] | null;
   helpfulCount: number;
   isHelpfulByCurrentUser: boolean;
+  drinkPhotoUrl?: string | null;
+  preparedAtUtc?: string;
+  preparedAt?: string;
+  preparedOn?: string;
+  brewMethodCode?: string | null;
+  beanName?: string | null;
+  doseGrams?: number | null;
+  brewDurationSeconds?: number | null;
+  tasteScore?: number | null;
+  home?: {
+    preparedOn: string;
+    brewMethodCode?: string | null;
+    beanName?: string | null;
+    doseGrams?: number | null;
+    brewDurationSeconds?: number | null;
+    tasteScore?: number | null;
+  } | null;
 }
 
 export interface UpdateCheckInRequest {
@@ -456,6 +475,7 @@ export interface CreateCheckInRequest extends UpdateCheckInRequest {
     storageKey: string;
     size: number;
   }> | null;
+  drinkPhoto?: null;
 }
 
 export interface GetCheckInsResponse {
@@ -590,6 +610,7 @@ export type MapSearchResponseData = {
   zones?: Array<{
     address: PublicAddress;
     name: string | null;
+    color?: string | null;
     description: string | null;
     latitude: string | number;
     longitude: string | number;
@@ -651,6 +672,7 @@ function normalizeMapSearch(data: MapSearchResponseData): MapSearchData {
       publicAddress: zone.address,
       canonicalPath: zone.address?.canonicalPath,
       name: typeof zone.name === 'string' && zone.name.trim() ? zone.name : 'Кофейная зона',
+      color: typeof zone.color === 'string' && /^#[0-9a-f]{6}$/i.test(zone.color) ? zone.color : undefined,
       description: typeof zone.description === 'string' ? zone.description : null,
       latitude,
       longitude,
@@ -785,7 +807,9 @@ export async function getCoffeeShopBySlug(slug: string, signal?: AbortSignal): P
 }
 
 export async function createCheckIn(request: CreateCheckInRequest): Promise<ApiResponse<CheckInDto>> {
-  return httpClient.post<CheckInDto>(API_ENDPOINTS.CHECK_IN.BASE, request, { requiresAuth: true });
+  const response = await httpClient.post<CheckInDto>(API_ENDPOINTS.CHECK_IN.BASE, request, { requiresAuth: true });
+  if (!response.data?.id || !response.data.visibility) throw new Error('Сервер не подтвердил создание чекина. Проверьте «Мои чекины» перед повтором.');
+  return response;
 }
 
 export async function getCheckInById(id: string): Promise<ApiResponse<CheckInDto>> {
@@ -797,7 +821,9 @@ export async function updateCheckIn(id: string, request: UpdateCheckInRequest): 
 }
 
 export async function changeCheckInVisibility(id: string, visibility: CheckInVisibility): Promise<ApiResponse<CheckInDto>> {
-  return httpClient.put<CheckInDto>(`${API_ENDPOINTS.CHECK_IN.BY_ID(id)}/visibility`, { visibility }, { requiresAuth: true });
+  const response = await httpClient.put<CheckInDto>(`${API_ENDPOINTS.CHECK_IN.BY_ID(id)}/visibility`, { visibility }, { requiresAuth: true });
+  if (!response.data?.visibility || !response.data.moderationState) throw new Error('Сервер не подтвердил изменение видимости');
+  return response;
 }
 
 export async function deleteCheckIn(id: string): Promise<ApiResponse<null>> {
@@ -815,6 +841,7 @@ export async function getCheckIns(page = 1, pageSize = 10, range?: CheckInDateRa
   const response = await httpClient.get<{ items: CheckInDto[]; totalCount: number }>(API_ENDPOINTS.CHECK_IN.MINE, {
     params: { pageNumber: page, pageSize, ...range }, requiresAuth: true,
   });
+  if (!response.data || !Array.isArray(response.data.items)) throw new Error('Сервер вернул историю без данных');
   const totalCount = response.pagination?.totalItems ?? response.data.totalCount;
   return { ...response, data: {
     items: response.data.items.map(normalizeCheckInDto),
@@ -830,7 +857,9 @@ export async function getPublicCheckIns(filters: PublicCheckInFilters = {}): Pro
 }
 
 export async function getFeed(filters: PublicCheckInFilters = {}): Promise<ApiResponse<FeedPage>> {
-  return httpClient.get<FeedPage>(API_ENDPOINTS.FEED, { params: filters, requiresAuth: false });
+  const response = await httpClient.get<FeedPage>(API_ENDPOINTS.FEED, { params: filters, requiresAuth: false, headers: { 'Cache-Control': 'no-store' } });
+  if (!response.data || !Array.isArray(response.data.items)) throw new Error('Сервер вернул ленту без данных');
+  return response;
 }
 
 /** Loads every check-in in the half-open visit-time range [from, to). */

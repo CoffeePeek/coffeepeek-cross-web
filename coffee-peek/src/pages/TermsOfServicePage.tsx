@@ -6,9 +6,12 @@ import { Icons } from '../constants';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { goBackOrHome, LEGAL_ROUTES } from '../constants/legalRoutes';
 import { LEGAL, legalOperatorBlock } from '../constants/legal';
+import AnalyticsConsentSettings from '../components/AnalyticsConsentSettings';
+import { useLegalPageAnchor } from '../hooks/useLegalPageAnchor';
 
 const TermsOfServicePage: React.FC = () => {
   usePageTitle('Условия использования');
+  useLegalPageAnchor();
   const navigate = useNavigate();
   const { theme } = useTheme();
 
@@ -16,7 +19,7 @@ const TermsOfServicePage: React.FC = () => {
   const textClass = theme === 'dark' ? 'text-white' : 'text-gray-900';
   const textSecondaryClass = theme === 'dark' ? 'text-[#A39E93]' : 'text-gray-600';
   const borderClass = theme === 'dark' ? 'border-[#3D2F28]' : 'border-gray-200';
-  const linkClass = 'text-[#EAB308] hover:underline font-medium';
+  const linkClass = `${theme === 'dark' ? 'text-[#EAB308]' : 'text-amber-700'} hover:underline font-medium`;
 
   return (
     <div className={`min-h-screen ${bgClass}`}>
@@ -59,6 +62,20 @@ const TermsOfServicePage: React.FC = () => {
                 , поняли их и согласны соблюдать. К отношениям сторон применяется законодательство
                 Республики Беларусь.
               </p>
+            </section>
+
+            <section>
+              <h2 className={`text-xl sm:text-2xl font-semibold ${textClass} mb-4`}>
+                1.1. Согласие на аналитику
+              </h2>
+              <p className={`${textSecondaryClass} leading-relaxed`}>
+                Принятие Условий не включает аналитику PostHog автоматически. Она работает
+                только с отдельного согласия и помогает улучшать CoffeePeek. Включить или
+                выключить аналитику для этого браузера можно здесь. Состав событий, обработка
+                данных в PostHog EU и порядок их удаления описаны в{' '}
+                <a className={linkClass} href={LEGAL_ROUTES.privacy}>Политике конфиденциальности</a>.
+              </p>
+              <AnalyticsConsentSettings />
             </section>
 
             <section>

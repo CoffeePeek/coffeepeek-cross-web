@@ -112,9 +112,10 @@ const UserProfilePage: React.FC = () => {
     );
   }
 
-  const averageRating = checkIns.length > 0
-    ? (checkIns.reduce((sum, r) => sum + ((r.rating.coffee + r.rating.service + r.rating.place) / 3), 0) / checkIns.length).toFixed(1)
-    : '0.0';
+  const ratings = checkIns.flatMap(item => item.rating ? [item.rating] : []);
+  const averageRating = ratings.length > 0
+    ? (ratings.reduce((sum, rating) => sum + ((rating.coffee + rating.service + rating.place) / 3), 0) / ratings.length).toFixed(1)
+    : '—';
 
   return (
     <div className={`min-h-screen ${bgClass} pt-16`}>

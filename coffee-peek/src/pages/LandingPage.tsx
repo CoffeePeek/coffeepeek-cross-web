@@ -13,7 +13,7 @@ import {
 import { AppIcon, StarIcon } from '../components/icons';
 import { MobileAppDownload } from '../components/mobile-app';
 import LandingMapWidget from '../components/LandingMapWidget';
-import Header from '../components/Header';
+import Header, { BottomNavigation } from '../components/Header';
 import LandingProductDemo from '../components/LandingProductDemo';
 import LogoMark from '../components/LogoMark';
 import Mascot from '../components/Mascot';
@@ -25,15 +25,33 @@ const LandingPage: React.FC = () => {
   const { data: publicStats, isLoading: isStatsLoading } = usePublicStats();
 
   const footerCols = [
-    { t: 'Продукт', items: ['Кофейни', 'Карта'] },
-    { t: 'Помощь',  items: ['Условия', 'Политика'] },
+    {
+      t: 'Продукт',
+      items: [
+        { label: 'Кофейни', href: '/shops' },
+        { label: 'Карта', href: '/map' },
+        { label: 'Кофе', href: '/coffees' },
+        { label: 'Обжарщики', href: '/roasters' },
+        { label: 'Лента', href: '/feed' },
+      ],
+    },
+    {
+      t: 'Помощь',
+      items: [
+        { label: 'Поддержка', href: '/support' },
+        { label: 'Написать нам', href: 'mailto:info@coffeepeek.by' },
+        { label: 'Условия', href: LEGAL_ROUTES.terms },
+        { label: 'Политика', href: LEGAL_ROUTES.privacy },
+      ],
+    },
+    {
+      t: 'Соцсети',
+      items: [
+        { label: 'Instagram', href: 'https://www.instagram.com/coffeepeek.by/' },
+        { label: 'Threads', href: 'https://www.threads.com/@coffeepeek.by' },
+      ],
+    },
   ];
-  const footerLinks: Record<string, string> = {
-    Кофейни: '/shops',
-    Карта: '/map',
-    Условия: LEGAL_ROUTES.terms,
-    Политика: LEGAL_ROUTES.privacy,
-  };
 
   const statsMobile = [
     {
@@ -223,30 +241,16 @@ const LandingPage: React.FC = () => {
                 Проводник в мире кофе. Карта, чекины, инструменты и сообщество — в одном приложении.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-14">
+            <div className="grid grid-cols-3 gap-12">
               {footerCols.map((col) => (
                 <div key={col.t} className="text-center">
                   <div className="font-body font-bold text-[11px] uppercase tracking-[.08em] mb-3" style={{ color: c.textSecondary }}>{col.t}</div>
                   <div className="flex flex-col items-center gap-2">
-                    {col.items.map((item) => {
-                      const href = footerLinks[item];
-                      if (!href) {
-                        return (
-                          <span key={item} className="font-body text-[13px]" style={{ color: c.textSecondary }}>{item}</span>
-                        );
-                      }
-                      return (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => navigate(href)}
-                          className="font-body text-[13px] text-center cursor-pointer hover:text-[#EAB308] transition-colors p-0"
-                          style={{ color: c.textPrimary }}
-                        >
-                          {item}
-                        </button>
-                      );
-                    })}
+                    {col.items.map(({ label, href }) => (
+                      <a key={label} href={href} target={href.startsWith('https://') ? '_blank' : undefined} rel={href.startsWith('https://') ? 'noopener noreferrer' : undefined} className="font-body text-[13px] text-center hover:text-[#EAB308] transition-colors" style={{ color: c.textPrimary }}>
+                        {label}
+                      </a>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -268,30 +272,16 @@ const LandingPage: React.FC = () => {
 
         {/* ── Footer mobile ────────────────────────────────────── */}
         <footer className="lg:hidden px-5 pt-7 pb-10 mt-2 border-t" style={{ borderColor: c.border }}>
-          <div className="grid grid-cols-2 gap-6 pb-5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pb-5">
             {footerCols.map((col) => (
-              <div key={col.t} className="text-center">
+              <div key={col.t} className={col.t === 'Соцсети' ? 'col-span-2 sm:col-span-1 text-center' : 'text-center'}>
                 <div className="font-body font-bold text-[11px] uppercase tracking-[.08em] mb-3" style={{ color: c.textSecondary }}>{col.t}</div>
                 <div className="flex flex-col items-center gap-2">
-                  {col.items.map((item) => {
-                    const href = footerLinks[item];
-                    if (!href) {
-                      return (
-                        <span key={item} className="font-body text-[13px]" style={{ color: c.textSecondary }}>{item}</span>
-                      );
-                    }
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => navigate(href)}
-                        className="font-body text-[13px] text-center cursor-pointer hover:text-[#EAB308] transition-colors p-0"
-                        style={{ color: c.textPrimary }}
-                      >
-                        {item}
-                      </button>
-                    );
-                  })}
+                  {col.items.map(({ label, href }) => (
+                    <a key={label} href={href} target={href.startsWith('https://') ? '_blank' : undefined} rel={href.startsWith('https://') ? 'noopener noreferrer' : undefined} className="font-body text-[13px] text-center hover:text-[#EAB308] transition-colors" style={{ color: c.textPrimary }}>
+                      {label}
+                    </a>
+                  ))}
                 </div>
               </div>
             ))}
@@ -307,6 +297,7 @@ const LandingPage: React.FC = () => {
           </div>
         </footer>
       </div>
+      <BottomNavigation />
     </div>
   );
 };

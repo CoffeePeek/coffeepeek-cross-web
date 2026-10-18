@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Archive, CheckCircle2, ChevronDown, ImageOff, PencilLine, TriangleAlert } from 'lucide-react';
-import { getAdminCoffees, type AdminCoffee } from '../api/coffeeCatalog';
+import { editAdminCoffee, getAdminCoffee, getAdminCoffees, type AdminCoffee } from '../api/coffeeCatalog';
 import { getCatalogRoasters } from '../api/catalogs';
+import { useToast } from '../contexts/ToastContext';
 import { coffeeWarningLabel } from '../utils/coffeePresentation';
+import { getErrorMessage } from '../utils/errors';
 import { Badge, type BadgeVariant } from '../components/ui/Badge';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { Input } from '../components/ui/Input';
 import { NativeSelect } from '../components/ui/NativeSelect';
 import { Pagination } from '../components/ui/Pagination';
 
@@ -29,13 +33,67 @@ function CoffeePhoto({ coffee }: { coffee: AdminCoffee }) {
 }
 
 export function CoffeesPage() {
+  const qc = useQueryClient();
+  const { showToast } = useToast();
   const [params, setParams] = useSearchParams();
   const page = Math.max(1, Number(params.get('page')) || 1);
   const status = params.get('status') || undefined;
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const [processingIds, setProcessingIds] = useState<string[] | null>(null);
   const query = useQuery({ queryKey: ['admin', 'coffee', 'list', { page, status }], queryFn: ({ signal }) => getAdminCoffees({ page, pageSize: 20, status }, signal), retry: false });
   const roasters = useQuery({ queryKey: ['admin', 'catalogs', 'roasters'], queryFn: async () => (await getCatalogRoasters()).data, retry: false });
   const roasterNames = new Map(roasters.data?.map(roaster => [roaster.id, roaster.name]));
   const changePage = (next: number) => setParams({ status: status ?? '', page: String(next) });
+  const draftIds = query.data?.items.filter(coffee => coffee.status === 'Draft').map(coffee => coffee.id) ?? [];
+  const selectedOnPage = draftIds.filter(id => selectedIds.has(id));
+  const allSelected = draftIds.length > 0 && selectedOnPage.length === draftIds.length;
+
+  useEffect(() => {
+    setSelectedIds(new Set());
+    setConfirmBulk(false);
+  }, [page, status]);
+
+  const approve = async (ids: string[]) => {
+    if (processingIds || !ids.length) return;
+    setProcessingIds(ids);
+    const approved: string[] = [];
+    const failures: string[] = [];
+    try {
+      for (const id of ids) {
+        try {
+          const coffee = await getAdminCoffee(id);
+          if (coffee.status !== 'Draft') throw new Error('Карточка уже не черновик');
+          await editAdminCoffee(id, {
+            content: coffee.content,
+            countryCodes: coffee.countries.map(country => country.code),
+            protectedFields: coffee.protectedFields,
+            status: 'Published',
+            version: coffee.version,
+          });
+          approved.push(id);
+        } catch (error) {
+          failures.push(`${query.data?.items.find(coffee => coffee.id === id)?.content.name ?? id}: ${getErrorMessage(error, 'Ошибка публикации')}`);
+        }
+      }
+      setSelectedIds(previous => new Set([...previous].filter(id => !approved.includes(id))));
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['admin', 'coffee', 'list'] }),
+        qc.invalidateQueries({ queryKey: ['admin', 'coffee', 'detail'] }),
+      ]);
+      if (approved.length) showToast(ids.length === 1 ? 'Кофе опубликован' : `Опубликовано: ${approved.length} из ${ids.length}`, 'success');
+      if (failures.length) showToast(`Не удалось опубликовать ${failures.length}: ${failures.join('; ')}`, 'error');
+    } finally {
+      setProcessingIds(null);
+      setConfirmBulk(false);
+    }
+  };
+
+  const toggleSelected = (id: string, checked: boolean) => setSelectedIds(previous => {
+    const next = new Set(previous);
+    if (checked) next.add(id); else next.delete(id);
+    return next;
+  });
 
   return <section aria-label="Кофе" className="min-w-0 w-full space-y-3 pb-6 text-text-main dark:text-white">
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -53,13 +111,19 @@ export function CoffeesPage() {
     {query.isError && <Card className="space-y-3 p-5" role="alert"><p>Не удалось загрузить кофе. {query.error.message}</p><Button onClick={() => void query.refetch()}>Повторить</Button></Card>}
 
     {query.data && <>
+      {!!draftIds.length && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-light px-3 py-2 text-sm dark:border-border-dark">
+        <label className="inline-flex min-h-8 items-center gap-2"><Input type="checkbox" checked={allSelected} disabled={!!processingIds} onChange={event => setSelectedIds(event.target.checked ? new Set(draftIds) : new Set())} aria-label="Выбрать все черновики на странице" />Выбрать черновики на странице</label>
+        <span className="text-xs text-text-muted dark:text-stone-400">Выбрано: {selectedOnPage.length}</span>
+        <Button size="sm" variant="success" disabled={!selectedOnPage.length || !!processingIds} onClick={() => setConfirmBulk(true)}>Одобрить выбранные</Button>
+      </div>}
       <ul className="divide-y divide-border-light dark:divide-border-dark" aria-label="Список кофе">
         {query.data.items.map(coffee => {
           const publication = statuses[coffee.status];
           const StatusIcon = publication.icon;
           const roasterName = roasterNames.get(coffee.roasterId);
           return <li key={coffee.id}>
-            <article className="grid grid-cols-[3.5rem_minmax(0,1fr)] gap-3 py-4 sm:grid-cols-[4rem_minmax(0,1fr)]" aria-label={coffee.content.name}>
+            <article className={`grid gap-3 py-4 ${coffee.status === 'Draft' ? 'grid-cols-[1rem_3.5rem_minmax(0,1fr)] sm:grid-cols-[1rem_4rem_minmax(0,1fr)]' : 'grid-cols-[3.5rem_minmax(0,1fr)] sm:grid-cols-[4rem_minmax(0,1fr)]'}`} aria-label={coffee.content.name}>
+              {coffee.status === 'Draft' && <Input type="checkbox" checked={selectedIds.has(coffee.id)} disabled={!!processingIds} onChange={event => toggleSelected(coffee.id, event.target.checked)} aria-label={`Выбрать кофе ${coffee.content.name}`} className="mt-2" />}
               <CoffeePhoto coffee={coffee} />
               <div className="min-w-0 space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -82,6 +146,7 @@ export function CoffeesPage() {
                   </summary>
                   <ul className="list-disc space-y-1 pb-1 pl-5 [overflow-wrap:anywhere]">{coffee.reviewWarnings.map((warning, index) => <li key={`${warning}-${index}`}>{coffeeWarningLabel(warning)}</li>)}</ul>
                 </details>}
+                {coffee.status === 'Draft' && <Button size="sm" variant="success" disabled={!!processingIds} loading={processingIds?.includes(coffee.id)} onClick={() => void approve([coffee.id])}>Одобрить</Button>}
               </div>
             </article>
           </li>;
@@ -90,5 +155,6 @@ export function CoffeesPage() {
       {!query.data.items.length && <Card className="space-y-2 p-8 text-center"><h2 className="font-semibold">Кофе не найден</h2><p className="text-sm text-text-muted dark:text-stone-400">{status ? 'Попробуйте выбрать другой статус публикации.' : 'В каталоге пока нет карточек кофе.'}</p>{status && <Button variant="secondary" onClick={() => setParams({ page: '1' })}>Показать все статусы</Button>}</Card>}
       <Pagination page={page} totalPages={query.data.totalPages} onPageChange={changePage} />
     </>}
+    <ConfirmDialog isOpen={confirmBulk} title="Одобрить выбранный кофе?" message={`Будут опубликованы ${selectedOnPage.length} карточек кофе. Проверьте предупреждения и данные карточек перед публикацией.`} confirmLabel="Одобрить" variant="success" onCancel={() => setConfirmBulk(false)} onConfirm={async () => { await approve(selectedOnPage); }} />
   </section>;
 }

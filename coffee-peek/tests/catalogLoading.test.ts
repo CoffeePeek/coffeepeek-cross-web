@@ -1,11 +1,13 @@
 let mockRequest: Record<string, unknown> = { isError: true, isPending: false, isSuccess: false, error: { status: 503 } };
 let mockRoasters: Record<string, unknown> = { isError: true, isPending: false, error: { status: 503 } };
+let mockLocation: Record<string, unknown> = { data: null, isPending: false, isFetching: false };
+const mockInfiniteQuery = jest.fn((_options?: unknown) => mockRequest);
 jest.mock('@tanstack/react-query', () => ({
-  useInfiniteQuery: () => mockRequest,
-  useQuery: jest.fn(() => mockRoasters),
+  useInfiniteQuery: mockInfiniteQuery,
+  useQuery: jest.fn((options: { queryKey: string[] }) => options.queryKey[0] === 'device-location' ? mockLocation : mockRoasters),
   useMutationState: () => [],
 }));
-jest.mock('../src/api/discovery', () => ({}));
+jest.mock('../src/api/discovery', () => ({ searchShops: jest.fn() }));
 jest.mock('../src/api/coffeeshop', () => ({}));
 jest.mock('../src/api/publicAddresses', () => ({ getBySlug: jest.fn() }));
 jest.mock('../src/api/core/interceptors', () => ({ normalizeResponseData: (data: unknown) => data }));
@@ -18,7 +20,7 @@ jest.mock('../src/hooks/useLocalCity', () => ({ useLocalCity: () => ({ cityId: '
 jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 jest.mock('../src/hooks/useRequireAuth', () => ({ useRequireAuth: () => ({ requireAuth: jest.fn() }) }));
 jest.mock('../src/hooks/useLoadMoreOnScroll', () => ({ useLoadMoreOnScroll: () => undefined }));
-jest.mock('../src/components/ShopSearchBar', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/components/ShopSearchBar', () => ({ __esModule: true, default: jest.fn(() => null) }));
 jest.mock('../src/utils/lazyWithRetry', () => ({ lazyWithRetry: () => () => null }));
 jest.mock('../src/components/ShopFilterPanel', () => ({ __esModule: true, default: () => 'Цена' }));
 jest.mock('../src/components/CatalogFilters', () => ({ CatalogFilters: () => null, FilterChips: () => null, activeFilterCount: () => 0, catalogInput: '' }));
@@ -35,7 +37,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import PublicAddressPage from '../src/components/PublicAddressPage';
 import CoffeeShopList from '../src/components/CoffeeShopList';
+import ShopSearchBar from '../src/components/ShopSearchBar';
 import CatalogSearchPage from '../src/pages/CatalogSearchPage';
+import { searchShops } from '../src/api/discovery';
 
 test('coffee facets retain their values during filtering only within the same session and catalog', () => {
   jest.mocked(useQuery).mockClear();
@@ -87,6 +91,47 @@ test('the default city restored from the URL keeps the overview map visible', ()
   const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(CoffeeShopList)));
   expect(html).toContain('discovery-layout--overview');
   expect(html).not.toContain('discovery-map--hidden');
+  expect(jest.mocked(ShopSearchBar).mock.calls.at(-1)?.[0].onBack).toBeUndefined();
+});
+
+test.each(['shops', 'roasters'] as const)('the %s list has a back action and no map shortcut', section => {
+  const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [`/search?section=${section}`] }, React.createElement(CoffeeShopList)));
+  expect(html).toContain('discovery-map--hidden');
+  expect(html).not.toContain('>Карта</button>');
+  expect(html).not.toContain('Отменить');
+  expect(jest.mocked(ShopSearchBar).mock.calls.at(-1)?.[0].onBack).toEqual(expect.any(Function));
+});
+
+test('the default shop request uses a known location, while explicit filters keep their values', async () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', { configurable: true, value: { matchMedia: () => ({ matches: true }) } });
+  const render = (url = '/search') => renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(CoffeeShopList)));
+  const request = async () => {
+    const options = mockInfiniteQuery.mock.calls.at(-1)?.[0] as { enabled: boolean; queryFn: (context: { pageParam: number; signal: AbortSignal }) => Promise<unknown> };
+    expect(options.enabled).toBe(true);
+    await options.queryFn({ pageParam: 1, signal: new AbortController().signal });
+    return jest.mocked(searchShops).mock.calls.at(-1)?.[0];
+  };
+  try {
+    mockLocation = { data: undefined, isPending: true, isFetching: true };
+    render();
+    expect((mockInfiniteQuery.mock.calls.at(-1)?.[0] as { enabled: boolean }).enabled).toBe(false);
+
+    mockLocation = { data: { coords: { latitude: 50.4501, longitude: 30.5234 }, timestamp: Date.now() }, isPending: false, isFetching: false };
+    render();
+    expect(await request()).toEqual({ q: '', filters: { origin: { latitude: 50.4501, longitude: 30.5234 }, radiusKm: 3 }, sort: 'distance_asc', page: 1, pageSize: 20 });
+
+    render(`/search?filters=${encodeURIComponent(JSON.stringify({ city: 'minsk' }))}`);
+    expect(await request()).toEqual({ q: '', filters: { city: 'minsk' }, sort: 'name_asc', page: 1, pageSize: 20 });
+
+    mockLocation = { data: null, isPending: false, isFetching: false };
+    render();
+    expect(await request()).toEqual({ q: '', filters: { city: 'minsk' }, sort: 'name_asc', page: 1, pageSize: 20 });
+  } finally {
+    mockLocation = { data: null, isPending: false, isFetching: false };
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+  }
 });
 
 test('public shop profiles show their skeleton while resolving; edit routes keep their own loading state', () => {

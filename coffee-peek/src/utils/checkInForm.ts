@@ -1,7 +1,7 @@
 import { drinkSelection } from './consumedDrinks';
 import type { CreateCheckInRequest, RatingDto } from '../api/coffeeshop';
 
-export const CHECK_IN_LIMITS = { noteMin: 1, noteMax: 1000 };
+export const CHECK_IN_LIMITS = { noteMin: 0, noteMax: 1000 };
 
 export interface CheckInDraft {
   drinkSlug?: string;
@@ -34,7 +34,7 @@ export function buildCheckInRequest(draft: CheckInDraft, now = new Date()): Crea
     throw new CheckInValidationError('Укажите оценки кофе, сервиса и атмосферы от 1 до 5');
   }
   if (note.length < CHECK_IN_LIMITS.noteMin || note.length > CHECK_IN_LIMITS.noteMax) {
-    throw new CheckInValidationError('Текст чекина должен содержать от 1 до 1000 символов');
+    throw new CheckInValidationError('Заметка не должна превышать 1000 символов');
   }
   if (!draft.coffeeShopId.trim()) throw new CheckInValidationError('Выберите кофейню');
 
@@ -55,6 +55,7 @@ export function buildCheckInRequest(draft: CheckInDraft, now = new Date()): Crea
     visitedAt: visitedAt.toISOString(),
     text: note,
     photos: [],
+    drinkPhoto: null,
     rating: draft.rating,
   };
 }

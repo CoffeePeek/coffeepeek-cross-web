@@ -6,6 +6,8 @@ import { getThemeClasses } from '../../utils/theme';
 import { instagramHandle, instagramUrl, toWebsiteHref } from '../../utils/shopUtils';
 import { AppIcon } from '../icons';
 import { Globe, InstagramLogo } from '@/components/Icon';
+import { captureAnalyticsEvent } from '../../lib/analytics';
+import { useFeatureExposure } from '../../hooks/useFeatureExposure';
 
 interface ContactButtonsProps {
   shop: DetailedCoffeeShop;
@@ -51,6 +53,7 @@ export const ContactButtons: React.FC<ContactButtonsProps> = ({
   const { showToast } = useToast();
   const themeClasses = getThemeClasses(theme);
   const contact = shop.shopContact;
+  const exposureRef = useFeatureExposure<HTMLElement>('shop_contacts', 'shop_detail');
   if (!contact?.phone && !contact?.email && !contact?.website && !contact?.instagram) {
     return null;
   }
@@ -59,6 +62,7 @@ export const ContactButtons: React.FC<ContactButtonsProps> = ({
 
   const copyPhone = async () => {
     if (!contact.phone) return;
+    captureAnalyticsEvent('shop_action_clicked', { action: 'phone_copy', entry_point: 'shop_contacts' });
     const ok = await copyText(contact.phone);
     showToast(ok ? 'Номер скопирован' : 'Не удалось скопировать', ok ? 'success' : 'error');
   };
@@ -67,7 +71,7 @@ export const ContactButtons: React.FC<ContactButtonsProps> = ({
   const chipBtn = `inline-flex items-center gap-2 h-10 px-3.5 rounded-full font-semibold border ${borderColor} ${textMain} hover:border-[#D4A84B]/50 transition-all`;
 
   return (
-    <section className="min-w-0">
+    <section ref={exposureRef} className="min-w-0">
       <h2 className={`mb-3 text-2xl font-bold ${textMain}`}>Контакты</h2>
       <div className={`${cardBg} flex flex-wrap items-center gap-3 rounded-[24px] border p-4 sm:p-5 ${borderColor}`}>
         {contact.phone && (
@@ -94,7 +98,7 @@ export const ContactButtons: React.FC<ContactButtonsProps> = ({
           </div>
         )}
         {contact.email && (
-          <a href={`mailto:${contact.email}`} className={`inline-flex items-center gap-2 ${textMuted} hover:text-[#D4A84B]`}>
+          <a href={`mailto:${contact.email}`} onClick={() => captureAnalyticsEvent('shop_action_clicked', { action: 'email', entry_point: 'shop_contacts' })} className={`inline-flex items-center gap-2 ${textMuted} hover:text-[#D4A84B]`}>
             <AppIcon name="mail" size={20} color="#D4A84B" />
             <span className="font-medium break-all">{contact.email}</span>
           </a>
@@ -102,6 +106,7 @@ export const ContactButtons: React.FC<ContactButtonsProps> = ({
         {websiteHref && (
           <a
             href={websiteHref}
+            onClick={() => captureAnalyticsEvent('shop_action_clicked', { action: 'website', entry_point: 'shop_contacts' })}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Веб-сайт"
@@ -114,6 +119,7 @@ export const ContactButtons: React.FC<ContactButtonsProps> = ({
         {contact.instagram && (
           <a
             href={instagramUrl(contact.instagram)}
+            onClick={() => captureAnalyticsEvent('shop_action_clicked', { action: 'instagram', entry_point: 'shop_contacts' })}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Instagram ${instagramHandle(contact.instagram)}`}

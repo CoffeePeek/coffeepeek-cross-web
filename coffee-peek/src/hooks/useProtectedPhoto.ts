@@ -31,12 +31,6 @@ export function useProtectedPhoto(url: string | undefined, enabled: boolean) {
     }).catch(() => { if (!disposed) setResult({ url, session, failed: true }); });
     return () => { disposed = true; lease.release(); clearTimeout(timer); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [url, enabled, session, attempt]);
-  useEffect(() => {
-    const refresh = () => { setResult(undefined); setAttempt(value => value + 1); };
-    document.addEventListener('visibilitychange', refresh);
-    window.addEventListener('focus', refresh);
-    return () => { document.removeEventListener('visibilitychange', refresh); window.removeEventListener('focus', refresh); };
-  }, []);
   const current = enabled && result && result.url === url && result.session === session ? result : undefined;
   return { src: current?.src, failed: current?.failed, retry: () => setAttempt(value => value + 1) };
 }

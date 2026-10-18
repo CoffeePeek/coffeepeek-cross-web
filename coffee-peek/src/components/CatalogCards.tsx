@@ -11,6 +11,9 @@ import { COLORS, getThemeColors } from '../constants/colors';
 import { getPhotoUrl } from '../api/coffeeshop';
 import { AppIcon, BynSign } from './icons';
 import { useRoaster } from '../hooks/queries/useCatalogs';
+import { captureAnalyticsEvent } from '../lib/analytics';
+import type { CatalogAnalyticsContext } from '../utils/discoveryAnalytics';
+import { useFeatureExposure } from '../hooks/useFeatureExposure';
 
 export const catalogPanel = 'rounded-2xl border border-stone-200 bg-white p-4 dark:border-[#3D2F28] dark:bg-[#2D241F]';
 export const catalogButton = 'min-h-11 rounded-xl border border-stone-300 px-4 py-2 font-semibold hover:border-yellow-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-500 disabled:opacity-50 dark:border-[#4A3D35]';
@@ -25,7 +28,8 @@ export function CatalogPhoto({ photo, name, className = 'aspect-[5/3]', size = '
 }
 export function FavoriteButton({ kind, address, value, className = catalogButton }: { kind: 'coffee_shop' | 'roaster'; address: PublicAddress | undefined; value?: boolean | null; className?: string }) {
   const { favorite, pending, toggle } = useFavorite(kind, address, value);
-  return <button type="button" className={className} style={{ padding: 0, minWidth: 44 }} disabled={!address || pending} aria-pressed={favorite === true}
+  const favoriteExposure = useFeatureExposure<HTMLButtonElement>('favorites', `${kind}_card`, !!address);
+  return <button ref={favoriteExposure} type="button" className={className} style={{ padding: 0, minWidth: 44 }} disabled={!address || pending} aria-pressed={favorite === true}
     aria-label={favorite ? 'Убрать из избранного' : 'Добавить в избранное'} onClick={event => { event.stopPropagation(); toggle(); }}>
     <AppIcon name="heart" filled={favorite === true} size={26} color={favorite ? COLORS.primary : 'currentColor'} style={{ flexShrink: 0 }} /><span className="sr-only">Избранное</span>
   </button>;
@@ -73,7 +77,7 @@ export function OfferList({ offers, defaults = [], groups = [] }: { offers: Coff
     </li>;
   })}</ul>;
 }
-export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: FilterGroup[] }) {
+export function CoffeeCatalogCard({ coffee, groups, analytics = { source: 'list' } }: { coffee: Coffee; groups: FilterGroup[]; analytics?: CatalogAnalyticsContext }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
@@ -91,12 +95,23 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
     prices.set(offer.currency, weights);
   }
   const tastes = coffee.classification.tasteGroups.map(value => label('taste', value));
-  return <ShopCard coffee={coffee} colors={colors} onSelect={() => navigate(coffee.address.canonicalPath)}>
+  const alternative = coffee.classification.roastLevel
+    ? `Обжарка: ${label('roast', coffee.classification.roastLevel)}`
+    : coffee.classification.defaultBrewPurposes[0]
+      ? label('brew', coffee.classification.defaultBrewPurposes[0])
+      : coffee.classification.processing[0]
+        ? `Обработка: ${label('processing', coffee.classification.processing[0])}`
+        : coffee.roaster.name?.trim()
+          ? `Обжарщик: ${coffee.roaster.name}`
+          : 'Характеристики не указаны';
+  return <ShopCard coffee={coffee} colors={colors} onSelect={() => { captureAnalyticsEvent('catalog_item_opened', { ...analytics, entity_type: 'coffee' }); navigate(coffee.address.canonicalPath, { state: { analytics } }); }}>
       <p className="mb-2 flex min-w-0 items-center gap-1.5 text-xs leading-5" style={{ color: colors.textSecondary }} title={coffee.countries.map(country => country.nameRu).join(', ')}>
         {coffee.countries.map(country => countryFlagUrl(country.code) && <img key={country.code} src={countryFlagUrl(country.code)} alt="" width={20} height={15} loading="lazy" className="h-3.5 w-5 shrink-0 rounded-sm object-cover" onError={event => { event.currentTarget.hidden = true; }} />)}
         <span className="truncate">{coffee.countries.map(country => country.nameRu).join(', ') || 'Происхождение не указано'}</span>
       </p>
-      {!!tastes.length && <div className="mb-3 flex flex-wrap gap-1.5">{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</div>}
+      <div className="mb-3 flex flex-wrap gap-1.5">{tastes.length
+        ? <>{tastes.slice(0, 3).map(taste => <InfoChip key={taste} colors={colors}>{taste}</InfoChip>)}{tastes.length > 3 && <InfoChip colors={colors}>+{tastes.length - 3}<span className="sr-only">: {tastes.slice(3).join(', ')}</span></InfoChip>}</>
+        : <InfoChip colors={colors}><span className="max-w-[240px] truncate" title={alternative}>{alternative}</span></InfoChip>}</div>
       <div className="mt-auto space-y-2 border-t pt-3" style={{ borderColor: colors.border }}>
         {[...prices.entries()].map(([currency, offersByWeight]) => {
           const weights = [...offersByWeight.keys()].sort((a, b) => (a ?? Infinity) - (b ?? Infinity));
@@ -131,7 +146,7 @@ export function CoffeeCatalogCard({ coffee, groups }: { coffee: Coffee; groups: 
       </div>
   </ShopCard>;
 }
-export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
+export function RoasterCatalogCard({ roaster, analytics = { source: 'list' } }: { roaster: Roaster; analytics?: CatalogAnalyticsContext }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
@@ -160,7 +175,7 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
     { label: 'Товары в каталоге', icon: 'coffee-bean', count: productCount, empty: 'Нет товаров', unknown: 'Товары: —', forms: { one: 'товар', few: 'товара', other: 'товаров' } },
   ];
   const catalogPath = `/coffees?filters=${encodeURIComponent(JSON.stringify({ roasters: [roaster.address.slug], availableOnly: false }))}`;
-  const open = () => { if (roaster.address.canonicalPath) navigate(roaster.address.canonicalPath); };
+  const open = () => { if (roaster.address.canonicalPath) { captureAnalyticsEvent('catalog_item_opened', { ...analytics, entity_type: 'roaster' }); navigate(roaster.address.canonicalPath, { state: { analytics } }); } };
   return (
     <article role={roaster.address.canonicalPath ? 'button' : undefined} tabIndex={roaster.address.canonicalPath ? 0 : undefined} aria-label={`Открыть обжарщика ${name}`}
       onClick={open} onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); open(); } }}
@@ -185,7 +200,7 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
               {index > 0 && <span aria-hidden="true" className="mr-1">·</span>}
               <AppIcon name={stat.icon} size={20} className="shrink-0" />
               <dt className="sr-only">{stat.label}</dt><dd>{index === 1 && roaster.address.slug && productCount !== 0
-                ? <Link to={catalogPath} aria-label={`Смотреть каталог ${name}`} onClick={event => event.stopPropagation()} className="inline-flex min-h-11 items-center rounded-lg outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">{value}</Link>
+                ? <Link to={catalogPath} state={{ analytics: { source: 'related' } }} aria-label={`Смотреть каталог ${name}`} onClick={event => { event.stopPropagation(); captureAnalyticsEvent('entity_content_interacted', { entity_type: 'roaster', section: 'assortment', action: 'view_all' }); }} className="inline-flex min-h-11 items-center rounded-lg outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-primary">{value}</Link>
                 : <span aria-disabled={index === 1 && productCount === 0 || undefined} title={index === 1 && productCount === 0 ? 'Каталог пока пуст' : undefined}>{value}</span>}</dd>
             </div>;
           })}
@@ -196,7 +211,7 @@ export function RoasterCatalogCard({ roaster }: { roaster: Roaster }) {
     </article>
   );
 }
-export function ShopCatalogCard({ shop }: { shop: Shop }) {
+export function ShopCatalogCard({ shop, analytics = { source: 'list' } }: { shop: Shop; analytics?: CatalogAnalyticsContext }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const tagRow = useRef<HTMLDivElement>(null);
@@ -231,7 +246,7 @@ export function ShopCatalogCard({ shop }: { shop: Shop }) {
     document.fonts.addEventListener('loadingdone', fitTags);
     return () => { observer.disconnect(); document.fonts.removeEventListener('loadingdone', fitTags); };
   }, [shop.tags, theme]);
-  return <ShopCard colors={getThemeColors(theme)} onSelect={() => navigate(shop.address.canonicalPath)} shop={{
+  return <ShopCard colors={getThemeColors(theme)} onSelect={() => { captureAnalyticsEvent('catalog_item_opened', { ...analytics, entity_type: 'coffee_shop' }); navigate(shop.address.canonicalPath, { state: { analytics } }); }} shop={{
     id: shop.address.slug, name: shop.name, publicAddress: shop.address, canonicalPath: shop.address.canonicalPath,
     address: shop.addressLine, shopPhotos: shop.coverPhoto ? [shop.coverPhoto.urls?.card || shop.coverPhoto.fullUrl] : [],
     rating: shop.rating, checkInCount: shop.checkInCount, isOpen: shop.isOpen ?? undefined,

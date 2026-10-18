@@ -1,4 +1,4 @@
-﻿import type { IconProps } from '@phosphor-icons/react';
+import type { IconProps } from '@phosphor-icons/react';
 import { BeanPriceMarks } from './icons/CoffeeBeanSign';
 import {
   ArrowClockwise,

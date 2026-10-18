@@ -2,29 +2,38 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LEGAL_ROUTES } from '../constants/legalRoutes';
 import { useTheme } from '../contexts/ThemeContext';
+import {
+  ANALYTICS_CONSENT_EVENT,
+  ANALYTICS_CONSENT_KEY,
+  getAnalyticsConsent,
+  setAnalyticsConsent,
+} from '../lib/analyticsConsent';
 
 const CookieBanner: React.FC = () => {
   const [showBanner, setShowBanner] = useState(false);
   const { theme } = useTheme();
 
   useEffect(() => {
-    const consent = localStorage.getItem('cookieConsent');
-    if (!consent) {
-      setShowBanner(true);
-    }
+    const syncConsent = () => setShowBanner(getAnalyticsConsent() === null);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === ANALYTICS_CONSENT_KEY || event.key === null) syncConsent();
+    };
+    syncConsent();
+    window.addEventListener(ANALYTICS_CONSENT_EVENT, syncConsent);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(ANALYTICS_CONSENT_EVENT, syncConsent);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('cookieConsent', 'accepted');
-    localStorage.setItem('cookieConsentDate', new Date().toISOString());
+    setAnalyticsConsent('accepted');
     setShowBanner(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem('cookieConsent', 'declined');
-    localStorage.setItem('cookieConsentDate', new Date().toISOString());
-    // Очищаем необязательные данные (но оставляем токены, если пользователь авторизован)
-    // Токены будут очищены при следующем логине, если пользователь не примет согласие
+    setAnalyticsConsent('declined');
     setShowBanner(false);
   };
 
@@ -40,13 +49,14 @@ const CookieBanner: React.FC = () => {
     >
       <p className={`font-body text-sm leading-[1.5] ${isDark ? 'text-stone-300' : 'text-slate-500'}`}>
         <strong className={isDark ? 'text-white' : 'text-black'}>Использование данных. </strong>
-        Сохраняем настройки и согласие в браузере; избранное — в вашем аккаунте.
-        Используем технические метрики хостинга.{' '}
+        Сохраняем настройки и согласие в браузере. С вашего согласия PostHog собирает
+        данные о посещениях и действиях на сайте, чтобы улучшать CoffeePeek.
+        Отказ не влияет на работу сайта. Изменить выбор можно в{' '}
         <Link
           to={LEGAL_ROUTES.privacy}
           className={`underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${isDark ? 'text-white' : 'text-black'}`}
         >
-          Политика конфиденциальности
+          политике конфиденциальности
         </Link>
         .
       </p>

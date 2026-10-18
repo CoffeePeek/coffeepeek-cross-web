@@ -1,6 +1,6 @@
 /**
  * CoffeePeek Design System — единый источник токенов.
- * Используется в веб-приложении и экспортируется в tokens.json для Android.
+ * Используется в веб-приложении. npm run design:sync обновляет JSON и документацию.
  */
 
 export const brand = {
@@ -136,8 +136,8 @@ export const borderWidth = {
 
 export const shadow = {
   buttonPrimary: '0 4px 6px -4px rgba(180, 140, 75, 0.2), 0 10px 15px -3px rgba(180, 140, 75, 0.2)',
-  card: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
-  cardHover: '0 8px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+  card: '0 3px 14px rgba(0,0,0,.08)',
+  cardHover: '0 12px 32px rgba(0,0,0,.22)',
   dropdown: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
   focusRing: '0 0 0 3px rgba(234, 179, 8, 0.1)',
   goldGlow: '0 4px 12px rgba(234, 179, 8, 0.18)',
@@ -165,7 +165,7 @@ export const animation = {
 
 export const layout = {
   headerHeight: 64,
-  headerHeightLanding: 72,
+  headerHeightLanding: 64,
   maxContentWidth: 1280,
   contentPaddingX: 16,
   contentPaddingXDesktop: 32,

@@ -7,14 +7,15 @@ import { ChatCenteredText, MagnifyingGlass, GearSix, SignOut, CaretDown, User } 
 import { CoffeeBean } from '@phosphor-icons/react';
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
 
-const PUBLIC_NAV = [
-  { id: 'feed', label: 'Лента', route: '/feed', Icon: ChatCenteredText, match: (p: string) => p.startsWith('/feed') },
-  { id: 'discovery', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => ['/shops', '/coffee-shops', '/search', '/roasters', '/map'].some(route => p.startsWith(route)) },
-  { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: CoffeeBean, match: (p: string) => p.startsWith('/coffees') },
-] as const;
+const FEED_NAV = { id: 'feed', label: 'Лента', route: '/feed', Icon: ChatCenteredText, match: (p: string) => p.startsWith('/feed') } as const;
+const DISCOVERY_NAV = { id: 'discovery', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => ['/shops', '/coffee-shops', '/search', '/roasters', '/map'].some(route => p.startsWith(route)) } as const;
+const COFFEES_NAV = { id: 'coffees', label: 'Кофе', route: '/coffees', Icon: CoffeeBean, match: (p: string) => p.startsWith('/coffees') } as const;
+const PUBLIC_NAV = [FEED_NAV, DISCOVERY_NAV, COFFEES_NAV] as const;
 
 const AUTH_NAV = [
-  ...PUBLIC_NAV,
+  DISCOVERY_NAV,
+  COFFEES_NAV,
+  FEED_NAV,
   { id: 'profile',  label: 'Профиль',   route: '/profile',  Icon: User, match: (p: string) => ['/profile', '/reviews', '/check-ins', '/my/'].some(route => p.startsWith(route)) },
   { id: 'settings', label: 'Настройки', route: '/settings', Icon: GearSix, match: (p: string) => p.startsWith('/settings') },
 ] as const;
@@ -39,8 +40,6 @@ const Header: React.FC = () => {
   const allNav = [...PUBLIC_NAV];
 
   const currentPath = location.pathname + location.search;
-  const isShopDetails = /^\/(?:shops|coffee-shops)\/[^/]+$/.test(location.pathname);
-  const isShopCreation = location.pathname === '/coffee-shops/new';
   const currentId = (user ? AUTH_NAV : PUBLIC_NAV).find(n => n.match(currentPath))?.id ?? '';
 
   const bg = isDark ? 'rgba(26,20,18,0.78)' : 'rgba(250,250,249,0.78)';
@@ -200,31 +199,49 @@ const Header: React.FC = () => {
         </div>
       </div>
     </header>
-      <nav
-        className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} fixed inset-x-0 bottom-0 z-[1200] grid-cols-5 border-t lg:hidden`}
-        aria-label="Основная навигация"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: bg, borderColor, backdropFilter: 'blur(28px)', WebkitBackdropFilter: 'blur(28px)', boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
-      >
-        {AUTH_NAV.map(({ id, label, route, Icon }) => {
-          const active = currentId === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => navigate(route)}
-              className="flex min-h-[64px] flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
-              style={{ color: active ? gold : mutedColor }}
-              aria-current={active ? 'page' : undefined}
-            >
-              <span className="flex h-8 min-w-11 items-center justify-center rounded-full" style={{ background: active ? `${gold}1F` : 'transparent' }}>
-                <Icon size={23} weight={active ? 'bold' : 'regular'} />
-              </span>
-              <span style={{ fontFamily: '"Manrope"', fontSize: 10, fontWeight: active ? 700 : 500 }}>{label}</span>
-            </button>
-          );
-        })}
-      </nav>
     </>
+  );
+};
+
+export const BottomNavigation: React.FC = () => {
+  const { theme } = useTheme();
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isShopDetails = /^\/(?:shops|coffee-shops)\/[^/]+$/.test(location.pathname);
+  const isShopCreation = location.pathname === '/coffee-shops/new';
+  const currentPath = location.pathname + location.search;
+  const currentId = (user ? AUTH_NAV : PUBLIC_NAV).find(n => n.match(currentPath))?.id ?? '';
+  const gold = COLORS.primary;
+  const mutedColor = theme === 'dark' ? '#A39E93' : '#78716C';
+  const background = theme === 'dark' ? 'rgba(26,20,18,0.96)' : 'rgba(250,250,249,0.96)';
+  const borderColor = theme === 'dark' ? '#3D2F28' : '#E7E5E4';
+
+  return (
+    <nav
+      className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} sticky bottom-0 z-[1200] grid-cols-5 border-t lg:hidden`}
+      aria-label="Основная навигация"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)', background, borderColor, boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
+    >
+      {AUTH_NAV.map(({ id, label, route, Icon }) => {
+        const active = currentId === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => navigate(route)}
+            className="flex min-h-[64px] flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
+            style={{ color: active ? gold : mutedColor }}
+            aria-current={active ? 'page' : undefined}
+          >
+            <span className="flex h-8 min-w-11 items-center justify-center rounded-full" style={{ background: active ? `${gold}1F` : 'transparent' }}>
+              <Icon size={23} weight={active ? 'bold' : 'regular'} />
+            </span>
+            <span style={{ fontFamily: '"Manrope"', fontSize: 10, fontWeight: active ? 700 : 500 }}>{label}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 };
 

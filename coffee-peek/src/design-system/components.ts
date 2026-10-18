@@ -1,16 +1,17 @@
 /**
  * Спецификации UI-компонентов CoffeePeek Design System.
- * Размеры в px (≈ dp в Android при density 1x).
+ * Размеры в CSS px. auto означает высоту, определяемую содержимым и padding.
  */
 
 import { animation, borderRadius, borderWidth, spacing, typography } from './tokens';
 
 export const button = {
-  height: 40,
+  height: 'auto',
   paddingVertical: 10,
   paddingHorizontal: 16,
   borderRadius: borderRadius.md,
   fontSize: typography.fontSize.lg,
+  lineHeight: 24,
   fontWeight: typography.fontWeight.semibold,
   fontFamily: typography.fontFamily.body,
   gap: spacing[2],
@@ -26,11 +27,21 @@ export const button = {
       text: 'theme.textPrimary',
       border: 'theme.border',
       backgroundHover: 'theme.border',
+      light: {
+        background: '#F3F4F6',
+        text: '#111827',
+        border: '#D1D5DB',
+        backgroundHover: '#E5E7EB',
+      },
     },
     ghost: {
       background: 'transparent',
       text: 'theme.textSecondary',
       textHover: 'theme.textPrimary',
+      light: {
+        text: '#4B5563',
+        textHover: '#111827',
+      },
     },
   },
   states: {
@@ -39,21 +50,24 @@ export const button = {
     focusRingWidth: 2,
     focusRingColor: 'brand.primary',
     focusRingOpacity: 0.5,
+    focusRingOffset: 2,
   },
 } as const;
 
 export const input = {
-  minHeight: 52,
+  height: 'auto',
   paddingVertical: 16,
   paddingHorizontal: 16,
   paddingHorizontalWithIcon: 48,
   borderRadius: borderRadius['3xl'],
   fontSize: typography.fontSize.lg,
+  lineHeight: 24,
   labelFontSize: typography.fontSize.base,
   labelFontWeight: typography.fontWeight.medium,
-  borderWidth: borderWidth.thin,
+  borderWidth: 0,
   states: {
     defaultBorder: 'theme.border',
+    defaultBorderLight: '#E5E7EB',
     focusBorder: 'brand.primary',
     focusRingWidth: 3,
     focusRingColor: 'brand.primary',
@@ -75,25 +89,30 @@ export const select = {
   dropdownBorderRadius: borderRadius.lg,
   states: {
     defaultBorder: 'theme.border',
+    defaultBorderLight: '#E5E7EB',
     focusBorder: 'brand.primary',
-    focusShadow: 'shadow.focusRing',
+    focusShadow: '0 10px 15px -3px rgba(234,179,8,.1), 0 4px 6px -4px rgba(234,179,8,.1)',
     selectedItemBackground: 'brand.primary',
     selectedItemBackgroundOpacity: 0.1,
     hoverItemBackground: 'theme.border',
+    hoverItemBackgroundLight: '#F3F4F6',
   },
 } as const;
 
 export const card = {
-  borderRadius: borderRadius.lg,
+  borderRadius: borderRadius['4xl'],
   borderWidth: borderWidth.thin,
-  padding: spacing[6],
-  photoAspectRatio: '5:3',
-  hoverTranslateY: -3,
-  hoverTransitionMs: animation.durationNormal,
+  padding: spacing[4],
+  paddingTop: spacing[3],
+  photoAspectRatio: '16:9',
+  hoverTranslateY: -2,
+  hoverTransitionMs: animation.durationFast,
+  photoHoverScale: 1.035,
+  photoTransitionMs: 500,
   states: {
     defaultBorder: 'theme.border',
     hoverBorder: 'brand.primary',
-    hoverBorderOpacity: 0.31,
+    hoverBorderOpacity: 112 / 255,
     shadow: 'shadow.card',
     shadowHover: 'shadow.cardHover',
   },
@@ -112,7 +131,7 @@ export const checkInCard = {
   starSize: 20,
   bodyFontSize: 16,
   bodyLineHeight: 1.55,
-  drink: { minHeight: 56, borderRadius: 16, photoSize: 44, photoBorderRadius: 12, fontSize: 14 },
+  drink: { placement: 'bottom-right', layout: 'horizontal', verticalAlign: 'center', photoSize: 80, photoFit: 'contain', fallbackIconSize: 32, fontSize: 14 },
   photos: { borderRadius: 12, gap: 4, singleAspectRatio: '3:2', collageAspectRatio: '5:3', fourAspectRatio: '5:4' },
   reaction: { iconSize: 26, minHeight: 44, color: '#EF4444', fontSize: 14 },
 } as const;
@@ -132,15 +151,16 @@ export const toast = {
 
 export const header = {
   height: 64,
-  heightLanding: 72,
-  logoSize: 40,
-  logoBorderRadius: borderRadius.md,
-  navButtonPaddingVertical: 7,
-  navButtonPaddingHorizontal: 12,
-  navButtonBorderRadius: borderRadius.sm,
+  heightLanding: 64,
+  logoSize: 52,
+  logoBorderRadius: 15,
+  navButtonMinHeight: 34,
+  navButtonPaddingVertical: 0,
+  navButtonPaddingHorizontal: 14,
+  navButtonBorderRadius: 999,
   navFontSize: typography.fontSize.base,
   navFontWeight: typography.fontWeight.semibold,
-  avatarSize: 30,
+  avatarSize: 34,
   avatarSizeLarge: 38,
 } as const;
 
@@ -158,6 +178,7 @@ export const loader = {
   color: 'brand.primary',
   borderWidthRatio: 16,
   minBorderWidth: 2,
+  borderWidthRounding: 'round',
 } as const;
 
 export const typographyStyles = {
@@ -171,7 +192,7 @@ export const typographyStyles = {
     fontFamily: typography.fontFamily.display,
     fontWeight: typography.fontWeight.black,
     fontSize: typography.fontSize.hero,
-    letterSpacing: typography.letterSpacing.wordmark,
+    letterSpacing: -0.05,
     lineHeight: typography.lineHeight.snug,
   },
   h1: {
