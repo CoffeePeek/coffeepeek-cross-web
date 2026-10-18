@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUser } from '../../contexts/UserContext';
 import { getCatalogScope } from '../../lib/catalogSession';
+import { invalidateProtectedPhotos } from '../../lib/photoSession';
 import { captureAnalyticsEvent } from '../../lib/analytics';
 import type { CheckInFlow } from '../../lib/checkInAnalytics';
 import {
@@ -72,17 +73,17 @@ export function useCreateCheckIn(flow?: CheckInFlow) {
 
 export function useUpdateCheckIn() {
   const invalidate = useInvalidateCheckIns();
-  return useMutation({ mutationFn: ({ id, request }: { id: string; request: UpdateCheckInRequest }) => updateCheckIn(id, request), onSuccess: invalidate });
+  return useMutation({ mutationFn: ({ id, request }: { id: string; request: UpdateCheckInRequest }) => updateCheckIn(id, request), onSuccess: () => { invalidateProtectedPhotos(); return invalidate(); } });
 }
 
 export function useCheckInVisibility() {
   const invalidate = useInvalidateCheckIns();
-  return useMutation({ mutationFn: ({ id, visibility }: { id: string; visibility: CheckInVisibility }) => changeCheckInVisibility(id, visibility), onSuccess: invalidate });
+  return useMutation({ mutationFn: ({ id, visibility }: { id: string; visibility: CheckInVisibility }) => changeCheckInVisibility(id, visibility), onSuccess: () => { invalidateProtectedPhotos(); return invalidate(); } });
 }
 
 export function useDeleteCheckIn() {
   const invalidate = useInvalidateCheckIns();
-  return useMutation({ mutationFn: deleteCheckIn, onSuccess: invalidate });
+  return useMutation({ mutationFn: deleteCheckIn, onSuccess: () => { invalidateProtectedPhotos(); return invalidate(); } });
 }
 
 export function useCheckInHelpful() {

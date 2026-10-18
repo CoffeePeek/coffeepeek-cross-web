@@ -1,6 +1,7 @@
 import { httpClient } from './core/httpClient';
 import type { CheckInDto, CheckInVisibility, CheckInPhoto } from './coffeeshop';
 import { normalizeCheckInDto } from './core/checkInNormalize';
+import { invalidateProtectedPhotos } from '../lib/photoSession';
 import type { UploadedPhoto } from '../hooks/usePhotoUpload';
 
 const BASE = '/api/v1/check-ins/home';
@@ -19,6 +20,7 @@ export interface HomeCheckIn extends Partial<CheckInDto> {
   visibility?: CheckInVisibility;
   moderationState?: CheckInDto['moderationState'];
   photos: CheckInPhoto[];
+  drinkPhoto?: CheckInPhoto | null;
 }
 
 export interface HomeCheckInRequest {
@@ -72,7 +74,8 @@ function requireData<T>(data: T | null | undefined): T {
 }
 
 function normalizeHome(item: HomeCheckIn): HomeCheckIn {
-  return normalizeCheckInDto(item as CheckInDto) as HomeCheckIn;
+  return normalizeCheckInDto({ ...item, drinkPhotoUrl: item.drinkPhotoUrl ?? item.drinkPhoto?.url,
+    drinkPhotoVariants: item.drinkPhotoVariants ?? item.drinkPhoto?.variants } as CheckInDto) as HomeCheckIn;
 }
 
 export async function getHomeCheckIns(pageNumber = 1, pageSize = 20, range?: { from: string; to: string }): Promise<HomePage> {
@@ -101,11 +104,13 @@ export async function createHomeCheckIn(request: HomeCheckInRequest): Promise<Ho
 
 export async function updateHomeCheckIn(id: string, request: Omit<HomeCheckInRequest, 'photos' | 'drinkPhoto'>): Promise<HomeCheckIn> {
   const { data } = await httpClient.put<HomeCheckIn>(`${BASE}/${encodeURIComponent(id)}`, request, { requiresAuth: true });
+  invalidateProtectedPhotos();
   return normalizeHome(requireData(data));
 }
 
 export async function deleteHomeCheckIn(id: string): Promise<void> {
   await httpClient.delete<null>(`${BASE}/${encodeURIComponent(id)}`, { requiresAuth: true });
+  invalidateProtectedPhotos();
 }
 
 export interface CoffeeProductOption { id?: string; slug?: string; address?: { slug?: string }; name?: string; title?: string }

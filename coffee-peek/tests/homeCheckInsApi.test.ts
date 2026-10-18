@@ -11,6 +11,16 @@ const request: HomeCheckInRequest = {
 const item = { id: 'home-id', preparedOn: '2026-10-14', tasteScore: 5, visibility: 'Private', photos: [] };
 beforeEach(() => jest.clearAllMocks());
 
+test('Home drink-photo objects preserve protected variant descriptors for client selection', async () => {
+  const variants = [{ purpose: 'thumb', contentType: 'image/png', format: 'png', width: 320, height: 240,
+    sizeBytes: 1000, sourceVersion: 'source', recipeVersion: 1, url: '/cutout/variants/source/1/thumb.png' }];
+  jest.mocked(httpClient.get).mockResolvedValueOnce({ data: { ...item,
+    drinkPhoto: { id: 'cutout', url: '/cutout/original', variants } } } as never);
+  const result = await getHomeCheckIn('home-id');
+  expect(result.drinkPhotoUrl).toBe('/cutout/original');
+  expect(result.drinkPhotoVariants).toEqual(variants);
+});
+
 test('home creation requires an id and confirmed visibility', async () => {
   jest.mocked(httpClient.post).mockResolvedValueOnce({ data: { ...item, visibility: null } } as never).mockResolvedValueOnce({ data: item } as never);
   await expect(createHomeCheckIn(request)).rejects.toThrow(/не подтвердил/);

@@ -21,6 +21,11 @@ import { getCatalogScope } from '../../lib/catalogSession';
 import { captureAnalyticsEvent } from '../../lib/analytics';
 import { analyticsApiCategory } from '../../lib/analyticsContext';
 import { getAnalyticsError } from '../../lib/analyticsError';
+import { getPhotoSession } from '../../lib/photoSession';
+import type { PhotoResponse } from '../../lib/photoResponse';
+import { parseJWT } from '../../utils/jwt';
+
+type InternalRequestOptions = RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean; photoMetadata?: boolean };
 
 /**
  * Базовый HTTP клиент
@@ -79,7 +84,7 @@ class HttpClient {
    */
   private async request<T>(
     endpoint: string,
-    options: RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean } = {}
+    options: InternalRequestOptions = {}
   ): Promise<ApiResponse<T>> {
     const startedAt = Date.now();
     const scope = getCatalogScope();
@@ -104,12 +109,13 @@ class HttpClient {
 
   private async executeRequest<T>(
     endpoint: string,
-    options: RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean },
+    options: InternalRequestOptions,
     trace: { authRetried: boolean },
   ): Promise<ApiResponse<T>> {
-    const { params, requiresAuth = true, skipAuthHeader, _retry, raw, binary, ...fetchOptions } = options;
+    const { params, requiresAuth = true, skipAuthHeader, _retry, raw, binary, photoMetadata, ...fetchOptions } = options;
     const scope = getCatalogScope();
-    const checkSession = () => { if (scope !== getCatalogScope() || fetchOptions.signal?.aborted) throw new DOMException('Session changed or request cancelled', 'AbortError'); };
+    const photoSession = getPhotoSession();
+    const checkSession = () => { if (scope !== getCatalogScope() || fetchOptions.signal?.aborted || photoMetadata && photoSession !== getPhotoSession()) throw new DOMException('Session changed or request cancelled', 'AbortError'); };
 
     // Строим URL с параметрами
     const urlWithParams = buildUrlWithParams(endpoint, params);
@@ -119,6 +125,11 @@ class HttpClient {
       await ensureFreshAccessToken(this.baseURL);
     }
     checkSession();
+    if (photoMetadata) {
+      const token = TokenManager.getAccessToken();
+      const exp = token ? parseJWT(token)?.exp : undefined;
+      if (token && (typeof exp !== 'number' || !Number.isFinite(exp) || exp * 1000 <= Date.now())) throw new Error('Photo credentials expired');
+    }
 
     // Применяем request interceptor
     const requestOptions = requestInterceptor(
@@ -129,6 +140,7 @@ class HttpClient {
 
     try {
       // Выполняем запрос
+      const requestMono = performance.now();
       const response = await fetch(fullUrl, requestOptions);
       checkSession();
 
@@ -151,6 +163,13 @@ class HttpClient {
           TokenManager.clearTokens();
           emitSessionInvalidated('session_revoked');
         }
+      }
+
+      if (photoMetadata && (response.status === 200 || response.status === 304)) {
+        const blob = response.status === 200 ? await response.blob() : undefined;
+        checkSession();
+        const data: PhotoResponse = { status: response.status, blob, headers: response.headers, requestMono, responseMono: performance.now(), responseWall: Date.now() };
+        return { success: true, message: '', data: data as T, statusCode: response.status };
       }
 
       if (binary && response.ok) {
@@ -204,15 +223,27 @@ class HttpClient {
    * GET запрос
    */
   async getBlob(url: string, signal?: AbortSignal): Promise<Blob> {
+    return (await this.request<Blob>(this.photoEndpoint(url), {
+      method: 'GET', binary: true, cache: 'no-store', redirect: 'error', signal,
+    })).data;
+  }
+
+  /** Conditional photo responses stay inside token refresh, origin and session checks. */
+  async getPhotoResponse(url: string, signal?: AbortSignal, etag?: string): Promise<PhotoResponse> {
+    return (await this.request<PhotoResponse>(this.photoEndpoint(url), {
+      method: 'GET', photoMetadata: true, cache: 'no-store', redirect: 'error', signal,
+      headers: etag ? { 'If-None-Match': etag } : undefined,
+    })).data;
+  }
+
+  private photoEndpoint(url: string): string {
     // Only gateway URLs may receive our bearer token; route absolute gateway URLs through the dev proxy.
     const base = new URL(this.baseURL, globalThis.location?.origin || this.baseURL);
     const target = new URL(url, base);
     const configuredOrigin = API_GATEWAY_URL ? new URL(API_GATEWAY_URL, base).origin : base.origin;
     if (target.origin !== base.origin && target.origin !== configuredOrigin) throw new Error('Недоступный адрес фотографии');
     const endpoint = target.pathname.startsWith('/backend/') ? target.pathname.slice(8) : target.pathname;
-    return (await this.request<Blob>(`${endpoint}${target.search}`, {
-      method: 'GET', binary: true, cache: 'no-store', signal,
-    })).data;
+    return `${endpoint}${target.search}`;
   }
 
   async get<T>(endpoint: string, config?: ApiConfig): Promise<ApiResponse<T>> {
