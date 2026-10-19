@@ -6,6 +6,9 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     className?: string;
     headerClassName?: string;
+    // Render changing controls as content to preserve their DOM nodes and focus.
+    headerContent?: ReactNode;
+    renderCell?: (row: TData) => ReactNode;
   }
 }
 
@@ -44,7 +47,7 @@ export function DataTable<TData>({
           <TableRow key={group.id} className="hover:bg-transparent">
             {group.headers.map((header) => (
               <TableHead key={header.id} className={header.column.columnDef.meta?.headerClassName}>
-                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                {header.isPlaceholder ? null : header.column.columnDef.meta?.headerContent ?? flexRender(header.column.columnDef.header, header.getContext())}
               </TableHead>
             ))}
           </TableRow>
@@ -62,7 +65,9 @@ export function DataTable<TData>({
             <TableRow className={getRowClassName?.(row.original)}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id} className={cell.column.columnDef.meta?.className}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  {cell.column.columnDef.meta?.renderCell
+                    ? cell.column.columnDef.meta.renderCell(row.original)
+                    : flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}
             </TableRow>

@@ -408,13 +408,14 @@ export const ImportInboxPage: React.FC<{
   const columns: ColumnDef<ImportCandidate>[] = [
     {
       id: 'selection',
-      header: () => <Input type="checkbox" checked={allSelectableChecked} ref={(element) => { if (element) element.indeterminate = someSelectableChecked && !allSelectableChecked; }} onChange={toggleAllVisible} disabled={!selectableItems.length} aria-label="Выбрать все загруженные" />,
-      cell: ({ row }) => <Input type="checkbox" checked={selectedIds.has(row.original.id)} disabled={!isSelectable(row.original)} onChange={(event) => toggleOne(row.original.id, event.target.checked)} aria-label={`Выбрать ${displayShopName(row.original.name, row.original.brand)}`} />,
-      meta: { headerClassName: 'w-10 pl-4 pr-1', className: 'w-10 pl-4 pr-1' },
+      meta: {
+        headerClassName: 'w-10 pl-4 pr-1', className: 'w-10 pl-4 pr-1',
+        headerContent: <Input type="checkbox" checked={allSelectableChecked} ref={(element) => { if (element) element.indeterminate = someSelectableChecked && !allSelectableChecked; }} onChange={toggleAllVisible} disabled={!selectableItems.length} aria-label="Выбрать все загруженные" />,
+        renderCell: (item) => <Input type="checkbox" checked={selectedIds.has(item.id)} disabled={!isSelectable(item)} onChange={(event) => toggleOne(item.id, event.target.checked)} aria-label={`Выбрать ${displayShopName(item.name, item.brand)}`} />,
+      },
     },
     {
       accessorKey: 'name',
-      header: () => <div className="flex min-w-52 flex-col gap-1.5"><SortButton label="Название" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><Input value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Название, адрес..." className="h-8 text-xs" /><NativeSelect value={source} onChange={(event) => patchParams({ source: event.target.value })} className={headerControl} aria-label="Источник"><option value="">Все источники</option><option value="File">Внешний импорт</option><option value="Osm">OSM</option></NativeSelect></div>,
       cell: ({ row }) => {
         const candidate = row.original;
         const candidateSearch = new URLSearchParams(searchParams);
@@ -434,35 +435,35 @@ export const ImportInboxPage: React.FC<{
           </div>
         );
       },
-      meta: { className: 'px-3' },
+      meta: {
+        className: 'px-3',
+        headerContent: <div className="flex min-w-52 flex-col gap-1.5"><SortButton label="Название" column="name" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><Input value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Название, адрес..." className="h-8 text-xs" /><NativeSelect value={source} onChange={(event) => patchParams({ source: event.target.value })} className={headerControl} aria-label="Источник"><option value="">Все источники</option><option value="File">Внешний импорт</option><option value="Osm">OSM</option></NativeSelect></div>,
+      },
     },
     {
       accessorKey: 'coffeeFocus',
-      header: () => <div className="flex flex-col gap-1.5"><SortButton label="Focus" column="focus" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><NativeSelect value={focus} onChange={(event) => patchParams({ focus: event.target.value })} className={headerControl}><option value="">Любой</option>{COFFEE_FOCUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect></div>,
       cell: ({ row }) => <FocusBadge focus={row.original.coffeeFocus} />,
+      meta: { headerContent: <div className="flex flex-col gap-1.5"><SortButton label="Focus" column="focus" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><NativeSelect value={focus} onChange={(event) => patchParams({ focus: event.target.value })} className={headerControl}><option value="">Любой</option>{COFFEE_FOCUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect></div> },
     },
     {
       accessorKey: 'googleBusinessStatus',
-      header: () => <SortButton label="Google" column="google" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />,
       cell: ({ row }) => row.original.googleBusinessStatus ? <GoogleStatusBadge status={row.original.googleBusinessStatus} /> : <span className="text-xs text-text-muted">—</span>,
-      meta: { headerClassName: 'hidden md:table-cell', className: 'hidden md:table-cell' },
+      meta: { headerClassName: 'hidden md:table-cell', className: 'hidden md:table-cell', headerContent: <SortButton label="Google" column="google" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /> },
     },
     {
       accessorKey: 'osmAgeDays',
-      header: () => <SortButton label="OSM" column="osm" sortKey={sortKey} sortDir={sortDir} onSort={onSort} />,
       cell: ({ row }) => <span className="text-xs text-text-muted">{row.original.osmAgeDays != null ? `${row.original.osmAgeDays} дн.` : '—'}</span>,
-      meta: { headerClassName: 'hidden lg:table-cell', className: 'hidden lg:table-cell' },
+      meta: { headerClassName: 'hidden lg:table-cell', className: 'hidden lg:table-cell', headerContent: <SortButton label="OSM" column="osm" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /> },
     },
     {
       accessorKey: 'collectorBucket',
-      header: () => <div className="flex flex-col gap-1.5"><SortButton label="Корзина" column="bucket" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><NativeSelect value={bucket} onChange={(event) => patchParams({ bucket: event.target.value })} className={headerControl}>{BUCKETS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect></div>,
       cell: ({ row }) => <span className="text-xs text-text-muted">{row.original.collectorBucket ? BUCKET_LABELS[row.original.collectorBucket] : '—'}</span>,
-      meta: { headerClassName: 'hidden md:table-cell', className: 'hidden md:table-cell' },
+      meta: { headerClassName: 'hidden md:table-cell', className: 'hidden md:table-cell', headerContent: <div className="flex flex-col gap-1.5"><SortButton label="Корзина" column="bucket" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><NativeSelect value={bucket} onChange={(event) => patchParams({ bucket: event.target.value })} className={headerControl}>{BUCKETS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect></div> },
     },
     {
       accessorKey: 'queueStatus',
-      header: () => <div className="flex flex-col gap-1.5"><SortButton label="Статус" column="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><NativeSelect value={status} onChange={(event) => { const nextStatus = event.target.value; patchParams({ status: nextStatus, rejectReason: nextStatus === 'Rejected' ? rejectReason : '' }); }} className={headerControl}>{STATUSES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect>{status === 'Rejected' && <NativeSelect value={rejectReason} onChange={(event) => patchParams({ rejectReason: event.target.value })} className={headerControl} aria-label="Причина отклонения"><option value="">Любая причина</option>{REJECT_REASON_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect>}</div>,
       cell: ({ row }) => <Badge variant={row.original.queueStatus === 'Published' ? 'approved' : row.original.queueStatus === 'Rejected' ? 'rejected' : 'pending'}>{QUEUE_STATUS_LABELS[row.original.queueStatus]}{row.original.queueStatus === 'Rejected' && row.original.rejectReason ? ` · ${REJECT_REASON_LABELS[row.original.rejectReason]}` : ''}</Badge>,
+      meta: { headerContent: <div className="flex flex-col gap-1.5"><SortButton label="Статус" column="status" sortKey={sortKey} sortDir={sortDir} onSort={onSort} /><NativeSelect value={status} onChange={(event) => { const nextStatus = event.target.value; patchParams({ status: nextStatus, rejectReason: nextStatus === 'Rejected' ? rejectReason : '' }); }} className={headerControl}>{STATUSES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect>{status === 'Rejected' && <NativeSelect value={rejectReason} onChange={(event) => patchParams({ rejectReason: event.target.value })} className={headerControl} aria-label="Причина отклонения"><option value="">Любая причина</option>{REJECT_REASON_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</NativeSelect>}</div> },
     },
   ];
 
