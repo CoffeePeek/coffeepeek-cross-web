@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCities, type City } from '../api/coffeeshop';
 import WobbleRing from '../components/WobbleRing';
+import NotificationPreferences from '../components/NotificationPreferences';
 import GuestAuthCard from '../components/GuestAuthCard';
 import { MobileAppDownload } from '../components/mobile-app';
 import { useTheme } from '../contexts/ThemeContext';
@@ -97,6 +98,8 @@ const SettingsPage: React.FC = () => {
           </SettingsRow>
           <SettingsRow title="Тема" subtitle="Настройте внешний вид приложения" value={isDark ? 'Тёмная' : 'Светлая'} Icon={Moon} color="#C594E8" iconBg="rgba(151,85,205,.17)" colors={colors} onClick={() => setTheme(isDark ? 'light' : 'dark')} />
         </SettingsSection>
+
+        {user?.id && <SettingsSection title="Уведомления на устройствах" colors={colors}><div style={{ color: colors.text }}><NotificationPreferences userId={user.id} /></div></SettingsSection>}
 
         <SettingsSection title="Другие настройки" description="Управление полезными дополнениями и настройками конфиденциальности" colors={colors}>
           <SettingsRow title="Связаться с поддержкой" subtitle="Поможем с вопросами и проблемами" Icon={ChatCenteredText} color="#D8A743" iconBg="rgba(202,145,28,.16)" colors={colors} href="/support" />

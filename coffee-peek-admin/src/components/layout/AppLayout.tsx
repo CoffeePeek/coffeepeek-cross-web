@@ -26,6 +26,7 @@ const ROUTE_TITLES: Record<string, string> = {
   '/audit': 'Audit log',
   '/users': 'Пользователи',
   '/app-distribution': 'Приложения',
+  '/notifications': 'Уведомления',
   '/cache': 'Кеш',
   '/my-shops': 'Мои кофейни',
 };

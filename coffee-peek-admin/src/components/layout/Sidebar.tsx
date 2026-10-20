@@ -60,6 +60,7 @@ const NAV_SECTIONS: NavSection[] = [
   { id: 'system', label: 'Система', items: [
     { path: '/audit', label: 'Audit log', icon: History, adminOnly: true },
     { path: '/users', label: 'Пользователи', icon: Users, adminOnly: true },
+    { path: '/notifications', label: 'Уведомления', icon: MessageSquareText, adminOnly: true },
     { path: '/app-distribution', label: 'Приложения', icon: AppWindow, adminOnly: true },
     { path: '/cache', label: 'Кеши', icon: Database, adminOnly: true },
   ] },

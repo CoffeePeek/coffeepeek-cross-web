@@ -3,7 +3,7 @@ import { Input } from '@/src/components/ui/Input';
 import type { ColumnDef } from '@tanstack/react-table';
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   getAdminUsers,
   getUserStats,
@@ -352,6 +352,7 @@ export const UsersPage: React.FC = () => {
         const sessionsExpanded = sessionsUser?.id === user.id;
         return (
           <div className="flex min-w-[220px] flex-wrap gap-2">
+            <Button asChild variant="ghost" size="sm"><Link to={`/notifications?userId=${encodeURIComponent(user.id)}`}>Уведомление</Link></Button>
             <Button variant="ghost" size="sm" className="text-amber-500" onClick={() => setKickingUser(user)}>Оборвать</Button>
             <Button
               variant="ghost"
