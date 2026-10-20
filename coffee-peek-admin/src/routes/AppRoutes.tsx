@@ -10,6 +10,7 @@ const ShopsModerationPage = lazy(() => import('../pages/ShopsModerationPage').th
 const ShopEditPage = lazy(() => import('../pages/ShopEditPage').then((m) => ({ default: m.ShopEditPage })));
 const CheckInsModerationPage = lazy(() => import('../pages/CheckInsModerationPage').then((m) => ({ default: m.CheckInsModerationPage })));
 const ShopReportsPage = lazy(() => import('../pages/ShopReportsPage').then((m) => ({ default: m.ShopReportsPage })));
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const UsersPage = lazy(() => import('../pages/UsersPage').then((m) => ({ default: m.UsersPage })));
 const CachePage = lazy(() => import('../pages/CachePage').then((m) => ({ default: m.CachePage })));
 const AuditModerationPage = lazy(() => import('../pages/AuditModerationPage').then((m) => ({ default: m.AuditModerationPage })));
@@ -83,6 +84,7 @@ export const AppRoutes: React.FC = () => (
       }
     >
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/notifications" element={<ProtectedRoute requireAdmin><NotificationsPage /></ProtectedRoute>} />
         <Route path="/coffees" element={<ProtectedRoute requireModerator><CoffeesPage /></ProtectedRoute>} />
         <Route path="/coffees/:id" element={<ProtectedRoute requireModerator><CoffeeEditPage /></ProtectedRoute>} />
         <Route path="/coffee-import" element={<ProtectedRoute requireModerator><CoffeeImportPage /></ProtectedRoute>} />
