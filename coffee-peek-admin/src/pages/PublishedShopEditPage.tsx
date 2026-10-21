@@ -2,7 +2,7 @@ import { Input } from '@/src/components/ui/Input';
 import { NativeSelect } from '@/src/components/ui/NativeSelect';
 import { Textarea } from '@/src/components/ui/Textarea';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,7 @@ import {
   attachPublishedShopPhotos,
   deletePublishedShopPhotos,
   getPublishedShopById,
+  getModerationShopById,
   updatePublishedShop,
   assignPublishedShopOwner,
   reorderPublishedShopPhotos,
@@ -41,6 +42,9 @@ import { parsePriceRange } from '../constants/priceRange';
 import { CATALOG_TAG_OPTIONS, catalogTagLabel, CoffeeFocus } from '../constants/catalogIngest';
 import { CatalogTagChips, CoffeeFocusPicker } from '../components/import/catalogControls';
 import { MenuEditor } from '../components/menu/MenuEditor';
+import { ShopSubmissionInfo } from '../components/ShopSubmissionInfo';
+import { PhotoGallery } from '../components/moderation/PhotoGallery';
+import { LoadError } from '../components/ui/LoadError';
 import {
   attachPublishedShopMenuPhotos,
   getPublishedShopMenu,
@@ -72,8 +76,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-export const PublishedShopEditPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string }> = ({ id, submissionId }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const qc = useQueryClient();
@@ -90,10 +93,17 @@ export const PublishedShopEditPage: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<'hide' | 'removeOwner' | null>(null);
   const initializedShopId = useRef<string | null>(null);
 
-  const { data: shop, isLoading } = useQuery({
+  const { data: shop, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'published-shop', id],
     queryFn: () => getPublishedShopById(id!).then((r) => r.data),
     enabled: !!id,
+  });
+
+  const moderationId = submissionId ?? shop?.moderationId;
+  const submission = useQuery({
+    queryKey: ['admin', 'shop', moderationId],
+    queryFn: () => getModerationShopById(moderationId!).then(response => response.data),
+    enabled: Boolean(moderationId),
   });
 
   const { data: shopMenu } = useQuery({
@@ -337,6 +347,7 @@ export const PublishedShopEditPage: React.FC = () => {
       .map((tag) => ({ slug: tag.slug, label: catalogTagLabel(tag.slug, tag.name) }));
     return fromApi.length > 0 ? fromApi : CATALOG_TAG_OPTIONS;
   }, [catalogTags]);
+  if (isError && !shop) return <LoadError message="Не удалось загрузить кофейню." onRetry={() => void refetch()} retrying={isFetching} />;
   if (isLoading || !shop) {
     return (
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -370,12 +381,27 @@ export const PublishedShopEditPage: React.FC = () => {
             {shop.isHidden && <Badge variant="rejected">Скрыта</Badge>}
           </div>
           <p className="text-xs text-text-muted dark:text-stone-400 font-body mt-1">
+            {shop.location?.address || 'Адрес не указан'}
+          </p>
+          <p className="text-xs text-text-muted dark:text-stone-400 font-body mt-1">
             {shop.isHidden
               ? 'Не показывается в поиске и на карте. Статус работы при этом не меняется.'
               : COFFEE_SHOP_STATUS_HINTS[shop.status]}
           </p>
         </div>
       </div>
+
+      {moderationId && (
+        <details className="rounded-xl border border-border-light p-5 dark:border-border-dark">
+          <summary className="cursor-pointer font-medium">Исходная заявка и автор</summary>
+          <div className="mt-4 space-y-4">
+            {submission.isError ? <LoadError message="Не удалось загрузить заявку." onRetry={() => void submission.refetch()} retrying={submission.isFetching} /> : submission.data ? <>
+              <ShopSubmissionInfo shop={submission.data} />
+              <PhotoGallery photos={submission.data.photos ?? []} />
+            </> : <p role="status">Загрузка заявки…</p>}
+          </div>
+        </details>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-5 items-start">
         <div className="space-y-5 min-w-0">

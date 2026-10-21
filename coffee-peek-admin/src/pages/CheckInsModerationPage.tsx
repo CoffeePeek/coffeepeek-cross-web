@@ -112,7 +112,7 @@ export const CheckInsModerationPage: React.FC = () => {
   const columns: ColumnDef<ModerationCheckIn>[] = [
     { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text || 'Без заметки'}</p>{checkInKind(row.original) === 'Home' && <p className="mt-1 text-xs text-text-muted">{displayRecipe(row.original)}</p>}<p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos || []} /></div> },
     { id: 'kind', header: 'Тип', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Дома' : checkInKind(row.original) === 'Shop' ? 'В кофейне' : 'Не указан' },
-    { id: 'place', header: 'Место', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Кофе дома' : row.original.shopId ? <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400">{row.original.shopId}</PublishedShopLink> : 'Кофейня недоступна' },
+    { id: 'place', header: 'Место', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Кофе дома' : row.original.shopId ? <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400" /> : 'Кофейня недоступна' },
     { id: 'author', header: 'Автор', cell: ({ row }) => row.original.userName },
     { id: 'ratings', header: 'Оценки', cell: ({ row }) => displayRating(row.original) },
     { accessorKey: 'moderationStatus', header: 'Статус', cell: ({ row }) => <Badge variant={statusToBadgeVariant(row.original.moderationStatus)}>{statusLabels[row.original.moderationStatus]}</Badge> },

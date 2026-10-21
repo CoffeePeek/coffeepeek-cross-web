@@ -7,17 +7,15 @@ import { useUser } from '../contexts/UserContext';
 const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const ShopsModerationPage = lazy(() => import('../pages/ShopsModerationPage').then((m) => ({ default: m.ShopsModerationPage })));
-const ShopEditPage = lazy(() => import('../pages/ShopEditPage').then((m) => ({ default: m.ShopEditPage })));
+const ShopDetailPage = lazy(() => import('../pages/ShopDetailPage').then((m) => ({ default: m.ShopDetailPage })));
 const CheckInsModerationPage = lazy(() => import('../pages/CheckInsModerationPage').then((m) => ({ default: m.CheckInsModerationPage })));
 const ShopReportsPage = lazy(() => import('../pages/ShopReportsPage').then((m) => ({ default: m.ShopReportsPage })));
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const UsersPage = lazy(() => import('../pages/UsersPage').then((m) => ({ default: m.UsersPage })));
-const CachePage = lazy(() => import('../pages/CachePage').then((m) => ({ default: m.CachePage })));
 const AuditModerationPage = lazy(() => import('../pages/AuditModerationPage').then((m) => ({ default: m.AuditModerationPage })));
 const ShopTagsPage = lazy(() => import('../pages/ShopTagsPage').then((m) => ({ default: m.ShopTagsPage })));
 const CatalogManagementPage = lazy(() => import('../pages/CatalogManagementPage').then((m) => ({ default: m.CatalogManagementPage })));
 const PublishedShopsPage = lazy(() => import('../pages/PublishedShopsPage').then((m) => ({ default: m.PublishedShopsPage })));
-const PublishedShopEditPage = lazy(() => import('../pages/PublishedShopEditPage').then((m) => ({ default: m.PublishedShopEditPage })));
 const RoastersModerationPage = lazy(() => import('../pages/RoastersModerationPage').then((m) => ({ default: m.RoastersModerationPage })));
 const RoasterModerationDetailPage = lazy(() => import('../pages/RoasterModerationDetailPage').then((m) => ({ default: m.RoasterModerationDetailPage })));
 const RoasterEditPage = lazy(() => import('../pages/RoasterEditPage').then((m) => ({ default: m.RoasterEditPage })));
@@ -25,11 +23,9 @@ const CoffeesPage = lazy(() => import('../pages/CoffeesPage').then(m => ({ defau
 const CoffeeEditPage = lazy(() => import('../pages/CoffeeEditPage').then(m => ({ default: m.CoffeeEditPage })));
 const CoffeeImportPage = lazy(() => import('../pages/CoffeeImportPage').then(m => ({ default: m.CoffeeImportPage })));
 const CoffeeDictionariesPage = lazy(() => import('../pages/CoffeeDictionariesPage').then(m => ({ default: m.CoffeeDictionariesPage })));
-const RoasterTagsPage = lazy(() => import('../components/RoasterTagAssignments').then(m => ({ default: m.RoasterTagsPage })));
 const OwnerShopsPage = lazy(() => import('../pages/OwnerShopsPage').then((m) => ({ default: m.OwnerShopsPage })));
 const OwnerShopEditPage = lazy(() => import('../pages/OwnerShopEditPage').then((m) => ({ default: m.OwnerShopEditPage })));
 const BrowseShopsPage = lazy(() => import('../pages/BrowseShopsPage').then((m) => ({ default: m.BrowseShopsPage })));
-const BrowseShopPage = lazy(() => import('../pages/BrowseShopPage').then((m) => ({ default: m.BrowseShopPage })));
 const BrowseMapPage = lazy(() => import('../pages/BrowseMapPage').then((m) => ({ default: m.BrowseMapPage })));
 const CoffeeZonesPage = lazy(() => import('../pages/CoffeeZonesPage').then((m) => ({ default: m.CoffeeZonesPage })));
 const CoffeeZoneEditorPage = lazy(() => import('../pages/CoffeeZoneEditorPage').then((m) => ({ default: m.CoffeeZoneEditorPage })));
@@ -89,12 +85,12 @@ export const AppRoutes: React.FC = () => (
         <Route path="/coffees/:id" element={<ProtectedRoute requireModerator><CoffeeEditPage /></ProtectedRoute>} />
         <Route path="/coffee-import" element={<ProtectedRoute requireModerator><CoffeeImportPage /></ProtectedRoute>} />
         <Route path="/roaster-tags" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage key="tags" kind="tags" /></ProtectedRoute>} />
-        <Route path="/roaster-tags/assignments/:id" element={<ProtectedRoute requireModerator><RoasterTagsPage /></ProtectedRoute>} />
+        <Route path="/roaster-tags/assignments/:id" element={<ProtectedRoute requireModerator><RoasterEditPage /></ProtectedRoute>} />
         <Route path="/coffee-filter-values" element={<ProtectedRoute requireModerator><CoffeeDictionariesPage key="values" kind="values" /></ProtectedRoute>} />
         <Route path="/check-in-reports" element={<ProtectedRoute requireAdmin><CheckInReportsPage /></ProtectedRoute>} />
 
         <Route path="/coffee-shops" element={<BrowseShopsPage />} />
-        <Route path="/coffee-shops/:id" element={<BrowseShopPage />} />
+        <Route path="/coffee-shops/:id" element={<ShopDetailPage source="public" />} />
         <Route path="/map" element={<BrowseMapPage />} />
 
         <Route path="/coffee-zones" element={<ProtectedRoute requireModerator><CoffeeZonesPage /></ProtectedRoute>} />
@@ -113,7 +109,7 @@ export const AppRoutes: React.FC = () => (
           path="/shops/:id"
           element={
             <ProtectedRoute requireModerator>
-              <ShopEditPage />
+              <ShopDetailPage source="moderation" />
             </ProtectedRoute>
           }
         />
@@ -176,7 +172,7 @@ export const AppRoutes: React.FC = () => (
           path="/published-shops/:id"
           element={
             <ProtectedRoute requireAdmin>
-              <PublishedShopEditPage />
+              <ShopDetailPage source="published" />
             </ProtectedRoute>
           }
         />
@@ -250,15 +246,6 @@ export const AppRoutes: React.FC = () => (
           element={
             <ProtectedRoute requireAdmin>
               <UsersPage />
-            </ProtectedRoute>
-          }
-        />
-
-        <Route
-          path="/cache"
-          element={
-            <ProtectedRoute requireAdmin>
-              <CachePage />
             </ProtectedRoute>
           }
         />

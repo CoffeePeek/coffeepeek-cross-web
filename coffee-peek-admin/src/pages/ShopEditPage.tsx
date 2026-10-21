@@ -1,8 +1,8 @@
 import { Input } from '@/src/components/ui/Input';
 import { NativeSelect } from '@/src/components/ui/NativeSelect';
 import { Textarea } from '@/src/components/ui/Textarea';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,13 +25,12 @@ import { ScheduleEditor, getDefaultSchedules } from '../components/moderation/Sc
 import { CatalogMultiSelect } from '../components/moderation/CatalogMultiSelect';
 import { PriceRangePicker } from '../components/PriceRangePicker';
 import { MenuEditor } from '../components/menu/MenuEditor';
-import { getPriceRangeLabel } from '../constants/priceRange';
 import {
   attachModerationShopMenuPhotos,
   parseModerationShopMenu,
   updateModerationShopMenu,
 } from '../api/menu';
-import { getUserPublicProfile } from '../api/users';
+import { ShopSubmissionInfo } from '../components/ShopSubmissionInfo';
 import { moderationContactShape, validateSchedules } from '../utils/shopForm';
 
 const schema = z.object({
@@ -47,8 +46,7 @@ type FormData = z.infer<typeof schema>;
 
 type PendingAction = 'approve' | 'reject';
 
-export const ShopEditPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+export const ShopEditPage: React.FC<{ id: string }> = ({ id }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const qc = useQueryClient();
@@ -58,7 +56,6 @@ export const ShopEditPage: React.FC = () => {
   const [coffeeBeanIds, setCoffeeBeanIds] = useState<string[]>([]);
   const [roasterIds, setRoasterIds] = useState<string[]>([]);
   const [brewMethodIds, setBrewMethodIds] = useState<string[]>([]);
-  const [profileExpanded, setProfileExpanded] = useState(false);
   // Edits outside react-hook-form (schedule, catalogs); schedules are only sent if touched or already stored.
   const [extraDirty, setExtraDirty] = useState(false);
   const [schedulesTouched, setSchedulesTouched] = useState(false);
@@ -81,22 +78,8 @@ export const ShopEditPage: React.FC = () => {
     },
   });
 
-  const {
-    data: authorProfile,
-    isLoading: authorProfileLoading,
-    isError: authorProfileError,
-  } = useQuery({
-    queryKey: ['public-user-profile', shop?.userId],
-    queryFn: () => getUserPublicProfile(shop!.userId!).then((response) => response.data),
-    enabled: profileExpanded && !!shop?.userId,
-  });
-
   const { data: catalogs, isLoading: catalogsLoading } = useCatalogs();
 
-  const cityName = useMemo(() => {
-    if (!shop?.cityId || !catalogs?.cities.length) return shop?.cityName;
-    return catalogs.cities.find((city) => city.id === shop.cityId)?.name ?? shop.cityName;
-  }, [catalogs?.cities, shop?.cityId, shop?.cityName]);
 
   const {
     register,
@@ -176,7 +159,8 @@ export const ShopEditPage: React.FC = () => {
       showToast('Кофейня одобрена', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
       qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'shops'] });
-      navigate('/shops');
+      setPendingAction(null);
+      qc.invalidateQueries({ queryKey: ['admin', 'published-shops'] });
     },
     onError: (err: any) => showToast(err?.message ?? 'Ошибка', 'error'),
   });
@@ -284,17 +268,7 @@ export const ShopEditPage: React.FC = () => {
       </div>
 
       {isApproved && (
-        <Card className="p-4 text-sm text-text-main dark:text-stone-200 font-body">
-          Кофейня уже опубликована — заявку больше нельзя редактировать. Правки, теги и coffee focus вносятся{' '}
-          {shop.publishedShopId ? (
-            <Link to={`/published-shops/${shop.publishedShopId}`} className="text-primary hover:text-primary/80">
-              в карточке опубликованной кофейни
-            </Link>
-          ) : (
-            'в карточке опубликованной кофейни'
-          )}
-          .
-        </Card>
+        <Card className="p-4 text-sm">Заявка одобрена. Редактирование опубликованной кофейни доступно администратору.</Card>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)] gap-5">
@@ -306,229 +280,150 @@ export const ShopEditPage: React.FC = () => {
             <PhotoGallery photos={shop.photos ?? []} />
           </Card>
 
-          <Card className="p-6">
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-3">
-              Данные от пользователя
-            </h3>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm font-body">
-              <MetaItem label="ID заявки" value={shop.id} mono />
-              <div>
-                <MetaItem label="ID автора" value={shop.userId ?? '—'} mono />
-                {shop.userId && (
-                  <button
-                    type="button"
-                    aria-expanded={profileExpanded}
-                    onClick={() => setProfileExpanded((expanded) => !expanded)}
-                    className="mt-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
-                  >
-                    {profileExpanded ? 'Скрыть профиль' : 'Показать профиль'}
-                  </button>
-                )}
-              </div>
-              <MetaItem label="Город" value={cityName ?? (shop.cityId ? 'Загрузка...' : '—')} />
-              <MetaItem
-                label="Адрес проверен"
-                value={shop.addressIsValidated ? 'Да' : 'Нет'}
-              />
-              <MetaItem
-                label="Ценовой диапазон"
-                value={getPriceRangeLabel(shop.priceRange)}
-              />
-              <MetaItem label="Фото" value={String(shop.photos?.length ?? 0)} />
-            </dl>
-            {profileExpanded && shop.userId && (
-              <div className="mt-4 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-white/5 p-3">
-                {authorProfileLoading ? (
-                  <p className="text-sm text-text-muted dark:text-stone-400 font-body">
-                    Загрузка профиля...
-                  </p>
-                ) : authorProfileError ? (
-                  <p className="text-sm text-red-500 dark:text-red-400 font-body">
-                    Не удалось загрузить профиль пользователя
-                  </p>
-                ) : authorProfile ? (
-                  <div className="flex items-start gap-3">
-                    {authorProfile.avatarUrl ? (
-                      <img
-                        src={authorProfile.avatarUrl}
-                        alt=""
-                        className="h-12 w-12 shrink-0 rounded-full object-cover border border-border-light dark:border-border-dark"
-                      />
-                    ) : (
-                      <div className="h-12 w-12 shrink-0 rounded-full bg-gray-200 dark:bg-white/10" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-medium text-text-main dark:text-white font-body break-words">
-                        {authorProfile.nickname || authorProfile.userName}
-                      </p>
-                      {authorProfile.nickname && (
-                        <p className="text-xs text-text-muted dark:text-stone-400 font-body">
-                          @{authorProfile.userName}
-                        </p>
-                      )}
-                      {authorProfile.about && (
-                        <p className="mt-2 text-sm text-text-muted dark:text-stone-300 font-body whitespace-pre-wrap">
-                          {authorProfile.about}
-                        </p>
-                      )}
-                      <p className="mt-2 text-xs text-text-muted dark:text-stone-400 font-body">
-                        Чекинов: {authorProfile.checkInCount ?? 0}
-                      </p>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            )}
-            {shop.description && (
-              <div className="mt-4 pt-4 border-t border-border-light dark:border-border-dark">
-                <p className="text-xs font-medium text-text-muted dark:text-stone-400 mb-1">Описание от автора</p>
-                <p className="text-sm text-text-main dark:text-stone-200 font-body whitespace-pre-wrap">
-                  {shop.description}
-                </p>
-              </div>
-            )}
-          </Card>
+          <ShopSubmissionInfo shop={shop} />
         </div>
 
         <form
           onSubmit={submitForm}
           className="space-y-5"
         >
-          <Card className="p-6">
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-4">
-              Основная информация
-            </h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Название *" error={errors.name?.message}>
-                  <Input {...register('name')} />
-                </Field>
-                <Field label="Город">
-                  {/* Remount once options exist, otherwise the stored city can't be selected and shows «Не указан». */}
-                  <NativeSelect key={catalogs ? 'ready' : 'loading'} {...register('cityId')} disabled={catalogsLoading}>
-                    <option value="">Не указан</option>
-                    {catalogs?.cities.map((city) => (
-                      <option key={city.id} value={city.id}>{city.name}</option>
-                    ))}
-                  </NativeSelect>
-                </Field>
-              </div>
-
-              <Field label="Адрес *" error={errors.address?.message}>
-                <Input {...register('address')} />
-              </Field>
-
-              <Field label="Описание">
-                <Textarea {...register('description')} rows={5} className="min-h-32 resize-y" />
-              </Field>
-
-              <Field label="Ценовой диапазон">
-                <PriceRangePicker
-                  value={watch('priceRange')}
-                  onChange={(value) =>
-                    setValue('priceRange', value ?? '', { shouldValidate: true, shouldDirty: true })
-                  }
-                  allowEmpty
-                  error={errors.priceRange?.message}
-                />
-              </Field>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-4">Контакты</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Телефон" error={errors.phone?.message}>
-                <Input {...register('phone')} placeholder="+375 ..." />
-              </Field>
-              <Field label="Email" error={errors.email?.message}>
-                <Input {...register('email')} placeholder="coffee@example.com" />
-              </Field>
-              <Field label="Сайт" error={errors.website?.message}>
-                <Input {...register('website')} placeholder="https://..." />
-              </Field>
-              <Field label="Instagram" error={errors.instagram?.message}>
-                <Input {...register('instagram')} placeholder="@coffeeshop" />
-              </Field>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-4">
-              Расписание работы
-            </h3>
-            <ScheduleEditor
-              value={schedules}
-              onChange={(next) => {
-                setSchedules(next);
-                setSchedulesTouched(true);
-                setExtraDirty(true);
-              }}
-            />
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-1">
-              Оборудование и ассортимент
-            </h3>
-            <p className="text-xs text-text-muted dark:text-stone-400 font-body mb-4">
-              Теги и coffee focus у заявки не хранятся — их задают в карточке опубликованной кофейни после одобрения.
-            </p>
-            {catalogsLoading ? (
-              <p className="text-sm text-text-muted dark:text-stone-400 font-body">Загрузка справочников...</p>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                <CatalogMultiSelect
-                  label="Оборудование"
-                  items={(catalogs?.equipments ?? []).map((item) => ({
-                    id: item.id,
-                    name: item.name,
-                    subtitle: [item.brand, item.model].filter(Boolean).join(' '),
-                  }))}
-                  selectedIds={equipmentIds}
-                  onChange={markDirty(setEquipmentIds)}
-                />
-                <CatalogMultiSelect
-                  label="Кофейные зёрна"
-                  items={(catalogs?.beans ?? []).map((item) => ({ id: item.id, name: item.name }))}
-                  selectedIds={coffeeBeanIds}
-                  onChange={markDirty(setCoffeeBeanIds)}
-                />
-                <CatalogMultiSelect
-                  label="Обжарщики"
-                  items={(catalogs?.roasters ?? []).map((item) => ({ id: item.id, name: item.name }))}
-                  selectedIds={roasterIds}
-                  onChange={markDirty(setRoasterIds)}
-                />
-                <CatalogMultiSelect
-                  label="Методы заваривания"
-                  items={(catalogs?.brewMethods ?? []).map((item) => ({ id: item.id, name: item.name }))}
-                  selectedIds={brewMethodIds}
-                  onChange={markDirty(setBrewMethodIds)}
-                />
-              </div>
-            )}
-          </Card>
-
-          {id && (
+          <fieldset disabled={isApproved} className="min-w-0 space-y-5">
             <Card className="p-6">
-              <MenuEditor
-                menu={shop.menu ?? null}
-                onAttach={async (photos) => {
-                  await attachModerationShopMenuPhotos(id, { photos });
-                  await qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
-                }}
-                onParse={async () => {
-                  await parseModerationShopMenu(id);
-                  await qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
-                }}
-                onSave={async (body) => {
-                  await updateModerationShopMenu(id, body);
-                  await qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
+              <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-4">
+                Основная информация
+              </h3>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Field label="Название *" error={errors.name?.message}>
+                    <Input {...register('name')} />
+                  </Field>
+                  <Field label="Город">
+                    {/* Remount once options exist, otherwise the stored city can't be selected and shows «Не указан». */}
+                    <NativeSelect key={catalogs ? 'ready' : 'loading'} {...register('cityId')} disabled={catalogsLoading}>
+                      <option value="">Не указан</option>
+                      {catalogs?.cities.map((city) => (
+                        <option key={city.id} value={city.id}>{city.name}</option>
+                      ))}
+                    </NativeSelect>
+                  </Field>
+                </div>
+
+                <Field label="Адрес *" error={errors.address?.message}>
+                  <Input {...register('address')} />
+                </Field>
+
+                <Field label="Описание">
+                  <Textarea {...register('description')} rows={5} className="min-h-32 resize-y" />
+                </Field>
+
+                <Field label="Ценовой диапазон">
+                  <PriceRangePicker
+                    value={watch('priceRange')}
+                    onChange={(value) =>
+                      setValue('priceRange', value ?? '', { shouldValidate: true, shouldDirty: true })
+                    }
+                    allowEmpty
+                    error={errors.priceRange?.message}
+                  />
+                </Field>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-4">Контакты</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Field label="Телефон" error={errors.phone?.message}>
+                  <Input {...register('phone')} placeholder="+375 ..." />
+                </Field>
+                <Field label="Email" error={errors.email?.message}>
+                  <Input {...register('email')} placeholder="coffee@example.com" />
+                </Field>
+                <Field label="Сайт" error={errors.website?.message}>
+                  <Input {...register('website')} placeholder="https://..." />
+                </Field>
+                <Field label="Instagram" error={errors.instagram?.message}>
+                  <Input {...register('instagram')} placeholder="@coffeeshop" />
+                </Field>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-4">
+                Расписание работы
+              </h3>
+              <ScheduleEditor
+                value={schedules}
+                onChange={(next) => {
+                  setSchedules(next);
+                  setSchedulesTouched(true);
+                  setExtraDirty(true);
                 }}
               />
             </Card>
-          )}
+
+            <Card className="p-6">
+              <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-1">
+                Оборудование и ассортимент
+              </h3>
+              <p className="text-xs text-text-muted dark:text-stone-400 font-body mb-4">
+                Теги и coffee focus у заявки не хранятся — их задают в карточке опубликованной кофейни после одобрения.
+              </p>
+              {catalogsLoading ? (
+                <p className="text-sm text-text-muted dark:text-stone-400 font-body">Загрузка справочников...</p>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <CatalogMultiSelect
+                    label="Оборудование"
+                    items={(catalogs?.equipments ?? []).map((item) => ({
+                      id: item.id,
+                      name: item.name,
+                      subtitle: [item.brand, item.model].filter(Boolean).join(' '),
+                    }))}
+                    selectedIds={equipmentIds}
+                    onChange={markDirty(setEquipmentIds)}
+                  />
+                  <CatalogMultiSelect
+                    label="Кофейные зёрна"
+                    items={(catalogs?.beans ?? []).map((item) => ({ id: item.id, name: item.name }))}
+                    selectedIds={coffeeBeanIds}
+                    onChange={markDirty(setCoffeeBeanIds)}
+                  />
+                  <CatalogMultiSelect
+                    label="Обжарщики"
+                    items={(catalogs?.roasters ?? []).map((item) => ({ id: item.id, name: item.name }))}
+                    selectedIds={roasterIds}
+                    onChange={markDirty(setRoasterIds)}
+                  />
+                  <CatalogMultiSelect
+                    label="Методы заваривания"
+                    items={(catalogs?.brewMethods ?? []).map((item) => ({ id: item.id, name: item.name }))}
+                    selectedIds={brewMethodIds}
+                    onChange={markDirty(setBrewMethodIds)}
+                  />
+                </div>
+              )}
+            </Card>
+
+            {id && (
+              <Card className="p-6">
+                <MenuEditor
+                  menu={shop.menu ?? null}
+                  onAttach={async (photos) => {
+                    await attachModerationShopMenuPhotos(id, { photos });
+                    await qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
+                  }}
+                  onParse={async () => {
+                    await parseModerationShopMenu(id);
+                    await qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
+                  }}
+                  onSave={async (body) => {
+                    await updateModerationShopMenu(id, body);
+                    await qc.invalidateQueries({ queryKey: ['admin', 'shop', id] });
+                  }}
+                />
+              </Card>
+            )}
+          </fieldset>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:justify-end sticky bottom-0 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur py-3 -mx-1 px-1 border-t border-border-light dark:border-border-dark sm:border-0 sm:static sm:bg-transparent sm:backdrop-blur-none sm:py-0">
             <Button
@@ -584,19 +479,6 @@ export const ShopEditPage: React.FC = () => {
     </div>
   );
 };
-
-const MetaItem: React.FC<{ label: string; value: string; mono?: boolean }> = ({
-  label,
-  value,
-  mono,
-}) => (
-  <div>
-    <dt className="text-xs text-text-muted dark:text-stone-500">{label}</dt>
-    <dd className={`text-text-main dark:text-white mt-0.5 break-all ${mono ? 'font-mono text-xs' : ''}`}>
-      {value}
-    </dd>
-  </div>
-);
 
 const Field: React.FC<{ label: string; error?: string; children: React.ReactNode }> = ({
   label,

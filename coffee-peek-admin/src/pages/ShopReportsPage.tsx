@@ -55,9 +55,9 @@ const CATEGORY_LABELS: Record<ShopIssueCategory, string> = {
 type ActionStatus = Exclude<ShopIssueReportStatus, 'Submitted'>;
 
 const ACTION_LABELS: Record<ActionStatus, string> = {
-  Reviewed: 'Отметить просмотренной',
-  Fixed: 'Отметить исправленной',
-  Invalid: 'Отметить недействительной',
+  Reviewed: 'Посмотрено',
+  Invalid: 'Недействительно',
+  Fixed: 'Исправлено',
 };
 
 export const ShopReportsPage: React.FC = () => {
@@ -97,11 +97,11 @@ export const ShopReportsPage: React.FC = () => {
   };
   const columns: ColumnDef<AdminShopIssueReport>[] = [
     { accessorKey: 'category', header: 'Категория', cell: ({ row }) => CATEGORY_LABELS[row.original.category] },
-    { accessorKey: 'shopId', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="font-mono text-primary hover:underline">{row.original.shopId}</PublishedShopLink> },
+    { accessorKey: 'shopId', header: 'Кофейня', cell: ({ row }) => <PublishedShopLink shopId={row.original.shopId} className="text-primary hover:underline" /> },
     { accessorKey: 'description', header: 'Описание', cell: ({ row }) => <span className="line-clamp-3 max-w-[420px]">{row.original.description || '—'}</span> },
     { accessorKey: 'status', header: 'Статус', cell: ({ row }) => <Badge variant={STATUS_BADGE[row.original.status]}>{STATUS_LABELS[row.original.status]}</Badge> },
     { accessorKey: 'createdAtUtc', header: 'Дата', cell: ({ row }) => new Date(row.original.createdAtUtc).toLocaleDateString('ru') },
-    { id: 'actions', cell: ({ row }) => <div className="flex min-w-max gap-2">{(Object.keys(ACTION_LABELS) as ActionStatus[]).filter((nextStatus) => nextStatus !== row.original.status).map((nextStatus) => <Button key={nextStatus} variant={nextStatus === 'Invalid' ? 'danger' : nextStatus === 'Fixed' ? 'success' : 'secondary'} size="sm" onClick={() => setPendingAction({ id: row.original.id, status: nextStatus })}>{ACTION_LABELS[nextStatus]}</Button>)}</div> },
+    { id: 'actions', cell: ({ row }) => <div className="flex flex-wrap gap-1">{(Object.keys(ACTION_LABELS) as ActionStatus[]).map((nextStatus) => <Button key={nextStatus} variant={nextStatus === 'Invalid' ? 'danger' : nextStatus === 'Fixed' ? 'success' : 'secondary'} size="sm" className="px-2" disabled={nextStatus === row.original.status || statusMutation.isPending} onClick={() => setPendingAction({ id: row.original.id, status: nextStatus })}>{ACTION_LABELS[nextStatus]}</Button>)}</div> },
   ];
 
   // After acting on the last item of page N>1 the page becomes empty — step back instead of stranding the user.

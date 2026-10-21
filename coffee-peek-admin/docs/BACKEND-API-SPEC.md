@@ -52,7 +52,6 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 | Пользователи | `/api/admin/users`, `/stats`, `/{id}/role`, `/block`, `/sessions` | Admin: список/поиск, роли, блокировка, удаление, сессии |
 | Статистика | `/api/admin/stats/overview`, `/users/timeseries`, `/shops/timeseries`, `/shops/insights`, `/moderation/insights` | Обзор и подробная статистика |
 | Audit log | `/api/admin/audit/moderation` | Кто принял решение и когда |
-| Кеш | `/api/admin/cache/keys`, `/clear`, `/clear/{key}` | Admin: просмотр/очистка |
 | Приложения | `/api/admin/v1/app-downloads` | Ссылки магазинов, Android releases, публикация релиза |
 | Owner | `/api/owner/coffee-shops`, `/{id}`, `/{id}/photos` | Собственные кофейни владельца |
 

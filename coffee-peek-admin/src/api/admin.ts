@@ -334,11 +334,6 @@ export interface AdminModerationInsights {
   topModerators30Days: { moderatorUserId: string; total: number; approved: number; rejected: number }[];
 }
 
-export interface ClearCacheResponse {
-  clearedCount: number;
-  pattern: string;
-}
-
 export type CoffeeShopStatus = 'Active' | 'TemporarilyClosed' | 'PermanentlyClosed';
 export type { PriceRangeLevel } from '../constants/priceRange';
 export type AuditEntityType = 'Shop' | 'CheckIn' | 'CommunityPost';
@@ -1132,7 +1127,6 @@ export async function getPublishedShops(
     pageSize?: number;
     search?: string;
     status?: CoffeeShopStatus;
-    importedFromFile?: boolean;
     sortBy?: 'name' | 'coffeeFocus' | 'status' | 'createdAtUtc';
     sortDirection?: 'asc' | 'desc';
   } = {}
@@ -1147,7 +1141,6 @@ export async function getPublishedShops(
         pageSize,
         search: params.search,
         status: params.status,
-        importedFromFile: params.importedFromFile === true ? true : undefined,
         sortBy: params.sortBy,
         sortDirection: params.sortDirection,
       },
@@ -1398,29 +1391,4 @@ export async function revokeUserSession(
 
 export async function revokeAllUserSessions(userId: string): Promise<ApiResponse<void>> {
   return httpClient.delete<void>(API_ENDPOINTS.ADMIN.USER_SESSIONS(userId));
-}
-
-// ==================== Cache ====================
-
-export async function getCacheKeys(
-  pattern: string,
-  limit = 100
-): Promise<ApiResponse<string[]>> {
-  const response = await httpClient.get<{ keys: string[]; count: number }>(
-    API_ENDPOINTS.ADMIN.CACHE_KEYS,
-    { params: { pattern, limit } }
-  );
-
-  return {
-    ...response,
-    data: response.data?.keys ?? [],
-  };
-}
-
-export async function clearCacheByPattern(pattern: string): Promise<ApiResponse<ClearCacheResponse>> {
-  return httpClient.post<ClearCacheResponse>(API_ENDPOINTS.ADMIN.CACHE.CLEAR, { pattern });
-}
-
-export async function clearCacheByKey(key: string): Promise<ApiResponse<void>> {
-  return httpClient.post<void>(API_ENDPOINTS.ADMIN.CACHE_CLEAR_KEY(key));
 }

@@ -4,16 +4,21 @@ import { Textarea } from '@/src/components/ui/Textarea';
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { z } from 'zod';
 import { getRoasterById, updateRoaster, deleteRoaster, RoasterPhoto } from '../api/roasters';
+import { getAssignedTags, getDictionary, setAssignedTags } from '../api/coffeeCatalog';
 import { uploadRoasterPhotoFiles } from '../api/photos';
 import { UploadedPhotoDto } from '../api/menu';
 import { useCatalogs } from '../hooks/useCatalogs';
 import { useToast } from '../contexts/ToastContext';
+import { useUser } from '../contexts/UserContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
-import { RoasterTagAssignments } from '../components/RoasterTagAssignments';
+import { LoadError } from '../components/ui/LoadError';
+
+const tagsSchema = z.array(z.string().uuid()).max(100).refine(values => new Set(values).size === values.length, 'Теги должны быть уникальными');
 const EXTENSION_CONTENT_TYPES: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
@@ -32,9 +37,14 @@ type PhotoEntry =
   | { kind: 'new'; key: string; file: File; previewUrl: string };
 
 export const RoasterEditPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id = '' } = useParams<{ id: string }>();
+  return <RoasterEditor key={id} id={id} />;
+};
+
+const RoasterEditor: React.FC<{ id: string }> = ({ id }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { isAdmin } = useUser();
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,14 +56,27 @@ export const RoasterEditPage: React.FC = () => {
   const [siteLink, setSiteLink] = useState('');
   const [photoEntries, setPhotoEntries] = useState<PhotoEntry[]>([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [tagIds, setTagIds] = useState<string[] | null>(null);
+  const [removeInactive, setRemoveInactive] = useState(false);
 
   const { data: catalogs } = useCatalogs();
 
-  const { data: roaster, isLoading } = useQuery({
+  const { data: roaster, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'roaster', id],
     queryFn: () => getRoasterById(id!).then((r) => r.data),
     enabled: !!id,
   });
+
+  const tags = useQuery({ queryKey: ['admin', 'coffee-dictionary', 'tags'], queryFn: ({ signal }) => getDictionary('tags', signal) });
+  const assigned = useQuery({ queryKey: ['admin', 'roaster-tags', id], queryFn: ({ signal }) => getAssignedTags(id, signal), retry: false });
+  useEffect(() => {
+    if (assigned.data && tagIds === null) setTagIds(assigned.data.filter(tag => tag.isActive).map(tag => tag.id));
+  }, [assigned.data, tagIds]);
+  const inactive = assigned.data?.filter(tag => !tag.isActive) ?? [];
+  const tagsChanged = tagIds !== null && assigned.data !== undefined && (
+    removeInactive || tagIds.length !== assigned.data.filter(tag => tag.isActive).length ||
+    tagIds.some(id => !assigned.data!.some(tag => tag.isActive && tag.id === id))
+  );
 
   useEffect(() => {
     if (!roaster) return;
@@ -92,37 +115,53 @@ export const RoasterEditPage: React.FC = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const newFiles = photoEntries.filter((e): e is Extract<PhotoEntry, { kind: 'new' }> => e.kind === 'new');
-      const uploaded = newFiles.length ? await uploadRoasterPhotoFiles(newFiles.map((e) => e.file)) : [];
-      const uploadedByKey = new Map(newFiles.map((entry, index) => [entry.key, uploaded[index]]));
+      if (tagsChanged) {
+        tagsSchema.parse(tagIds);
+        if (tags.isError || assigned.isError) throw new Error('Не удалось загрузить услуги обжарщика');
+        if (inactive.length && !removeInactive) throw new Error('Подтвердите удаление неактивных назначений');
+      }
+      if (isAdmin) {
+        const newFiles = photoEntries.filter((e): e is Extract<PhotoEntry, { kind: 'new' }> => e.kind === 'new');
+        const uploaded = newFiles.length ? await uploadRoasterPhotoFiles(newFiles.map((e) => e.file)) : [];
+        const uploadedByKey = new Map(newFiles.map((entry, index) => [entry.key, uploaded[index]]));
 
-      const photos: UploadedPhotoDto[] = photoEntries.map((entry) =>
-        entry.kind === 'existing'
-          ? {
-              fileName: entry.photo.fileName || 'photo.jpg',
-              contentType: guessContentType(entry.photo.fileName),
-              storageKey: entry.photo.storageKey,
-              size: 0,
-            }
-          : uploadedByKey.get(entry.key)!
-      );
+        const photos: UploadedPhotoDto[] = photoEntries.map((entry) =>
+          entry.kind === 'existing'
+            ? {
+                fileName: entry.photo.fileName || 'photo.jpg',
+                contentType: guessContentType(entry.photo.fileName),
+                storageKey: entry.photo.storageKey,
+                size: 0,
+              }
+            : uploadedByKey.get(entry.key)!
+        );
 
-      return updateRoaster(id!, {
-        name: name.trim(),
-        about: about.trim() || null,
-        // cityId isn't returned by GET /api/roasters/{id}, so an empty picker means
-        // "don't change" here, not "clear" — omit rather than send null.
-        cityId: cityId || undefined,
-        address: address.trim() || null,
-        instagramLink: instagramLink.trim() || null,
-        siteLink: siteLink.trim() || null,
-        photos,
-      });
+        await updateRoaster(id, {
+          name: name.trim(),
+          about: about.trim() || null,
+          // An empty picker keeps the stored city.
+          cityId: cityId || undefined,
+          address: address.trim() || null,
+          instagramLink: instagramLink.trim() || null,
+          siteLink: siteLink.trim() || null,
+          photos,
+        });
+        await qc.invalidateQueries({ queryKey: ['admin', 'roaster', id] });
+        qc.invalidateQueries({ queryKey: ['admin', 'catalogs', 'roasters'] });
+        qc.invalidateQueries({ queryKey: ['catalogs'] });
+      }
+      if (tagsChanged) {
+        try {
+          await setAssignedTags(id, tagIds!);
+        } catch (error) {
+          throw new Error(`${isAdmin ? 'Карточка сохранена, но услуги сохранить не удалось. ' : ''}${getErrorMessage(error, 'Попробуйте ещё раз')}`);
+        }
+        await qc.invalidateQueries({ queryKey: ['admin', 'roaster-tags', id] });
+      }
     },
     onSuccess: () => {
       showToast('Обжарщик обновлён', 'success');
-      qc.invalidateQueries({ queryKey: ['admin', 'roaster', id] });
-      qc.invalidateQueries({ queryKey: ['admin', 'catalogs', 'roasters'] });
+      setRemoveInactive(false);
       qc.invalidateQueries({ queryKey: ['catalogs'] });
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
@@ -165,6 +204,7 @@ export const RoasterEditPage: React.FC = () => {
     });
   };
 
+  if (isError && !roaster) return <LoadError message="Не удалось загрузить обжарщика." onRetry={() => void refetch()} retrying={isFetching} />;
   if (isLoading || !roaster) {
     return (
       <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -180,7 +220,7 @@ export const RoasterEditPage: React.FC = () => {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate('/catalogs?kind=roasters')}
+          onClick={() => navigate(isAdmin ? '/catalogs?kind=roasters' : '/roaster-tags')}
           className="shrink-0 self-start min-h-[44px] sm:min-h-0"
         >
           ← Назад
@@ -188,168 +228,177 @@ export const RoasterEditPage: React.FC = () => {
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white text-xl sm:text-2xl min-w-0 flex-1">{roaster.name}</h2>
       </div>
 
-      <RoasterTagAssignments id={id!} />
-      <Card className="p-6">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            saveMutation.mutate();
-          }}
-          className="space-y-5"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
-                Название
-              </label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} required />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
-                О компании
-              </label>
-              <Textarea
-                value={about}
-                onChange={(e) => setAbout(e.target.value)}
-                rows={4}
-                className="min-h-24 resize-y"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
-                Город
-              </label>
-              <NativeSelect value={cityId} onChange={(e) => setCityId(e.target.value)}>
-                <option value="">Не менять</option>
-                {(catalogs?.cities ?? []).map((city) => (
-                  <option key={city.id} value={city.id}>
-                    {city.name}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
-                Адрес
-              </label>
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
-                Instagram
-              </label>
-              <Input
-                value={instagramLink}
-                onChange={(e) => setInstagramLink(e.target.value)}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          saveMutation.mutate();
+        }}
+        className="space-y-5"
+      >
+        <fieldset disabled={saveMutation.isPending} className="min-w-0 space-y-5">
+          <Card className="p-6">
+            <fieldset disabled={!isAdmin} className="min-w-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label htmlFor="roaster-name" className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
+                    Название
+                  </label>
+                  <Input id="roaster-name" value={name} onChange={(e) => setName(e.target.value)} required />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="roaster-about" className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
+                    О компании
+                  </label>
+                  <Textarea
+                    id="roaster-about"
+                    value={about}
+                    onChange={(e) => setAbout(e.target.value)}
+                    rows={4}
+                    className="min-h-24 resize-y"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="roaster-city" className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
+                    Город
+                  </label>
+                  <NativeSelect id="roaster-city" value={cityId} onChange={(e) => setCityId(e.target.value)}>
+                    <option value="">Не менять</option>
+                    {(catalogs?.cities ?? []).map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+                <div>
+                  <label htmlFor="roaster-address" className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
+                    Адрес
+                  </label>
+                  <Input id="roaster-address" value={address} onChange={(e) => setAddress(e.target.value)} />
+                </div>
+                <div>
+                  <label htmlFor="roaster-instagram" className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
+                    Instagram
+                  </label>
+                  <Input
+                    id="roaster-instagram"
+                    value={instagramLink}
+                    onChange={(e) => setInstagramLink(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="roaster-site" className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
+                    Сайт
+                  </label>
+                  <Input id="roaster-site" value={siteLink} onChange={(e) => setSiteLink(e.target.value)} />
+                </div>
+              </div>
+            </fieldset>
+          </Card>
 
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">
-                Сайт
-              </label>
-              <Input value={siteLink} onChange={(e) => setSiteLink(e.target.value)} />
-            </div>
-          </div>
+          <Card className="space-y-3 p-6">
+            <h3 className="font-semibold">Услуги обжарщика</h3>
+            {(tags.isError || assigned.isError) ? <LoadError message="Не удалось загрузить услуги обжарщика." onRetry={() => { void tags.refetch(); void assigned.refetch(); }} retrying={tags.isFetching || assigned.isFetching} /> : tagIds === null || tags.isPending ? <p role="status">Загрузка услуг…</p> : <>
+              {tags.data?.filter(tag => tag.isActive).map(tag => <label key={tag.id} className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={tagIds.includes(tag.id)} onChange={event => setTagIds(event.target.checked ? [...tagIds, tag.id] : tagIds.filter(id => id !== tag.id))} />{tag.name}</label>)}
+              {!!inactive.length && <div className="space-y-2"><p>Неактивные назначения: {inactive.map(tag => tag.name).join(', ')}</p><p className="text-sm">Изменение услуг удалит эти назначения. Они не могут быть назначены повторно до реактивации.</p><label className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={removeInactive} onChange={event => setRemoveInactive(event.target.checked)} />Удалить неактивные назначения при сохранении</label></div>}
+            </>}
+          </Card>
 
-          <Button
-            type="submit"
-            variant="primary"
-            loading={saveMutation.isPending}
-            className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
-          >
-            Сохранить
-          </Button>
-        </form>
-      </Card>
-
-      <Card className="p-6">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display">Фотографии</h3>
-            <p className="mt-1 text-xs text-text-muted dark:text-stone-400 font-body">
-              Первая фотография — обложка. Изменения применяются при сохранении карточки выше.
-            </p>
-          </div>
-          <Input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              const files = Array.from(e.target.files ?? []);
-              e.target.value = '';
-              if (files.length) addFiles(files);
-            }}
-          />
-          <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-            Добавить фото
-          </Button>
-        </div>
-
-        {!photoEntries.length ? (
-          <p className="text-xs text-text-muted dark:text-stone-400 font-body">В галерее пока нет фотографий.</p>
-        ) : (
-          <ol className="space-y-2">
-            {photoEntries.map((entry, index) => (
-              <li
-                key={entry.key}
-                className="flex items-center gap-3 rounded-lg border border-border-light p-2 dark:border-border-dark"
-              >
-                <img
-                  src={entry.kind === 'existing' ? entry.photo.fullUrl : entry.previewUrl}
-                  alt=""
-                  className="h-14 w-14 rounded object-cover bg-gray-100 dark:bg-white/5"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-text-main dark:text-white">#{index + 1}</span>
-                    {index === 0 && (
-                      <span className="rounded bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
-                        Обложка
-                      </span>
-                    )}
-                    {entry.kind === 'new' && (
-                      <span className="rounded bg-blue-500/15 px-2 py-0.5 text-[11px] font-semibold text-blue-400">
-                        Новое
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 truncate text-xs text-text-muted dark:text-stone-400">
-                    {entry.kind === 'existing' ? entry.photo.fileName || entry.photo.storageKey : entry.file.name}
+          <fieldset disabled={!isAdmin} className="min-w-0">
+            <Card className="p-6">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-main dark:text-white font-display">Фотографии</h3>
+                  <p className="mt-1 text-xs text-text-muted dark:text-stone-400 font-body">
+                    Первая фотография — обложка. Фотографии сохраняются вместе с остальными данными.
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={index === 0}
-                    onClick={() => moveEntry(index, index - 1)}
-                    aria-label="Переместить выше"
-                  >
-                    ↑
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={index === photoEntries.length - 1}
-                    onClick={() => moveEntry(index, index + 1)}
-                    aria-label="Переместить ниже"
-                  >
-                    ↓
-                  </Button>
-                  <Button variant="danger" size="sm" onClick={() => removeEntry(entry.key)}>
-                    Удалить
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </Card>
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    e.target.value = '';
+                    if (files.length) addFiles(files);
+                  }}
+                />
+                <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  Добавить фото
+                </Button>
+              </div>
 
-      <Card className="p-6">
+              {!photoEntries.length ? (
+                <p className="text-xs text-text-muted dark:text-stone-400 font-body">В галерее пока нет фотографий.</p>
+              ) : (
+                <ol className="space-y-2">
+                  {photoEntries.map((entry, index) => (
+                    <li
+                      key={entry.key}
+                      className="flex items-center gap-3 rounded-lg border border-border-light p-2 dark:border-border-dark"
+                    >
+                      <img
+                        src={entry.kind === 'existing' ? entry.photo.fullUrl : entry.previewUrl}
+                        alt=""
+                        className="h-14 w-14 rounded object-cover bg-gray-100 dark:bg-white/5"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-text-main dark:text-white">#{index + 1}</span>
+                          {index === 0 && (
+                            <span className="rounded bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                              Обложка
+                            </span>
+                          )}
+                          {entry.kind === 'new' && (
+                            <span className="rounded bg-blue-500/15 px-2 py-0.5 text-[11px] font-semibold text-blue-400">
+                              Новое
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 truncate text-xs text-text-muted dark:text-stone-400">
+                          {entry.kind === 'existing' ? entry.photo.fileName || entry.photo.storageKey : entry.file.name}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={index === 0}
+                          onClick={() => moveEntry(index, index - 1)}
+                          aria-label="Переместить выше"
+                        >
+                          ↑
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          disabled={index === photoEntries.length - 1}
+                          onClick={() => moveEntry(index, index + 1)}
+                          aria-label="Переместить ниже"
+                        >
+                          ↓
+                        </Button>
+                        <Button variant="danger" size="sm" onClick={() => removeEntry(entry.key)}>
+                          Удалить
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </Card>
+          </fieldset>
+
+          <Button type="submit" variant="primary" loading={saveMutation.isPending} disabled={tagsChanged && (tags.isError || assigned.isError || !!inactive.length && !removeInactive) || !isAdmin && !tagsChanged} className="w-full sm:w-auto min-h-[44px]">
+            Сохранить изменения
+          </Button>
+        </fieldset>
+      </form>
+
+      {isAdmin && <Card className="p-6">
         <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-1">Удаление</h3>
         <p className="text-xs text-text-muted dark:text-stone-400 font-body mb-3">
           Безвозвратно удаляет обжарщика из каталога.
@@ -362,7 +411,7 @@ export const RoasterEditPage: React.FC = () => {
         >
           Удалить обжарщика
         </Button>
-      </Card>
+      </Card>}
 
       <ConfirmDialog
         isOpen={confirmDelete}

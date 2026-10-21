@@ -318,7 +318,7 @@ export const UsersPage: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdminUser(id),
     onSuccess: () => {
-      showToast('Пользователь удалён (soft delete)', 'success');
+      showToast('Пользователь полностью удалён', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       setDeletingUserId(null);
     },
@@ -488,8 +488,8 @@ export const UsersPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={!!deletingUserId}
-        title="Удалить пользователя (soft delete)?"
-        message="Пользователь будет помечен как удалённый, все сессии отозваны. Отдельно от блокировки."
+        title="Удалить пользователя навсегда?"
+        message="Учётная запись будет полностью удалена, все сессии отозваны. Это действие необратимо."
         confirmLabel="Удалить"
         variant="danger"
         onConfirm={async () => {

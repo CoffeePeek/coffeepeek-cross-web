@@ -59,7 +59,6 @@ export const PublishedShopsPage: React.FC = () => {
   const page = parseInt(searchParams.get('page') ?? '1');
   const search = searchParams.get('search') ?? '';
   const status = (searchParams.get('status') ?? '') as CoffeeShopStatus | '';
-  const importedFromFile = searchParams.get('importedFromFile') === '1';
   const sortKey = (searchParams.get('sort') ?? 'createdAtUtc') as SortKey;
   const sortDirection = (searchParams.get('direction') ?? 'desc') as SortDirection;
   const [localSearch, setLocalSearch] = useState(search);
@@ -67,14 +66,13 @@ export const PublishedShopsPage: React.FC = () => {
   const qc = useQueryClient();
 
   const { data, isLoading, isError, isFetching, refetch } = useQuery({
-    queryKey: ['admin', 'published-shops', { page, search, status, importedFromFile, sortKey, sortDirection }],
+    queryKey: ['admin', 'published-shops', { page, search, status, sortKey, sortDirection }],
     queryFn: () =>
       getPublishedShops({
         page,
         pageSize: PAGE_SIZE,
         search: search || undefined,
         status: status || undefined,
-        importedFromFile: importedFromFile || undefined,
         // Completeness is sorted client-side because this field is not part of
         // the documented backend sorting contract.
         sortBy: sortKey === 'dataCompletenessScore' ? undefined : sortKey,
@@ -133,7 +131,7 @@ export const PublishedShopsPage: React.FC = () => {
     {
       accessorKey: 'name',
       header: () => <SortHeader sort="name" {...sortProps}>Название</SortHeader>,
-      cell: ({ row }) => <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{row.original.name}</span>{row.original.isHidden && <Badge variant="rejected">Скрыта</Badge>}</div>,
+      cell: ({ row }) => <div><div className="flex flex-wrap items-center gap-2"><Link to={`/published-shops/${row.original.id}`} className="font-medium hover:text-primary">{row.original.name}</Link>{row.original.isHidden && <Badge variant="rejected">Скрыта</Badge>}</div><p className="mt-1 text-xs text-text-muted dark:text-stone-400">{row.original.location?.address || 'Адрес не указан'}</p></div>,
       meta: { headerClassName: 'pl-5', className: 'pl-5' },
     },
     { accessorKey: 'coffeeFocus', header: () => <SortHeader sort="coffeeFocus" {...sortProps}>Фокус</SortHeader>, cell: ({ row }) => <FocusBadge focus={row.original.coffeeFocus} /> },
@@ -170,14 +168,6 @@ export const PublishedShopsPage: React.FC = () => {
               {opt.label}
             </Button>
           ))}
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setParam('importedFromFile', importedFromFile ? '' : '1')}
-            variant={importedFromFile ? 'primary' : 'secondary'}
-          >
-            Импорт из файла
-          </Button>
         </div>
         <form
           onSubmit={(e) => {

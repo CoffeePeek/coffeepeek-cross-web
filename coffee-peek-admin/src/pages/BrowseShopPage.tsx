@@ -1,55 +1,27 @@
-import React, { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useParams } from 'react-router-dom';
 import { getBrowseCoffeeShopBySlug } from '../api/coffeeShops';
-import { getShopPublicAddressBySlug } from '../api/shopPublicAddresses';
-import { setPublishedShopVisibility } from '../api/admin';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { useToast } from '../contexts/ToastContext';
-import { useUser } from '../contexts/UserContext';
 import { DataTable } from '../components/ui/DataTable';
 
 const DAY_NAMES = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
 export const BrowseShopPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { showToast } = useToast();
-  const { isAdmin } = useUser();
-  const qc = useQueryClient();
-  const [confirmHide, setConfirmHide] = useState(false);
 
   const { data: shop, isLoading, isError } = useQuery({
     queryKey: ['browse', 'coffee-shop', id],
     queryFn: () => getBrowseCoffeeShopBySlug(id!).then((r) => r.data),
     enabled: Boolean(id),
   });
-  const { data: adminAddress } = useQuery({
-    queryKey: ['admin', 'shop-public-address', 'slug', id],
-    queryFn: () => getShopPublicAddressBySlug(id!).then(response => response.data),
-    enabled: isAdmin && Boolean(id),
-    staleTime: 60_000,
-  });
   type ShopSchedule = NonNullable<NonNullable<typeof shop>['schedules']>[number];
   const scheduleColumns: ColumnDef<ShopSchedule>[] = [
     { accessorKey: 'dayOfWeek', header: 'День', cell: ({ row }) => DAY_NAMES[row.original.dayOfWeek] ?? row.original.dayOfWeek },
     { id: 'hours', header: 'Часы', cell: ({ row }) => row.original.openTime && row.original.closeTime ? `${row.original.openTime} – ${row.original.closeTime}` : '—' },
   ];
-
-  const hideMutation = useMutation({
-    mutationFn: () => {
-      if (!adminAddress?.entityId) throw new Error('Не удалось определить кофейню для скрытия');
-      return setPublishedShopVisibility(adminAddress.entityId, true);
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['browse'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'published-shops'] });
-      showToast('Кофейня скрыта из приложения', 'success');
-    },
-    onError: (err: any) => showToast(err?.message ?? 'Не удалось скрыть кофейню', 'error'),
-  });
 
   if (isLoading) {
     return (
@@ -86,40 +58,7 @@ export const BrowseShopPage: React.FC = () => {
         <Link to="/map">
           <Button variant="secondary" size="sm">На карте</Button>
         </Link>
-        {isAdmin && adminAddress?.entityId && (
-          <>
-            <Link to={`/published-shops/${adminAddress.entityId}`}>
-              <Button variant="secondary" size="sm">Редактировать</Button>
-            </Link>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={hideMutation.isPending}
-              onClick={() => setConfirmHide(true)}
-            >
-              Скрыть из приложения
-            </Button>
-          </>
-        )}
       </div>
-
-      <ConfirmDialog
-        isOpen={isAdmin && confirmHide}
-        title="Скрыть кофейню из приложения?"
-        message={`«${shop.name}» перестанет отображаться пользователям приложения.`}
-        confirmLabel="Скрыть"
-        variant="danger"
-        onConfirm={async () => {
-          try {
-            await hideMutation.mutateAsync();
-          } catch {
-            // Ошибку показывает onError мутации.
-          } finally {
-            setConfirmHide(false);
-          }
-        }}
-        onCancel={() => setConfirmHide(false)}
-      />
 
       <Card className="overflow-hidden">
         {imageUrls.length > 0 && (

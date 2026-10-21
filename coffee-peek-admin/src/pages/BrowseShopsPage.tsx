@@ -46,7 +46,7 @@ export const BrowseShopsPage: React.FC = () => {
       <div>
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Кофейни</h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          Каталог опубликованных кофеен — только просмотр
+          Каталог опубликованных кофеен
         </p>
       </div>
 

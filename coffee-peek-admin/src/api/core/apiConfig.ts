@@ -69,12 +69,6 @@ export const API_ENDPOINTS = {
     IMPORT_DUPLICATES: '/api/admin/import/duplicates',
     IMPORT_DUPLICATES_REFRESH: '/api/admin/import/duplicates/refresh',
     IMPORT_DUPLICATE_DECIDE: (id: string) => `/api/admin/import/duplicates/${encodeURIComponent(id)}/decide`,
-    CACHE_KEYS: '/api/admin/cache/keys',
-    CACHE_CLEAR: '/api/admin/cache/clear',
-    CACHE_CLEAR_KEY: (key: string) => `/api/admin/cache/clear/${encodeURIComponent(key)}`,
-    CACHE: {
-      CLEAR: '/api/admin/cache/clear',
-    },
     APP_DOWNLOADS: '/api/admin/v1/app-downloads',
     APP_DOWNLOADS_ANDROID_GOOGLE_PLAY: '/api/admin/v1/app-downloads/android/google-play',
     APP_DOWNLOADS_IOS_APP_STORE: '/api/admin/v1/app-downloads/ios/app-store',

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  AppWindow, BookOpen, ChevronDown, ChevronLeft, CircleGauge, Coffee, Database,
+  AppWindow, BookOpen, ChevronDown, ChevronLeft, CircleGauge, Coffee,
   Flag, History, LogOut, Map, MessageSquareText, Tags, Upload, UserRound, Users,
 } from 'lucide-react';
 import { getModerationInsights, type AdminModerationQueueName } from '../../api/admin';
@@ -62,7 +62,6 @@ const NAV_SECTIONS: NavSection[] = [
     { path: '/users', label: 'Пользователи', icon: Users, adminOnly: true },
     { path: '/notifications', label: 'Уведомления', icon: MessageSquareText, adminOnly: true },
     { path: '/app-distribution', label: 'Приложения', icon: AppWindow, adminOnly: true },
-    { path: '/cache', label: 'Кеши', icon: Database, adminOnly: true },
   ] },
 ];
 

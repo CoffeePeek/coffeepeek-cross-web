@@ -181,7 +181,7 @@ export const CatalogManagementPage: React.FC = () => {
   const columns: ColumnDef<CatalogItem>[] = [
     ...(kind === 'roasters' ? [{ id: 'photo', header: '', cell: ({ row }: { row: { original: CatalogItem } }) => { const roaster = row.original as CatalogRoaster; return roaster.photoUrl ? <img src={roaster.photoUrl} alt="" className="h-12 w-12 rounded-lg object-cover" /> : <div className="h-12 w-12 rounded-lg bg-stone-100 dark:bg-white/5" />; } } as ColumnDef<CatalogItem>] : []),
     { id: 'name', header: 'Название', cell: ({ row }) => itemTitle(kind, row.original) },
-    { id: 'category', header: 'Категория', cell: ({ row }) => itemCategory(kind, row.original) || '—' },
+    ...(kind === 'equipments' || kind === 'brewMethods' ? [{ id: 'category', header: 'Категория', cell: ({ row }) => itemCategory(kind, row.original) || '—' } as ColumnDef<CatalogItem>] : []),
     { id: 'actions', meta: { className: 'text-right' }, cell: ({ row }) => { const roaster = kind === 'roasters' ? row.original as CatalogRoaster : null; return <div className="flex justify-end gap-2">{roaster ? <Button asChild variant="secondary" size="sm"><Link to={`/catalogs/roasters/${roaster.id}`}>Редактировать</Link></Button> : <Button variant="secondary" size="sm" onClick={() => { setEditing(row.original); setEditForm(formFromItem(kind, row.original)); }}>Изменить</Button>}<Button variant="ghost" size="sm" className="text-red-500" onClick={() => setDeleting(row.original)}>Удалить</Button></div>; } },
   ];
 
