@@ -25,6 +25,7 @@
     }
   ],
   "rewrites": [
+    {"source": "/robots.txt", "destination": "/robots.txt"},
     {"source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json"},
     {"source": "/api/support/:path*", "destination": "https://api.coffeepeek.by/api/support/:path*"},
     {"source": "/support", "destination": "/support.html"},

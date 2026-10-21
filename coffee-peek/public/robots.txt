@@ -1,0 +1,34 @@
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /login
+Disallow: /logout
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /confirm-email
+Disallow: /confirm-account-deletion
+Disallow: /profile
+Disallow: /settings
+Disallow: /my/
+Disallow: /check-ins
+Disallow: /reviews
+Disallow: /shop-change-requests
+Disallow: /error
+
+Disallow: /coffee-shops/new$
+Disallow: /coffee-shops/new?
+Disallow: /coffee-shops/new/
+Disallow: /roasters/new$
+Disallow: /roasters/new?
+Disallow: /roasters/new/
+Disallow: /coffee-shops/*/edit
+Disallow: /coffee-shops/*/checkin
+Disallow: /coffee-shops/*/check-ins/
+Disallow: /shops/*/edit
+Disallow: /shops/*/checkin
+Disallow: /shops/*/check-ins/
+
+Disallow: /download/
+Disallow: /downloads/
