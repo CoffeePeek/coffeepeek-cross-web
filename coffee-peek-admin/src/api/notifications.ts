@@ -1,6 +1,6 @@
 import { httpClient } from './core/httpClient';
 
-export type TemplateCategory = 'Moderation' | 'Inactivity';
+export type TemplateCategory = 'Moderation' | 'Inactivity' | 'NewShop';
 export interface NotificationMessage { title: string; body: string }
 export interface NotificationTemplate extends NotificationMessage { category: TemplateCategory; updatedAtUtc: string | null }
 
