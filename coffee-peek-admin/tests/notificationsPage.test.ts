@@ -14,7 +14,8 @@ test('admin previews and saves a template, retries a custom message with the ori
   const api = require('../src/api/notifications');
   const userId = '7541b7b9-b589-4c61-97b2-a6fe7962e3b9';
   const templates = [{ category: 'Moderation', title: 'Решение модерации', body: 'Проверка {subject}: {status}.', updatedAtUtc: null },
-    { category: 'Inactivity', title: 'Время для кофе?', body: 'Давно не виделись!', updatedAtUtc: null }];
+    { category: 'Inactivity', title: 'Время для кофе?', body: 'Давно не виделись!', updatedAtUtc: null },
+    { category: 'NewShop', title: 'Новая кофейня на карте', body: 'Загляните в «{name}»!', updatedAtUtc: null }];
   api.getNotificationTemplates.mockResolvedValue({ data: templates });
   api.saveNotificationTemplate.mockResolvedValue({ data: templates[0] });
   api.sendNotification.mockRejectedValueOnce(new Error('Connection lost')).mockResolvedValueOnce({ data: {} });
@@ -41,6 +42,11 @@ test('admin previews and saves a template, retries a custom message with the ori
     await set(moderation.querySelector('textarea')!, 'Результат {subject}: {status}');
     await submit(moderation);
     expect(api.saveNotificationTemplate).toHaveBeenCalledWith('Moderation', { title: 'Решение модерации', body: 'Результат {subject}: {status}' });
+    const newShop = forms[3];
+    expect(document.body.textContent).toContain('Загляните в «Территория кофе»!');
+    await set(newShop.querySelector('textarea')!, 'Попробуйте кофе в «{name}»!');
+    await submit(newShop);
+    expect(api.saveNotificationTemplate).toHaveBeenCalledWith('NewShop', { title: 'Новая кофейня на карте', body: 'Попробуйте кофе в «{name}»!' });
     await set(custom.querySelectorAll('input')[1], 'Новости');
     await set(custom.querySelector('textarea')!, 'Загляните в CoffeePeek');
     await submit(custom);

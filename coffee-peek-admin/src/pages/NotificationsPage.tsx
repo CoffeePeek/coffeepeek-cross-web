@@ -33,12 +33,14 @@ function TemplateEditor({ template }: { template: NotificationTemplate }) {
   const save = useMutation({ mutationFn: (message: NotificationMessage) => saveNotificationTemplate(template.category, message),
     onSuccess: async (_, message) => { reset(message); await qc.invalidateQueries({ queryKey: templatesKey }); showToast('Шаблон сохранён', 'success'); },
   });
-  const label = template.category === 'Moderation' ? 'Результат модерации' : 'Возвращение в приложение';
+  const label = { Moderation: 'Результат модерации', Inactivity: 'Возвращение в приложение', NewShop: 'Новая кофейня на карте' }[template.category];
   return <Card className="p-5 sm:p-6">
     <h3 className="font-display text-lg font-semibold">{label}</h3>
     <p className="mb-5 mt-1 text-sm text-text-muted dark:text-stone-400">{template.category === 'Moderation'
       ? 'Общий шаблон для чекинов, кофеен, обжарщиков, жалоб и исправлений. Переменные: {subject} — объект, {status} — решение.'
-      : 'После 7 дней без посещений и чекинов, не чаще раза в неделю. Переменные не используются.'}</p>
+      : template.category === 'NewShop'
+        ? 'Для всех пользователей CoffeePeek при появлении кофейни на карте. Переменная: {name} — название кофейни (до 300 символов).'
+        : 'После 7 дней без посещений и чекинов, не чаще раза в неделю. Переменные не используются.'}</p>
     <div className="grid gap-6 lg:grid-cols-2"><form className="space-y-4" onSubmit={handleSubmit(message => save.mutate(message))}>
       <label className="block space-y-1 text-sm"><span>Заголовок · до 120 символов</span><Input disabled={save.isPending} maxLength={120} {...register('title')} aria-invalid={!!errors.title} />{errors.title && <span role="alert" className="text-red-500">{errors.title.message}</span>}</label>
       <label className="block space-y-1 text-sm"><span>Текст · до 500 символов</span><textarea disabled={save.isPending} rows={4} maxLength={500} className={fieldClass} {...register('body')} aria-invalid={!!errors.body} />{errors.body && <span role="alert" className="text-red-500">{errors.body.message}</span>}</label>

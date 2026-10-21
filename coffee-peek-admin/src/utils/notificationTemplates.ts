@@ -9,7 +9,8 @@ export const customNotificationSchema = notificationMessageSchema.extend({ userI
 
 export function renderNotificationPreview(message: NotificationMessage, category?: TemplateCategory): NotificationMessage {
   const render = (value: string) => category === 'Moderation'
-    ? value.split('{subject}').join('чекина').split('{status}').join('одобрено') : value;
+    ? value.split('{subject}').join('чекина').split('{status}').join('одобрено')
+    : category === 'NewShop' ? value.split('{name}').join('Территория кофе') : value;
   return { title: render(message.title), body: render(message.body) };
 }
 
@@ -17,6 +18,7 @@ export const notificationTemplateSchema = (category: TemplateCategory) => notifi
   for (const field of ['title', 'body'] as const) {
     let rendered = value[field];
     if (category === 'Moderation') rendered = rendered.split('{subject}').join('исправления').split('{status}').join('не подтверждено');
+    if (category === 'NewShop') rendered = rendered.split('{name}').join('я'.repeat(300));
     if (/[{}]/.test(rendered)) ctx.addIssue({ code: 'custom', path: [field], message: 'Неизвестная переменная шаблона' });
     if (rendered.length > (field === 'title' ? 120 : 500)) ctx.addIssue({ code: 'custom', path: [field], message: 'После подстановки переменных текст слишком длинный' });
   }
