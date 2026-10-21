@@ -3,7 +3,6 @@ jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'da
 jest.mock('../src/contexts/UserContext', () => ({ useUser: jest.fn(() => ({ isLoading: false })) }));
 jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: jest.fn() }));
 jest.mock('../src/hooks/queries/useCheckIns', () => ({ usePublicCheckIns: jest.fn() }));
-jest.mock('../src/hooks/queries/useMobileAppDownloads', () => ({ useMobileAppDownloads: () => ({ data: { android: { googlePlay: { available: true, url: 'https://play.google.com/store/apps/details?id=by.coffeepeek' } }, ios: { appStore: { available: false } } } }) }));
 jest.mock('../src/lib/catalogSession', () => ({ getCatalogScope: () => 'guest:1' }));
 jest.mock('../src/components/Header', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/MapPage', () => ({ __esModule: true, default: () => null }));
@@ -16,15 +15,10 @@ jest.mock('../src/components/CatalogCards', () => ({
 jest.mock('../src/components/CheckInCard', () => ({ __esModule: true, default: ({ item }: { item: { text: string } }) => item.text }));
 jest.mock('../src/pages/LandingPage.css', () => ({}));
 jest.mock('@tanstack/react-query', () => ({ useQuery: jest.fn() }));
-jest.mock('react-router-dom', () => {
-  const router = jest.requireActual('react-router-dom');
-  const react = jest.requireActual('react');
-  return { ...router, Link: jest.fn((props: object) => react.createElement(router.Link, props)) };
-});
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Link, MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicCheckIns } from '../src/hooks/queries/useCheckIns';
 import { useUser } from '../src/contexts/UserContext';
@@ -84,28 +78,14 @@ test('personalized catalog requests wait for the session to resolve and use its 
   }
 });
 
-test('download dialog has a public phone link, footer cookie controls and real app screenshots', () => {
+test('download dialog has a public phone link and real app screenshots', () => {
   const html = render();
   expect(html).toContain('<dialog');
   expect(html).toContain('aria-labelledby="download-dialog-title"');
   expect(html).toContain('https://coffeepeek.by/settings#app-download-title');
-  expect(html).toContain('href="/privacy#analytics-settings"');
   expect(html).not.toContain('mailto:');
   expect(html).not.toContain('Написать нам');
   for (const screen of ['shops', 'map', 'feed']) expect(html).toContain(`/images/app-screenshots/${screen}-dark.png`);
   expect(html).not.toContain('Скриншот приложения');
-  expect(html.indexOf('Твой кофейный Минск.')).toBeLessThan(html.indexOf('© 2026'));
-  expect(html.indexOf('© 2026')).toBeLessThan(html.indexOf('Открывай'));
-});
-
-test('footer navigates inside the app except for server download and support routes', () => {
-  render();
-  const links = (Link as unknown as jest.Mock).mock.calls.map(([props]) => props);
-  for (const to of ['/shops', '/map', '/coffees', '/roasters', '/feed', '/coffee-shops/new', '/terms', '/privacy', '/privacy#analytics-settings']) {
-    expect(links).toContainEqual(expect.objectContaining({ to, reloadDocument: false }));
-  }
-  for (const to of ['/download/android', '/support']) {
-    expect(links).toContainEqual(expect.objectContaining({ to, reloadDocument: true }));
-  }
-  expect(links).toContainEqual(expect.objectContaining({ to: 'https://www.instagram.com/coffeepeek.by/', target: '_blank', rel: 'noopener noreferrer' }));
+  expect(html).not.toContain('<footer');
 });

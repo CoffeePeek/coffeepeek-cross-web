@@ -481,14 +481,14 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
         <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       </div>
 
-      <div className="coffee-map-controls absolute right-4 z-[500] flex flex-col gap-3" style={{ bottom: carouselItems.length ? 164 : 16 }}>
-        <div className={`mb-3 flex flex-col overflow-hidden rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
-          <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomIn(); }} aria-label="Приблизить карту" className={`flex h-14 w-14 items-center justify-center ${themeClasses.text.primary}`}><Plus size={28} className="h-7 w-7 shrink-0" /></button>
-          <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomOut(); }} aria-label="Отдалить карту" className={`flex h-14 w-14 items-center justify-center border-t ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={28} className="h-7 w-7 shrink-0" /></button>
+      <div className="coffee-map-controls absolute right-4 z-[500] flex items-center gap-2" style={{ bottom: carouselItems.length ? 128 : 16 }}>
+        <div className={`flex overflow-hidden rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
+          <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomIn(); }} aria-label="Приблизить карту" className={`flex h-11 w-11 items-center justify-center ${themeClasses.text.primary}`}><Plus size={24} className="h-6 w-6 shrink-0" /></button>
+          <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomOut(); }} aria-label="Отдалить карту" className={`flex h-11 w-11 items-center justify-center border-l ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={24} className="h-6 w-6 shrink-0" /></button>
         </div>
-        <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zones_toggled', enabled: !showZones }); setShowZones(value => !value); }} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`coffee-map-zones flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={28} className="h-7 w-7 shrink-0" weight="regular" /></button>
-        <button type="button" onClick={() => void handleLocate()} disabled={isLocating} aria-label="Моё местоположение" className={`flex h-14 w-14 items-center justify-center rounded-full border shadow-lg active:scale-95 disabled:opacity-60 ${themeClasses.bg.card} ${themeClasses.border.default} ${themeClasses.text.primary}`}>
-          {isLocating ? <span className="h-7 w-7 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <NavigationArrow size={30} className="h-8 w-8 shrink-0" />}
+        <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zones_toggled', enabled: !showZones }); setShowZones(value => !value); }} aria-label={showZones ? 'Скрыть кофейные зоны' : 'Показать кофейные зоны'} aria-pressed={showZones} title="Кофейные зоны" className={`coffee-map-zones flex h-11 w-11 items-center justify-center rounded-full border shadow-lg active:scale-95 ${themeClasses.bg.card} ${themeClasses.border.default} ${showZones ? 'text-[#EAB308]' : themeClasses.text.secondary}`}><Polygon size={24} className="h-6 w-6 shrink-0" weight="regular" /></button>
+        <button type="button" onClick={() => void handleLocate()} disabled={isLocating} aria-label="Моё местоположение" className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-lg active:scale-95 disabled:opacity-60 ${themeClasses.bg.card} ${themeClasses.border.default} ${themeClasses.text.primary}`}>
+          {isLocating ? <span className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <NavigationArrow size={24} className="h-6 w-6 shrink-0" />}
         </button>
       </div>
       {carouselItems.length > 0 && <section aria-label={userPosition ? 'Кофейни рядом' : 'Кофейни на карте'} className="coffee-map-carousel absolute inset-x-0 bottom-4 z-[500]" style={{ containerType: 'inline-size' }}>
@@ -507,16 +507,16 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
             }
             if (shop && selectedIdRef.current !== shop.id) selectShop(shop, true);
           }, 150);
-        }} className="relative flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ paddingInline: 'max(16px, calc((100cqw - 448px) / 2))' }}>
+        }} className="relative flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ paddingInline: 'max(16px, calc((100cqw - 320px) / 2))' }}>
           {loopedItems.map((shop, index) => {
             const active = selectedShop?.id === shop.id;
             const details = active ? selectedShopDetails : null;
-            return <article key={`${shop.id}-${index}`} data-shop-id={shop.id} aria-label={shop.title} style={{ height: 128, width: 'min(448px, calc(100cqw - 32px))' }} className={`flex shrink-0 snap-center items-center gap-4 rounded-[28px] border p-4 shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
-              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl"><MapShopThumb alt="" src={details?.photos?.[0] ? getPhotoUrl(details.photos[0], 'thumbnail') : undefined} /></div>
+            return <article key={`${shop.id}-${index}`} data-shop-id={shop.id} aria-label={shop.title} style={{ height: 96, width: 'min(320px, calc(100cqw - 32px))' }} className={`flex shrink-0 snap-center items-center gap-3 rounded-[24px] border p-3 shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl"><MapShopThumb alt="" src={details?.photos?.[0] ? getPhotoUrl(details.photos[0], 'thumbnail') : undefined} /></div>
               <div className="min-w-0 flex-1">
-                <p className={`mb-1 flex h-5 items-center gap-1 truncate text-sm ${themeClasses.text.secondary}`}><Star size={16} weight="fill" color="#EAB308" />{details ? details.checkInCount ? `${details.rating.toFixed(1)} · ${details.checkInCount} чекинов` : 'Нет чекинов' : userPosition ? 'Кофейня рядом' : 'Кофейня на карте'}</p>
-                <button type="button" onClick={() => { const context = { source: 'map' as const, search_id: selectedSearch.current?.shopId === shop.id ? selectedSearch.current.searchId : analytics?.search_id }; captureAnalyticsEvent('catalog_item_opened', { ...context, entity_type: 'coffee_shop', position: index + 1 }); void openPublic('shops', shop.publicAddress ?? shop.id, '', { state: { analytics: context } }); }} style={{ textAlign: 'left', padding: 0 }} className={`block h-7 w-full truncate text-lg font-bold leading-7 hover:underline ${themeClasses.text.primary}`}>{shop.title}</button>
-                <p className={`mt-1 h-5 truncate text-sm leading-5 ${themeClasses.text.secondary}`}>{details ? formatWorkingHours(details.schedules) : userPosition ? formatDistance(distanceKm(userPosition.lat, userPosition.lon, shop.latitude, shop.longitude)) : '\u00a0'}</p>
+                <p className={`mb-1 flex h-4 items-center gap-1 truncate text-xs ${themeClasses.text.secondary}`}><Star size={14} weight="fill" color="#EAB308" />{details ? details.checkInCount ? `${details.rating.toFixed(1)} · ${details.checkInCount} чекинов` : 'Нет чекинов' : userPosition ? 'Кофейня рядом' : 'Кофейня на карте'}</p>
+                <button type="button" onClick={() => { const context = { source: 'map' as const, search_id: selectedSearch.current?.shopId === shop.id ? selectedSearch.current.searchId : analytics?.search_id }; captureAnalyticsEvent('catalog_item_opened', { ...context, entity_type: 'coffee_shop', position: index + 1 }); void openPublic('shops', shop.publicAddress ?? shop.id, '', { state: { analytics: context } }); }} style={{ textAlign: 'left', padding: 0 }} className={`block h-7 w-full truncate text-base font-bold leading-7 hover:underline ${themeClasses.text.primary}`}>{shop.title}</button>
+                <p className={`mt-1 h-4 truncate text-xs leading-4 ${themeClasses.text.secondary}`}>{details ? formatWorkingHours(details.schedules) : userPosition ? formatDistance(distanceKm(userPosition.lat, userPosition.lon, shop.latitude, shop.longitude)) : '\u00a0'}</p>
               </div>
             </article>;
           })}
@@ -528,7 +528,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
 
 const MapShopThumb: React.FC<{ src?: string; alt: string }> = ({ src, alt }) => {
   const [failed, setFailed] = useState(false);
-  if (!src || failed) return <ShopPhotoPlaceholder fontSize={10} />;
+  if (!src || failed) return <ShopPhotoPlaceholder fontSize={7} />;
   return (
     <img src={src} alt={alt} className="w-full h-full object-cover" onError={() => setFailed(true)} />
   );

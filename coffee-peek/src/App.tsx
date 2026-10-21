@@ -8,6 +8,7 @@ import { AppRoutes } from './routes/AppRoutes';
 import { useToast } from './contexts/ToastContext';
 import { queryClient } from './lib/queryClient';
 import CookieBanner from './components/CookieBanner';
+import Footer from './components/Footer';
 import { ScrollToTop } from './components/ScrollToTop';
 import SessionRealtime from './components/SessionRealtime';
 import { SpeedInsights } from '@vercel/speed-insights/react';
@@ -55,6 +56,7 @@ const AppContent: React.FC = () => {
       <ProductAnalytics />
       <NotificationActivity />
       <AppRoutes />
+      <Footer />
       <CookieBanner />
       <SpeedInsights />
       <Analytics />

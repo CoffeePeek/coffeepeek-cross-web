@@ -9,6 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { useLocalCity } from '../hooks/useLocalCity';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { usePageAnchor } from '../hooks/usePageAnchor';
 import { getErrorMessage } from '../utils/errorHandler';
 import { logger } from '../utils/logger';
 import {
@@ -27,6 +28,7 @@ const SettingsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  usePageAnchor(!isLoading && !isUserLoading);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -108,7 +110,7 @@ const SettingsPage: React.FC = () => {
         </SettingsSection>
 
         <section className="mb-6" aria-labelledby="app-download-title">
-          <h2 id="app-download-title" className="mb-2 text-xs font-medium uppercase tracking-wider" style={{ color: colors.muted }}>Скачать приложение</h2>
+          <h2 id="app-download-title" className="mb-2 scroll-mt-24 text-xs font-medium uppercase tracking-wider" style={{ color: colors.muted }}>Скачать приложение</h2>
           <MobileAppDownload variant="compact" />
         </section>
 

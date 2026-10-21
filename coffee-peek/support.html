@@ -82,7 +82,7 @@
     .brand-mark { display: block; width: 52px; height: 52px; border-radius: 15px; background: var(--bg); overflow: hidden; flex: none; }
     .brand-mark img { display: block; width: 100%; height: 100%; object-fit: contain; }
     .wordmark { font-size: 20px; font-weight: 800; letter-spacing: -.045em; }
-    .wordmark span, .footer-brand span { color: #EAB308; }
+    .wordmark span { color: #EAB308; }
     .header-nav { display: flex; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 999px; background: var(--nav); }
     .header-nav a { min-height: 34px; padding: 7px 14px; border-radius: 999px; color: var(--secondary); font-size: 14px; font-weight: 600; line-height: 20px; text-decoration: none; transition: color .2s, background .2s; }
     .header-nav a:hover { color: #EAB308; background: var(--button-secondary); }
@@ -135,17 +135,7 @@
     .form-status.success { color: #22C55E; }
     .noscript-copy { margin: 18px 0 0; color: var(--secondary); font-size: 14px; }
     .noscript-copy a { color: #EAB308; }
-    .site-footer { margin-top: 76px; padding-block: 30px 42px; border-top: 1px solid var(--border); }
-    .footer-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 40px; }
-    .footer-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; letter-spacing: -.045em; text-decoration: none; }
-    .footer-brand img { width: 32px; height: 32px; border-radius: 9px; background: var(--bg); }
-    .site-footer p { max-width: 340px; margin: 10px 0 0; color: var(--secondary); font-size: 13px; line-height: 1.55; }
-    .footer-sections { display: grid; grid-template-columns: repeat(3, max-content); gap: 56px; }
-    .footer-column { display: flex; align-items: center; flex-direction: column; gap: 8px; }
-    .footer-column h2 { margin: 0 0 4px; color: var(--secondary); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-    .footer-column a { font-size: 13px; text-align: center; text-decoration: none; }
-    .footer-column a:hover { color: #EAB308; }
-    .footer-bottom { display: flex; justify-content: space-between; gap: 16px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--secondary); font-size: 12px; }
+    #support-footer { margin-top: 76px; }
     @media (max-width: 1023px) {
       .header-nav { display: none; }
       .hero { gap: 32px; }
@@ -162,11 +152,7 @@
       .contact-card h2 { font-size: 24px; }
       .request-card { grid-template-columns: 1fr; gap: 26px; padding: 24px; }
       .request-card h2 { font-size: 25px; }
-      .site-footer { margin-top: 48px; }
-      .footer-main { flex-direction: column; gap: 28px; }
-      .footer-sections { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-      .footer-column:last-child { grid-column: span 2; }
-      .footer-bottom { flex-wrap: wrap; }
+      #support-footer { margin-top: 48px; }
     }
     @media (max-width: 420px) {
       .home-link { padding-inline: 12px; font-size: 12px; }
@@ -231,37 +217,7 @@
           </div>
         </section>
       </main>
-      <footer class="wrap site-footer">
-        <div class="footer-main">
-          <div>
-            <a class="footer-brand" href="/"><img src="/logo/logo.png" alt="" />Coffee<span>Peek</span></a>
-            <p>Проводник в мире кофе. Карта, чекины, инструменты и сообщество — в одном приложении.</p>
-          </div>
-          <div class="footer-sections">
-            <nav class="footer-column" aria-label="Продукт">
-              <h2>Продукт</h2>
-              <a href="/shops">Кофейни</a>
-              <a href="/map">Карта</a>
-              <a href="/coffees">Кофе</a>
-              <a href="/roasters">Обжарщики</a>
-              <a href="/feed">Лента</a>
-            </nav>
-            <nav class="footer-column" aria-label="Помощь">
-              <h2>Помощь</h2>
-              <a href="/support">Поддержка</a>
-              <a href="mailto:info@coffeepeek.by">Написать нам</a>
-              <a href="/terms">Условия</a>
-              <a href="/privacy">Политика</a>
-            </nav>
-            <nav class="footer-column" aria-label="Соцсети">
-              <h2>Соцсети</h2>
-              <a href="https://www.instagram.com/coffeepeek.by/" target="_blank" rel="noopener noreferrer">Instagram</a>
-              <a href="https://www.threads.com/@coffeepeek.by" target="_blank" rel="noopener noreferrer">Threads</a>
-            </nav>
-          </div>
-        </div>
-        <div class="footer-bottom"><span>© 2026 CoffeePeek</span><span>Русский · Минск</span></div>
-      </footer>
+      <div id="support-footer"></div>
     </div>
   </div>
   <script type="module" src="/src/support.tsx"></script>

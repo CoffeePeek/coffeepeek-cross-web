@@ -549,11 +549,7 @@
   .discovery-layout:not(.discovery-layout--expanded) .discovery-map-expand { height: 44px; width: 44px; }
   .discovery-layout:not(.discovery-layout--expanded) .discovery-map-expand svg { height: 24px; width: 24px; }
   .coffee-map--compact-preview .coffee-map-carousel { display: none; }
-  .coffee-map--compact-preview .coffee-map-zones { position: absolute; right: 56px; bottom: 0; }
   .coffee-map--compact-preview .coffee-map-controls { bottom: 12px !important; gap: 8px; }
-  .coffee-map--compact-preview .coffee-map-controls > div { margin-bottom: 0; }
-  .coffee-map--compact-preview .coffee-map-controls button { height: 44px; width: 44px; }
-  .coffee-map--compact-preview .coffee-map-controls svg { height: 24px; width: 24px; }
   .discovery-layout--expanded {
     grid-template-columns: minmax(0, 0fr) minmax(0, 1fr);
     grid-template-areas: 'toolbar panel' 'content panel';

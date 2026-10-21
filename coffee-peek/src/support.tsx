@@ -4,6 +4,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { sendSupportRequest } from './api/support';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
+import { ThemeProvider } from './contexts/ThemeContext';
+import Footer from './components/Footer';
 
 const supportSchema = z.object({
   email: z.string().trim().email('Введите корректный email.').max(254, 'Email не должен превышать 254 символа.'),
@@ -64,3 +68,10 @@ function SupportForm() {
 
 const formRoot = document.getElementById('support-form');
 if (formRoot) createRoot(formRoot).render(<SupportForm />);
+
+const footerRoot = document.getElementById('support-footer');
+if (footerRoot) createRoot(footerRoot).render(
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider><Footer /></ThemeProvider>
+  </QueryClientProvider>,
+);

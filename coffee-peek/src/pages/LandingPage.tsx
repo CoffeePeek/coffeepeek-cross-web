@@ -9,8 +9,6 @@ import { brand, card, dark, light, getThemeColors, shadow } from '../design-syst
 import { getCatalogScope } from '../lib/catalogSession';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
-import { useMobileAppDownloads } from '../hooks/queries/useMobileAppDownloads';
-import { LEGAL_ROUTES } from '../constants/legalRoutes';
 import { LEGAL } from '../constants/legal';
 import { AppIcon } from '../components/icons';
 import Button from '../components/Button';
@@ -21,46 +19,12 @@ import CheckInCardSkeleton from '../components/skeletons/CheckInCardSkeleton';
 import { MobileAppDownload } from '../components/mobile-app';
 import LandingMapWidget from '../components/LandingMapWidget';
 import Header from '../components/Header';
-import LogoMark from '../components/LogoMark';
 import Mascot from '../components/Mascot';
 import './LandingPage.css';
 
 const APP_DOWNLOAD_URL = new URL('/settings#app-download-title', LEGAL.siteUrl).href;
 
 const appScreenshots = ['shops', 'map', 'feed'] as const;
-
-const footerCols = [
-  {
-    title: 'Открывай',
-    items: [
-      { label: 'Кофейни', href: '/shops' }, { label: 'Карта', href: '/map' },
-      { label: 'Кофе', href: '/coffees' }, { label: 'Обжарщики', href: '/roasters' },
-      { label: 'Лента', href: '/feed' }, { label: 'Добавить кофейню', href: '/coffee-shops/new' },
-    ],
-  },
-  {
-    title: 'Приложение',
-    items: [
-      { label: 'App Store', href: '/download/ios' },
-      { label: 'Google Play', href: '/download/android' },
-    ],
-  },
-  {
-    title: 'Контакты',
-    items: [
-      { label: 'Instagram', href: 'https://www.instagram.com/coffeepeek.by/' },
-      { label: 'Threads', href: 'https://www.threads.com/@coffeepeek.by' },
-      { label: 'Поддержка', href: '/support' },
-    ],
-  },
-  {
-    title: 'Документы',
-    items: [
-      { label: 'Условия', href: LEGAL_ROUTES.terms }, { label: 'Конфиденциальность', href: LEGAL_ROUTES.privacy },
-      { label: 'Настройки cookie', href: `${LEGAL_ROUTES.privacy}#analytics-settings` },
-    ],
-  },
-];
 
 const questions = [
   { title: 'Что такое CoffeePeek?', answer: 'Кофейный гид по Минску: карта кофеен, каталог кофе и обжарщиков, чекины и впечатления сообщества.' },
@@ -78,11 +42,6 @@ const LandingPage: React.FC = () => {
   const scope = getCatalogScope();
   const downloadDialog = useRef<HTMLDialogElement>(null);
   const [copyStatus, setCopyStatus] = useState('');
-  const downloads = useMobileAppDownloads();
-  const stores = new Map([
-    ['/download/ios', !!(downloads.data?.ios.appStore.available && downloads.data.ios.appStore.url)],
-    ['/download/android', !!(downloads.data?.android.googlePlay.available && downloads.data.android.googlePlay.url)],
-  ]);
   const openDownloads = () => downloadDialog.current?.showModal();
   const copyDownloadLink = async () => {
     try {
@@ -228,28 +187,6 @@ const LandingPage: React.FC = () => {
         </section>
       </main>
 
-      <footer className="border-t" style={{ borderColor: c.border }}>
-        <div className="landing-container py-10 lg:py-12">
-          <div className="grid gap-10 lg:grid-cols-[1fr_3fr] lg:gap-12">
-            <div>
-              <Link to="/" className="inline-flex items-center gap-2">
-                <LogoMark size={40} /><span className="text-xl font-extrabold tracking-tight">Coffee<span style={{ color: brand.primary }}>Peek</span></span>
-              </Link>
-              <p className="mt-3 text-sm" style={{ color: c.textSecondary }}>Твой кофейный Минск.</p>
-              <p className="mt-4 text-xs" style={{ color: c.textSecondary }}>© 2026 CoffeePeek · Минск</p>
-            </div>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
-              {footerCols.map(col => <div key={col.title}>
-                <p className="mb-3 text-xs font-bold uppercase tracking-wider" style={{ color: c.textSecondary }}>{col.title}</p>
-                <ul className="space-y-2">{col.items.map(({ label, href }) => <li key={label}>
-                  {stores.get(href) === false ? <button type="button" onClick={openDownloads} className="inline-flex min-h-8 items-center gap-2 text-left text-sm hover:underline">{label}<span className="text-xs" style={{ color: c.textSecondary }}>{downloads.isPending ? 'Загрузка…' : downloads.isError ? 'Недоступно' : 'Скоро'}</span></button>
-                    : <Link to={href} reloadDocument={href.startsWith('/download/') || href === '/support'} target={href.startsWith('https://') ? '_blank' : undefined} rel={href.startsWith('https://') ? 'noopener noreferrer' : undefined} className="inline-flex min-h-8 items-center text-sm hover:underline">{label}</Link>}
-                </li>)}</ul>
-              </div>)}
-            </div>
-          </div>
-        </div>
-      </footer>
       <dialog ref={downloadDialog} className="landing-download-dialog" aria-labelledby="download-dialog-title" aria-describedby="download-dialog-description"
         style={{ background: c.card, color: c.textPrimary, borderColor: c.border }}
         onClose={() => setCopyStatus('')} onClick={event => { if (event.target === event.currentTarget) downloadDialog.current?.close(); }}>
