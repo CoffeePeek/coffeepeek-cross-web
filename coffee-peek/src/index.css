@@ -491,7 +491,7 @@
 }
 .discovery-layout--expanded {
   position: fixed;
-  inset: var(--app-header-height, 65px) 0 var(--app-navigation-height, 0px);
+  inset: var(--app-header-height, 65px) 0 0;
   z-index: 1000;
   grid-template-columns: minmax(0, 0fr) minmax(0, 1fr);
   grid-template-rows: 0px minmax(0, 1fr);

@@ -6,14 +6,17 @@ interface DownloadButtonProps {
   channel: string;
   href: string;
   label: string;
+  disabled?: boolean;
 }
 
-const DownloadButton: React.FC<DownloadButtonProps> = ({ channel, href, label }) => (
+const DownloadButton: React.FC<DownloadButtonProps> = ({ channel, href, label, disabled = false }) => (
   <a
-    href={href}
-    onClick={() => captureAnalyticsEvent('app_download_clicked', { channel })}
+    href={disabled ? undefined : href}
+    role={disabled ? 'link' : undefined}
+    aria-disabled={disabled || undefined}
+    onClick={() => { if (!disabled) captureAnalyticsEvent('app_download_clicked', { channel }); }}
     aria-label={label}
-    className={`inline-flex h-12 ${channel === 'app-store' ? 'w-[144px]' : 'w-[162px]'} shrink-0 items-center justify-center overflow-hidden rounded-lg ${channel === 'apk' ? 'border border-[#A6A6A6]' : ''} bg-black text-white transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]`}
+    className={`inline-flex h-12 ${channel === 'app-store' ? 'w-[144px]' : 'w-[162px]'} shrink-0 items-center justify-center overflow-hidden rounded-lg ${channel === 'apk' ? 'border border-[#A6A6A6]' : ''} bg-black text-white transition-opacity ${disabled ? 'opacity-50' : 'hover:opacity-80'} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]`}
     style={{ color: '#fff' }}
   >
     {channel === 'google-play' ? (

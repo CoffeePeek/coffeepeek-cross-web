@@ -30,7 +30,7 @@ JSON версии 1.1.0 сохраняет темы в `themes.light` / `themes.
 
 Семейство — Manrope с fallback sans-serif. Роли Tailwind `font-body`, `font-condensed`, `font-extended`, `font-expanded` используют одно семейство и не меняют ширину начертания. index.html подключает Google Fonts с весами 400, 500, 600, 700, 800 и display=swap. Шкала fontWeight в токенах содержит CSS-значения 200–900; значения вне подключённого диапазона сопоставляются браузером с доступным начертанием.
 
-Базовые значения: 16 px, вес 400, line-height 1.5. `typographyStyles` — самостоятельные текстовые пресеты: wordmark соответствует тексту логотипа Header, hero описывает основной текст CoffeePeek на лендинге, h1/h2/h3/body/label/caption доступны для явного применения. Неуказанный line-height наследуется; у h2 он не фиксируется пресетом.
+Базовые значения: 16 px, вес 400, line-height 1.5. `typographyStyles` — самостоятельные текстовые пресеты: wordmark соответствует тексту логотипа Header, hero задаёт начертание основного заголовка лендинга, h1/h2/h3/body/label/caption доступны для явного применения. Неуказанный line-height наследуется; у h2 он не фиксируется пресетом.
 
 Общие CSS-классы имеют собственные роли:
 
@@ -41,7 +41,7 @@ JSON версии 1.1.0 сохраняет темы в `themes.light` / `themes.
 | `.accent-word` | 400 | Наследуется | Наследуется | Gold |
 | `.numeral` | 400 | -0.045em | 0.84 | Tabular nums, размер наследуется |
 
-На лендинге hero CoffeePeek адаптивный: `clamp(1.75rem, 12cqi, 5.5rem)`, tracking -0.05em, line-height 0.95, CSS weight 900. Вводная строка — 13 px mobile / 28 px desktop, 500; описание — 14 / 17 px, line-height 1.55. Header использует wordmark 20 px / 800 / -0.045em.
+На лендинге заголовок «Хороший кофе. В твоём Минске.» адаптивный: `clamp(36px, 5vw, 88px)`, tracking -0.05em, line-height 0.95, CSS weight 900. Заголовки секций — `clamp(22px, 3.4vw, 36px)`, 700, tracking -0.025em, line-height 1.15. Вводная строка — 12 px / 700, uppercase; описание — 16 px mobile / 17 px desktop, line-height 1.55. Header использует wordmark 20 px / 800 / -0.045em.
 
 Шкала fontSize в токенах и стандартные классы Tailwind — разные шкалы: token base = 14, а text-base = 16 при root 16 px. Аналогично token borderRadius.lg = 16, а rounded-lg = 8. Нужные размеры выбирайте по значению, а не по совпадению имени.
 
@@ -49,11 +49,13 @@ JSON версии 1.1.0 сохраняет темы в `themes.light` / `themes.
 
 ## Layout и адаптивность
 
-Основная ширина контента — 1280. Базовый горизонтальный padding — 16 mobile / 32 desktop; лендинг использует 20 / 32. Header — строка 64 px плюс граница на desktop, одинаковая на лендинге и внутренних страницах. Статический экран до монтирования React в index.html — отдельная загрузочная оболочка со строкой 72 px.
+Основная ширина контента — 1280. Базовый горизонтальный padding — 16 mobile / 32 desktop; лендинг использует 20 / 32. Header — строка 64 px плюс граница и safe-area-inset-top, одинаковая на лендинге и внутренних страницах. Панель закреплена сверху, фон темы с opacity 0.78 и backdrop blur 24 px. До монтирования React показывается только фон выбранной темы; старая статическая заставка удалена.
 
-Breakpoints Tailwind: sm 640, md 768, lg 1024, xl 1280, 2xl 1536. С lg включается desktop Header; на меньших экранах используется нижняя навигация. Минимальная ширина body — 320. Layout учитывает 100dvh и safe-area-inset-bottom.
+Breakpoints Tailwind: sm 640, md 768, lg 1024, xl 1280, 2xl 1536. С lg основные разделы видны по центру Header. До lg справа находится кнопка меню 44×44; она раскрывает нативный popover под панелью с тем же фоном и блюром. Строки разделов — минимум 48 px, активный раздел выделен gold. Меню закрывается при выборе раздела, клике вне панели, Escape и смене маршрута; браузер управляет возвратом фокуса. Для гостей доступны вход и регистрация, для аккаунта — выход. Нижняя навигация отсутствует. Минимальная ширина body — 320. Layout вычитает из 100dvh фактическую высоту Header и уведомления, учитывает safe area.
 
-Лендинг: desktop hero-сетка 1.05fr / 1fr с gap 56; mobile — центрированный текст, вертикальные CTA, маскот вместо preview-карты. CTA — height 52, radius 14, текст 15 px.
+Лендинг: desktop hero-сетка 0.95fr / 1.05fr с gap 32, слева текст, справа три перекрывающиеся рамки iPhone со скриншотами мобильного приложения: поиск кофеен, карта и лента. Скриншоты лежат в public/images/app-screenshots/, светлый или тёмный вариант выбирается по теме сайта. Превью декоративное (`aria-hidden`, `inert`), действия доступны в основных секциях. Высота превью 560 desktop / 480 tablet / 400 до 480 px. На mobile текст и превью расположены последовательно, CTA вертикальные до sm. CTA используют Button: min-height 52, radius 14, текст 15 px. В строке зон фиксированы Динамо, Восток, Минск Мир, Немига, Новая Боровая, Октябрьская, Осмоловка и Площадь Победы. Секции карты, кофе и сообщества чередуют текст с существующими компонентами: desktop две равные колонки с gap 64 и вертикальными отступами 80; mobile одна колонка с gap 40 и отступами 48. Карточки кофе до 320 px, в одну колонку до 480 px. Карта и карточки показывают данные API; загрузка использует существующие skeleton-компоненты, ошибки — повторную загрузку. FAQ использует нативные details/summary и цвета темы. Завершающий блок объединяет заголовок и MobileAppDownload inline на тёмном кофейном фоне из дизайн-системы. В подвале четыре колонки: Открывай, Приложение, Контакты, Документы; copyright находится под подписью бренда. Ссылка «Настройки cookie» ведёт к существующему #analytics-settings в политике конфиденциальности. Город фиксирован: Минск, язык — русский.
+
+Кнопка «Скачать приложение» открывает нативный dialog: max-width 480, radius 28; до sm — bottom sheet шириной 100%, max-height 90dvh с учётом safe area. Тема задаёт фон, текст и overlay. QR-код 192 px ведёт на публичную страницу установки из LEGAL.siteUrl, ссылка копируется с подтверждением или доступна для ручного копирования при ошибке Clipboard API. Нативный dialog управляет фокусом, блокирует фон и закрывается по Escape, крестику и нажатию на подложку. MobileAppDownload inline переиспользует существующие DownloadButton: доступность каналов берётся из API, недоступный App Store показан без активной ссылки с подписью «Скоро». Варианты full и compact сохраняют прежнее поведение.
 
 Discovery: ширина до 1920, колонки 1.36fr / 1fr, gap 16×24, padding 16px 24px 32px. Карточки auto-fill с минимальной шириной 360, для кофеен 320, gap 16. Рамка карты radius 28. До 1024 layout одноколоночный; высота карты clamp(220px, (100vw - 32px) × 0.625, 400px); обзорные списки — горизонтальные scroll-snap ленты. Раскрытая карта занимает область между навигацией. При выборе раздела кофеен или обжарщиков карта и кнопка «Карта» скрыты; возврат к обзору — шеврон слева от поиска. Переключатель зон доступен и на мобильной preview-карте. Заливка, контур и рамка подписи зоны используют её серверный color (#RRGGBB); при отсутствии корректного цвета применяется brand.primary. Подпись: «Название · число кофеен».
 
@@ -108,11 +110,11 @@ WobbleRing: size 48 / 20 в кнопке, border max(2, round(size/16)); spin 1.
 
 ShopSearchBar — capsule 56 mobile / 44 или 52 desktop. PriceRangeSlider — три сегмента «До 8 / 8 / От 8», height от 30, текст 12, active gold. ThemeToggle — circle 40 по умолчанию. OTP — 6 ячеек, 44×56 mobile / 56×64 sm / 64×80 lg, тёмная палитра.
 
-CheckInModal — bottom sheet mobile / центральная панель desktop, radius 32, max-width 440. ReportShopIssueModal — radius 28, max-width 420. PhotoCarousel — 16:9 вне card-view, radius 12, переход 300 ms. PhotoLightbox — нативный dialog, overlay 82%, close 44 и стрелки 48, возврат фокуса. CookieBanner — radius 24, ширина 380 desktop, z-index 1250, mobile над нижней навигацией.
+CheckInModal — bottom sheet mobile / центральная панель desktop, radius 32, max-width 440. ReportShopIssueModal — radius 28, max-width 420. PhotoCarousel — 16:9 вне card-view, radius 12, переход 300 ms. PhotoLightbox — нативный dialog, overlay 82%, close 44 и стрелки 48, возврат фокуса. CookieBanner — radius 24, ширина 380 desktop, z-index 1250; mobile отступ снизу 16 px плюс safe area. Плавающая кнопка чекина на mobile — 20 px от нижней safe area.
 
 ## Эффекты и анимации
 
-Точечная текстура имеет сетку 40×40; на лендинге цвет theme.surface, opacity 0.55 dark / 0.9 light. Золотое radial-glow использует alpha 0.12 и blur 60. Фиксированные тени/opacity и основные длительности приведены в реестре.
+Лендинг использует однотонный theme.background, границы theme.border и существующие тени карточек; отдельные фоновые текстуры и radial-glow не применяются. Фиксированные тени/opacity и основные длительности приведены в реестре.
 
 Основные переходы — 150/200/300 ms; discovery layout использует 350 ms для геометрии и 200 для opacity. Выбранный маркер карты: pop 350 ms / pulse 1.8 s. Бегущее длинное имя обжарщика — 6 s, с паузой на hover/focus-within. Reduced-motion обрабатывается для discovery, skeleton, маркеров, названий и части лендинга; WobbleRing сохраняет свою анимацию. Классы animate-in/slide-in/fade-in в JSX не подключают отдельную анимацию входа: соответствующий плагин не настроен.
 
@@ -489,6 +491,10 @@ const inputRadius = borderRadius['3xl']; // 26
 |---|---|
 | `header.height` | `64` |
 | `header.heightLanding` | `64` |
+| `header.backdropBlur` | `24` |
+| `header.mobileNavigation` | `top-popover` |
+| `header.mobileMenuButtonSize` | `44` |
+| `header.mobileMenuItemMinHeight` | `48` |
 | `header.logoSize` | `52` |
 | `header.logoBorderRadius` | `15` |
 | `header.navButtonMinHeight` | `34` |

@@ -2,7 +2,7 @@ import React, { useLayoutEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useUser } from '../../contexts/UserContext';
-import Header, { BottomNavigation } from '../Header';
+import Header from '../Header';
 import { AppIcon } from '../icons';
 import CheckInCreateFlow from '../CheckInCreateFlow';
 import './AuthenticatedLayout.css';
@@ -26,19 +26,16 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ childr
     const layout = layoutRef.current;
     if (!layout) return;
     const header = layout.querySelector('header');
-    const navigation = layout.querySelector('nav[aria-label="Основная навигация"]');
     const notice = noticeRef.current;
 
     const updateHeight = () => {
       const topHeight = (header?.getBoundingClientRect().height ?? 0) + (notice?.getBoundingClientRect().height ?? 0);
-      const bottomHeight = navigation?.getBoundingClientRect().height ?? 0;
       layout.style.setProperty('--app-header-height', `${topHeight}px`);
-      layout.style.setProperty('--app-navigation-height', `${bottomHeight}px`);
     };
 
     updateHeight();
     const observer = new ResizeObserver(updateHeight);
-    [header, navigation, notice].forEach(element => {
+    [header, notice].forEach(element => {
       if (element) observer.observe(element);
     });
     return () => observer.disconnect();
@@ -63,7 +60,6 @@ export const AuthenticatedLayout: React.FC<AuthenticatedLayoutProps> = ({ childr
       <div className="app-layout-content">
         {children}
       </div>
-      <BottomNavigation />
       <CheckInCreateFlow />
     </div>
   );

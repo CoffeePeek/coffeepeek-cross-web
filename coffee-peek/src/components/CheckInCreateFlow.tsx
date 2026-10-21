@@ -90,7 +90,7 @@ export default function CheckInCreateFlow() {
   };
   if (!visible) return null;
   return <>
-    <button ref={createExposure} type="button" aria-label="Новый чекин" onClick={begin} className="fixed bottom-[calc(80px+env(safe-area-inset-bottom))] right-5 z-[1201] flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#EAB308] p-0 text-[#1A1412] shadow-lg lg:bottom-6 lg:right-8"><AppIcon name="plus" size={24} /></button>
+    <button ref={createExposure} type="button" aria-label="Новый чекин" onClick={begin} className="fixed bottom-[calc(20px+env(safe-area-inset-bottom))] right-5 z-[1201] flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#EAB308] p-0 text-[#1A1412] shadow-lg lg:bottom-6 lg:right-8"><AppIcon name="plus" size={24} /></button>
     {step === 'home' && <HomeCheckInSheet analyticsFlow={analytics?.flow} onClose={close} />}
     {(step === 'choose' || step === 'shops') && <div role="presentation" className="fixed inset-0 z-[1400] flex items-end justify-center bg-black/55 sm:items-center" onMouseDown={event => { if (event.target === event.currentTarget) cancel(); }}>
       <section role="dialog" aria-modal="true" aria-label={step === 'choose' ? 'Новый чекин' : 'Выберите кофейню'} className="max-h-[86dvh] w-full max-w-[560px] overflow-y-auto rounded-t-[28px] border p-4 shadow-xl sm:rounded-[28px] sm:p-6" style={{ background: colors.surface, color: colors.textPrimary, borderColor: colors.border }}>

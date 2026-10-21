@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
 import { COLORS } from '../constants/colors';
-import { ChatCenteredText, MagnifyingGlass, GearSix, SignOut, CaretDown, User } from '@/components/Icon';
+import { ChatCenteredText, MagnifyingGlass, GearSix, SignOut, CaretDown, User, List, X } from './Icon';
 import { CoffeeBean } from '@phosphor-icons/react';
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
+import Button from './Button';
 
 const FEED_NAV = { id: 'feed', label: 'Лента', route: '/feed', Icon: ChatCenteredText, match: (p: string) => p.startsWith('/feed') } as const;
 const DISCOVERY_NAV = { id: 'discovery', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => ['/shops', '/coffee-shops', '/search', '/roasters', '/map'].some(route => p.startsWith(route)) } as const;
@@ -26,9 +27,16 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mobileMenu = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    mobileMenu.current?.hidePopover();
+  }, [location.key]);
 
   const handleLogout = async () => {
     setProfileOpen(false);
+    mobileMenu.current?.hidePopover();
     await logout();
     navigate('/');
   };
@@ -40,7 +48,7 @@ const Header: React.FC = () => {
   const allNav = [...PUBLIC_NAV];
 
   const currentPath = location.pathname + location.search;
-  const currentId = (user ? AUTH_NAV : PUBLIC_NAV).find(n => n.match(currentPath))?.id ?? '';
+  const currentId = AUTH_NAV.find(n => n.match(currentPath))?.id ?? '';
 
   const bg = isDark ? 'rgba(26,20,18,0.78)' : 'rgba(250,250,249,0.78)';
   const borderColor = isDark ? '#3D2F28' : '#E7E5E4';
@@ -67,8 +75,8 @@ const Header: React.FC = () => {
 
   return (
     <>
-    <header className="lg:border-b" style={{ background: bg, borderColor, position: 'sticky', top: 0, zIndex: 1100, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
-      <div className="relative mx-auto hidden max-w-7xl px-4 sm:px-6 lg:block lg:px-8">
+    <header className="border-b" style={{ background: bg, borderColor, position: 'sticky', top: 0, zIndex: 1100, paddingTop: 'env(safe-area-inset-top)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div style={{ display: 'flex', alignItems: 'center', height: 64, gap: 12 }}>
 
           {/* Left: logo — flex:1 so nav sits on the true horizontal center */}
@@ -193,55 +201,37 @@ const Header: React.FC = () => {
                 </button>
               </div>
             )}
-
-
+            <Button variant="ghost" className="h-11 w-11 rounded-full p-0 lg:hidden" popoverTarget="mobile-navigation"
+              aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'} aria-controls="mobile-navigation" aria-expanded={menuOpen}>
+              {menuOpen ? <X size={24} /> : <List size={24} />}
+            </Button>
           </div>
+        </div>
+      </div>
+      <div ref={mobileMenu} id="mobile-navigation" popover="auto" onToggle={event => setMenuOpen(event.newState === 'open')}
+        className="m-0 w-full overflow-y-auto border-0 border-b px-4 pb-4 shadow-xl lg:hidden"
+        style={{ inset: 'calc(65px + env(safe-area-inset-top)) 0 auto', maxHeight: 'calc(100dvh - 65px - env(safe-area-inset-top))', background: bg, borderColor, color: textColor, backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
+        <nav aria-label="Основная навигация" className="space-y-1">
+          {AUTH_NAV.map(({ id, label, route, Icon }) => <Link key={id} to={route} onClick={() => mobileMenu.current?.hidePopover()}
+            className="flex min-h-12 items-center gap-3 rounded-xl px-4 text-sm font-semibold"
+            style={{ color: currentId === id ? gold : textColor, background: currentId === id ? `${gold}1F` : 'transparent' }}
+            aria-current={currentId === id ? 'page' : undefined}>
+            <Icon size={22} weight={currentId === id ? 'bold' : 'regular'} />{label}
+          </Link>)}
+        </nav>
+        <div className="mt-3 border-t pt-3" style={{ borderColor }}>
+          {user ? <>
+            <p className="mb-2 truncate px-4 text-sm font-semibold">{displayName}</p>
+            <DropdownItem icon={<SignOut size={18} color="#EF4444" />} label="Выйти" hoverBg="rgba(239,68,68,0.07)"
+              textColor="#EF4444" mutedColor="#EF4444" onClick={() => { void handleLogout(); }} />
+          </> : <div className="grid grid-cols-2 gap-3">
+            <Button variant="secondary" className="min-h-11" onClick={() => { mobileMenu.current?.hidePopover(); navigate('/login'); }}>Войти</Button>
+            <Button className="min-h-11" onClick={() => { mobileMenu.current?.hidePopover(); navigate('/register'); }}>Регистрация</Button>
+          </div>}
         </div>
       </div>
     </header>
     </>
-  );
-};
-
-export const BottomNavigation: React.FC = () => {
-  const { theme } = useTheme();
-  const { user } = useUser();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isShopDetails = /^\/(?:shops|coffee-shops)\/[^/]+$/.test(location.pathname);
-  const isShopCreation = location.pathname === '/coffee-shops/new';
-  const currentPath = location.pathname + location.search;
-  const currentId = (user ? AUTH_NAV : PUBLIC_NAV).find(n => n.match(currentPath))?.id ?? '';
-  const gold = COLORS.primary;
-  const mutedColor = theme === 'dark' ? '#A39E93' : '#78716C';
-  const background = theme === 'dark' ? 'rgba(26,20,18,0.96)' : 'rgba(250,250,249,0.96)';
-  const borderColor = theme === 'dark' ? '#3D2F28' : '#E7E5E4';
-
-  return (
-    <nav
-      className={`${isShopDetails || isShopCreation ? 'hidden' : 'grid'} sticky bottom-0 z-[1200] grid-cols-5 border-t lg:hidden`}
-      aria-label="Основная навигация"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)', background, borderColor, boxShadow: '0 -8px 28px rgba(0,0,0,.08)' }}
-    >
-      {AUTH_NAV.map(({ id, label, route, Icon }) => {
-        const active = currentId === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => navigate(route)}
-            className="flex min-h-[64px] flex-col items-center justify-center gap-0.5 border-0 bg-transparent"
-            style={{ color: active ? gold : mutedColor }}
-            aria-current={active ? 'page' : undefined}
-          >
-            <span className="flex h-8 min-w-11 items-center justify-center rounded-full" style={{ background: active ? `${gold}1F` : 'transparent' }}>
-              <Icon size={23} weight={active ? 'bold' : 'regular'} />
-            </span>
-            <span style={{ fontFamily: '"Manrope"', fontSize: 10, fontWeight: active ? 700 : 500 }}>{label}</span>
-          </button>
-        );
-      })}
-    </nav>
   );
 };
 

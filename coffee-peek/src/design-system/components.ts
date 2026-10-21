@@ -152,6 +152,10 @@ export const toast = {
 export const header = {
   height: 64,
   heightLanding: 64,
+  backdropBlur: 24,
+  mobileNavigation: 'top-popover',
+  mobileMenuButtonSize: 44,
+  mobileMenuItemMinHeight: 48,
   logoSize: 52,
   logoBorderRadius: 15,
   navButtonMinHeight: 34,

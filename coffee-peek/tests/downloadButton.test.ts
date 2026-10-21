@@ -14,3 +14,10 @@ test('download buttons use store artwork and preserve accessible download links'
     expect(html).toContain(artwork);
   }
 });
+
+test('unavailable stores cannot navigate to an inactive download endpoint', () => {
+  const html = renderToStaticMarkup(React.createElement(DownloadButton, { channel: 'app-store', href: '/download/ios', label: 'App Store — скоро', disabled: true }));
+  expect(html).toContain('aria-disabled="true"');
+  expect(html).toContain('/images/stores/app-store.svg');
+  expect(html).not.toContain('href="/download/ios"');
+});

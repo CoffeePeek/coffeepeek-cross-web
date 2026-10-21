@@ -16,6 +16,11 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       host: "0.0.0.0",
       proxy: apiTarget ? {
+        '/download/': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: true,
+        },
         '/api/support': {
           target: apiTarget,
           changeOrigin: true,

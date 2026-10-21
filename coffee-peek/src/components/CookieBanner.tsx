@@ -45,7 +45,7 @@ const CookieBanner: React.FC = () => {
   return (
     <section
       aria-label="Использование данных"
-      className={`fixed bottom-[calc(88px+env(safe-area-inset-bottom))] left-4 right-4 z-[1250] max-h-[calc(100dvh-120px-env(safe-area-inset-bottom))] overflow-y-auto rounded-3xl border p-5 shadow-xl lg:bottom-6 lg:left-6 lg:right-auto lg:w-[380px] ${isDark ? 'border-[#3D2F28] bg-[#2D241F] text-white' : 'border-gray-200 bg-white text-gray-900'}`}
+      className={`fixed bottom-[calc(16px+env(safe-area-inset-bottom))] left-4 right-4 z-[1250] max-h-[calc(100dvh-96px-env(safe-area-inset-top)-env(safe-area-inset-bottom))] overflow-y-auto rounded-3xl border p-5 shadow-xl lg:bottom-6 lg:left-6 lg:right-auto lg:w-[380px] ${isDark ? 'border-[#3D2F28] bg-[#2D241F] text-white' : 'border-gray-200 bg-white text-gray-900'}`}
     >
       <p className={`font-body text-sm leading-[1.5] ${isDark ? 'text-stone-300' : 'text-slate-500'}`}>
         <strong className={isDark ? 'text-white' : 'text-black'}>Использование данных. </strong>
