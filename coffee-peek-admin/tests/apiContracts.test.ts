@@ -7,6 +7,7 @@ jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
     APP_DOWNLOADS_ANDROID_RELEASES: '/api/admin/v1/app-downloads/android/releases',
     APP_DOWNLOADS_ANDROID_GOOGLE_PLAY: '/api/admin/v1/app-downloads/android/google-play',
     APP_DOWNLOADS_IOS_APP_STORE: '/api/admin/v1/app-downloads/ios/app-store',
+    APP_DOWNLOADS_IOS_VERSION: '/api/admin/v1/app-downloads/ios/version',
     USER_PROFILE: (id: string) => `/api/admin/users/${id}/profile`,
     CATALOG_ROASTER_BY_ID: (id: string) => `/api/admin/roasters/${id}`,
     SHOP_PUBLIC_ADDRESS_BY_ID: (id: string) => `/api/admin/shops/${id}/public-address`,
@@ -30,11 +31,13 @@ import { getAppDownloadsConfig } from '../src/api/appDistribution';
 const address = { slug: 'coffee-slug', canonicalPath: '/coffee-shops/canonical-coffee', revision: 2, isAlias: false };
 beforeEach(() => jest.clearAllMocks());
 
-test('store forms read externalUrl and save trimmed url, including disabling without a link', async () => {
+test('store forms save links independently; iOS versions validate, save 46/0 and retain input after an API error', async () => {
   const urls = ['https://play.google.com/store/apps/details?id=by.coffeepeek.app', 'https://apps.apple.com/app/id123456789'];
   const response = { data: {
     androidGooglePlay: { enabled: true, available: true, externalUrl: ` ${urls[0]} ` },
     iosAppStore: { enabled: true, available: true, externalUrl: ` ${urls[1]} ` },
+    iosVersion: { latestVersionCode: 45, minVersionCode: 0 },
+    androidVersion: { latestVersionCode: 100, minVersionCode: 2 },
   } };
   jest.mocked(httpClient.get).mockResolvedValue(response as never);
   jest.mocked(httpClient.put).mockResolvedValue(response as never);
@@ -66,11 +69,73 @@ test('store forms read externalUrl and save trimmed url, including disabling wit
       await act(async () => { saves[index].click(); await settle(); });
       expect(httpClient.put).toHaveBeenLastCalledWith(`/api/admin/v1/app-downloads/${path}`, { url: null, enabled: false });
     }
+
+    const form = document.querySelector('form')!;
+    const latest = form.querySelector<HTMLInputElement>('[name="latestVersionCode"]')!;
+    const minimum = form.querySelector<HTMLInputElement>('[name="minVersionCode"]')!;
+    expect(latest.value).toBe('45');
+    expect(minimum.value).toBe('0');
+    const set = async (input: HTMLInputElement, value: string) => {
+      await act(async () => {
+        Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+        input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+      });
+    };
+    const submit = async () => {
+      await act(async () => {
+        form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }));
+        await settle();
+      });
+    };
+    jest.mocked(httpClient.put).mockClear();
+    for (const [latestValue, minValue] of [['', '0'], ['0', '0'], ['-1', '0'], ['1.5', '0'], ['2147483648', '0'], ['46', ''], ['46', '-1'], ['46', '0.5'], ['46', '47']]) {
+      await set(latest, latestValue);
+      await set(minimum, minValue);
+      await submit();
+      expect(form.querySelector('[role="alert"]')).not.toBeNull();
+      expect(httpClient.put).not.toHaveBeenCalled();
+    }
+
+    await set(latest, '46');
+    await set(minimum, '0');
+    const policy = { latestVersionCode: 46, minVersionCode: 0 };
+    jest.mocked(httpClient.put).mockResolvedValueOnce({ data: { ...response.data, iosVersion: policy } } as never);
+    await submit();
+    expect(httpClient.put).toHaveBeenCalledTimes(1);
+    expect(httpClient.put).toHaveBeenLastCalledWith('/api/admin/v1/app-downloads/ios/version', policy);
+    expect(client.getQueryData(['admin', 'app-distribution', 'config'])).toMatchObject({
+      iosVersion: policy, androidVersion: response.data.androidVersion,
+    });
+    expect(latest.value).toBe('46');
+    expect(minimum.value).toBe('0');
+
+    await set(latest, '47');
+    jest.mocked(httpClient.put).mockRejectedValueOnce({ errors: { LatestVersionCode: ['Ошибка сохранения версии'] } });
+    await submit();
+    expect(form.textContent).toContain('Ошибка сохранения версии');
+    expect(latest.value).toBe('47');
+    expect(client.getQueryData(['admin', 'app-distribution', 'config'])).toMatchObject({ iosVersion: policy });
   } finally {
     await act(async () => { root.unmount(); });
     client.clear();
     dom.window.close();
   }
+});
+
+test.each([
+  { iosVersion: { latestVersionCode: 46, minVersionCode: 0 }, androidVersion: { latestVersionCode: 100, minVersionCode: 2 } },
+  { Data: { IosVersion: { LatestVersionCode: 46, MinVersionCode: 0 }, AndroidVersion: { LatestVersionCode: 100, MinVersionCode: 2 } } },
+])('download config preserves version policies and zero minimum codes: %j', async data => {
+  jest.mocked(httpClient.get).mockResolvedValueOnce({ data } as never);
+  expect((await getAppDownloadsConfig()).data).toMatchObject({
+    iosVersion: { latestVersionCode: 46, minVersionCode: 0 },
+    androidVersion: { latestVersionCode: 100, minVersionCode: 2 },
+  });
+});
+
+test('missing version policies are not replaced with fabricated version codes', async () => {
+  jest.mocked(httpClient.get).mockResolvedValueOnce({ data: {} } as never);
+  expect((await getAppDownloadsConfig()).data).toMatchObject({ iosVersion: null, androidVersion: null });
 });
 
 test('public list reads slug identity and street address, preserving the canonical path', async () => {

@@ -19,7 +19,14 @@ export interface AdminApkChannel extends AdminDownloadChannel {
   releaseId: string | null;
 }
 
+export interface AppVersionPolicy {
+  latestVersionCode: number;
+  minVersionCode: number;
+}
+
 export interface AdminAppDownloadsConfig {
+  androidVersion: AppVersionPolicy | null;
+  iosVersion: AppVersionPolicy | null;
   android: {
     googlePlay: AdminDownloadChannel;
     apk: AdminApkChannel;
@@ -89,12 +96,21 @@ function apkChannel(raw: Record<string, unknown>): AdminApkChannel {
   };
 }
 
+function versionPolicy(value: unknown): AppVersionPolicy | null {
+  const raw = record(value);
+  const latestVersionCode = num(raw.latestVersionCode ?? raw.LatestVersionCode);
+  const minVersionCode = num(raw.minVersionCode ?? raw.MinVersionCode);
+  return latestVersionCode === null || minVersionCode === null ? null : { latestVersionCode, minVersionCode };
+}
+
 function normalizeConfig(raw: unknown): AdminAppDownloadsConfig {
   const response = record(raw);
   const root = record(response.data ?? response.Data ?? raw);
   const android = record(root.android ?? root.Android);
   const ios = record(root.ios ?? root.Ios ?? root.iOS ?? root.IOS);
   return {
+    androidVersion: versionPolicy(root.androidVersion ?? root.AndroidVersion),
+    iosVersion: versionPolicy(root.iosVersion ?? root.IosVersion),
     android: {
       googlePlay: channel(record(root.androidGooglePlay ?? root.AndroidGooglePlay ?? android.googlePlay ?? android.GooglePlay)),
       apk: apkChannel(record(root.androidApk ?? root.AndroidApk ?? android.apk ?? android.Apk ?? android.APK)),
@@ -161,6 +177,13 @@ export async function updateIosAppStore(
   body: StoreChannelUpdateRequest
 ): Promise<ApiResponse<AdminAppDownloadsConfig>> {
   const response = await httpClient.put<unknown>(API_ENDPOINTS.ADMIN.APP_DOWNLOADS_IOS_APP_STORE, body);
+  return { ...response, data: normalizeConfig(response.data) };
+}
+
+export async function updateIosVersionPolicy(
+  body: AppVersionPolicy
+): Promise<ApiResponse<AdminAppDownloadsConfig>> {
+  const response = await httpClient.put<unknown>(API_ENDPOINTS.ADMIN.APP_DOWNLOADS_IOS_VERSION, body);
   return { ...response, data: normalizeConfig(response.data) };
 }
 

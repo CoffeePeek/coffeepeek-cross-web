@@ -55,7 +55,7 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 | Приложения | `/api/admin/v1/app-downloads` | Ссылки магазинов, Android releases, публикация релиза |
 | Owner | `/api/owner/coffee-shops`, `/{id}`, `/{id}/photos` | Собственные кофейни владельца |
 
-Таблица группирует ресурсы; методы и точные тела каждого запроса задаются соответствующим `src/api` и серверным контроллером. Не все backend-операции имеют экран в админке: например, backfill публичных адресов, настройка версии мобильного приложения и каталог напитков. Отсутствие экрана не означает отсутствие API.
+Таблица группирует ресурсы; методы и точные тела каждого запроса задаются соответствующим `src/api` и серверным контроллером. Не все backend-операции имеют экран в админке: например, backfill публичных адресов, настройка версии Android и каталог напитков. Отсутствие экрана не означает отсутствие API.
 
 ## Ссылки магазинов приложений
 
@@ -64,6 +64,8 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 PUT `/api/admin/v1/app-downloads/android/google-play` и PUT `/api/admin/v1/app-downloads/ios/app-store` принимают JSON `{url: string | null, enabled: boolean}`. Поле `externalUrl` относится к **ответу** (`androidGooglePlay.externalUrl`, `iosAppStore.externalUrl`); в запросе оно не задаёт URL.
 
 При `enabled: true` URL обязателен. Непустая ссылка должна быть HTTPS, длиной до 2048 символов, с хостом `play.google.com` для Google Play или `apps.apple.com` для App Store. Отключение без ссылки: `{url: null, enabled: false}`. Нарушение этих правил возвращает HTTP 400 с `VALIDATION_FAILED`.
+
+GET `/api/admin/v1/app-downloads` также возвращает `iosVersion` и `androidVersion`: `{latestVersionCode, minVersionCode}`. На экране «Приложения» политика iOS сохраняется отдельно через PUT `/api/admin/v1/app-downloads/ios/version`, например `{latestVersionCode: 46, minVersionCode: 0}`. Оба кода — целые числа int32; актуальный > 0, минимальный ≥ 0 и ≤ актуального. При минимальном коде 0 обязательное обновление отключено. Значения загружаются с сервера; сохранение политики не изменяет ссылку и доступность App Store.
 
 ## Формат ответа и пагинация
 

@@ -72,6 +72,7 @@ export const API_ENDPOINTS = {
     APP_DOWNLOADS: '/api/admin/v1/app-downloads',
     APP_DOWNLOADS_ANDROID_GOOGLE_PLAY: '/api/admin/v1/app-downloads/android/google-play',
     APP_DOWNLOADS_IOS_APP_STORE: '/api/admin/v1/app-downloads/ios/app-store',
+    APP_DOWNLOADS_IOS_VERSION: '/api/admin/v1/app-downloads/ios/version',
     APP_DOWNLOADS_ANDROID_RELEASES: '/api/admin/v1/app-downloads/android/releases',
     APP_DOWNLOADS_ANDROID_RELEASE_PUBLISH: (id: string) =>
       `/api/admin/v1/app-downloads/android/releases/${encodeURIComponent(id)}/publish`,
