@@ -180,10 +180,11 @@ export async function updateIosAppStore(
   return { ...response, data: normalizeConfig(response.data) };
 }
 
-export async function updateIosVersionPolicy(
+export async function updateAppVersionPolicy(
+  platform: 'android' | 'ios',
   body: AppVersionPolicy
 ): Promise<ApiResponse<AdminAppDownloadsConfig>> {
-  const response = await httpClient.put<unknown>(API_ENDPOINTS.ADMIN.APP_DOWNLOADS_IOS_VERSION, body);
+  const response = await httpClient.put<unknown>(API_ENDPOINTS.ADMIN.APP_DOWNLOADS_VERSION(platform), body);
   return { ...response, data: normalizeConfig(response.data) };
 }
 

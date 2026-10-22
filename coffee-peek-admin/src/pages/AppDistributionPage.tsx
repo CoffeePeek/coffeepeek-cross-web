@@ -14,7 +14,7 @@ import {
   publishAndroidAppRelease,
   updateAndroidGooglePlay,
   updateIosAppStore,
-  updateIosVersionPolicy,
+  updateAppVersionPolicy,
 } from '../api/appDistribution';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -26,7 +26,7 @@ const distributionKeys = {
   releases: ['admin', 'app-distribution', 'android-releases'] as const,
 };
 
-const iosVersionSchema = z.object({
+const versionPolicySchema = z.object({
   latestVersionCode: z.number({ invalid_type_error: 'Введите целое число' })
     .int('Введите целое число').min(1, 'Актуальный код должен быть больше нуля').max(2147483647, 'Код слишком большой'),
   minVersionCode: z.number({ invalid_type_error: 'Введите целое число' })
@@ -143,15 +143,60 @@ const StoreSettingsCard: React.FC<{
   </Card>
 );
 
+const VersionPolicyForm: React.FC<{
+  platform: 'android' | 'ios';
+  policy: AppVersionPolicy | null | undefined;
+  disabled: boolean;
+}> = ({ platform, policy, disabled }) => {
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
+  const label = platform === 'android' ? 'Android' : 'iOS';
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<AppVersionPolicy>({
+    resolver: zodResolver(versionPolicySchema),
+  });
+  useEffect(() => {
+    if (policy) reset(policy);
+  }, [policy, reset]);
+  const save = useMutation({
+    mutationFn: (value: AppVersionPolicy) => updateAppVersionPolicy(platform, value),
+    onSuccess: (response, value) => {
+      queryClient.setQueryData(distributionKeys.config, response.data);
+      reset(response.data[platform === 'android' ? 'androidVersion' : 'iosVersion'] ?? value);
+      showToast(`Версии ${label} сохранены`, 'success');
+    },
+    onError: (err) => showToast(validationMessage(err, `Не удалось сохранить версии ${label}`), 'error'),
+  });
+
+  return (
+    <form aria-label={`Обновления ${label}`} noValidate onSubmit={handleSubmit(value => save.mutate(value))} className="space-y-4 border-t border-border-light pt-4 dark:border-border-dark">
+      <h4 className="text-sm font-semibold text-text-main dark:text-white">Обновления {label}</h4>
+      <fieldset disabled={disabled || save.isPending} className="grid gap-4 sm:grid-cols-2">
+        <Field label="Актуальный код версии">
+          <Input type="number" min={1} max={2147483647} step={1} required
+            {...register('latestVersionCode', { valueAsNumber: true })}
+            aria-invalid={!!errors.latestVersionCode} aria-describedby={errors.latestVersionCode ? `${platform}-latest-version-error` : undefined} />
+          {errors.latestVersionCode && <span id={`${platform}-latest-version-error`} role="alert" className="block text-xs text-red-500">{errors.latestVersionCode.message}</span>}
+        </Field>
+        <Field label="Минимальный код версии">
+          <Input type="number" min={0} max={2147483647} step={1} required
+            {...register('minVersionCode', { valueAsNumber: true })}
+            aria-invalid={!!errors.minVersionCode} aria-describedby={`${platform}-min-version-help${errors.minVersionCode ? ` ${platform}-min-version-error` : ''}`} />
+          {errors.minVersionCode && <span id={`${platform}-min-version-error`} role="alert" className="block text-xs text-red-500">{errors.minVersionCode.message}</span>}
+        </Field>
+      </fieldset>
+      <p id={`${platform}-min-version-help`} className="text-xs text-text-muted dark:text-stone-400">Версии ниже минимального кода требуют обновления. 0 — без обязательного обновления.{platform === 'android' && ' Минимальный код общий для Google Play и APK с сайта.'}</p>
+      {save.isError && <p role="alert" className="text-sm text-red-500">{validationMessage(save.error, `Не удалось сохранить версии ${label}`)}</p>}
+      <Button type="submit" loading={save.isPending} disabled={disabled} className="min-h-[44px] w-full sm:w-auto">Сохранить версии {label}</Button>
+    </form>
+  );
+};
+
 export const AppDistributionPage: React.FC = () => {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [googlePlayForm, setGooglePlayForm] = useState<StoreFormState>({ url: '', enabled: false });
   const [appStoreForm, setAppStoreForm] = useState<StoreFormState>({ url: '', enabled: false });
   const [releaseToPublish, setReleaseToPublish] = useState<AndroidAppRelease | null>(null);
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<AppVersionPolicy>({
-    resolver: zodResolver(iosVersionSchema),
-  });
 
   const configQuery = useQuery({
     queryKey: distributionKeys.config,
@@ -175,11 +220,6 @@ export const AppDistributionPage: React.FC = () => {
       enabled: configQuery.data.ios.appStore.enabled,
     });
   }, [configQuery.data]);
-
-  const iosVersion = configQuery.data?.iosVersion;
-  useEffect(() => {
-    if (iosVersion) reset(iosVersion);
-  }, [iosVersion, reset]);
 
   const invalidateDistribution = async () => {
     await Promise.all([
@@ -210,16 +250,6 @@ export const AppDistributionPage: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: distributionKeys.config });
     },
     onError: (err) => showToast(validationMessage(err, 'Не удалось сохранить App Store'), 'error'),
-  });
-
-  const iosVersionMutation = useMutation({
-    mutationFn: updateIosVersionPolicy,
-    onSuccess: (response, policy) => {
-      queryClient.setQueryData(distributionKeys.config, response.data);
-      reset(response.data.iosVersion ?? policy);
-      showToast('Версии iOS сохранены', 'success');
-    },
-    onError: (err) => showToast(validationMessage(err, 'Не удалось сохранить версии iOS'), 'error'),
   });
 
   const publishMutation = useMutation({
@@ -328,7 +358,9 @@ export const AppDistributionPage: React.FC = () => {
           onFormChange={setGooglePlayForm}
           onSave={() => googlePlayMutation.mutate()}
           loading={googlePlayMutation.isPending || configQuery.isLoading}
-        />
+        >
+          <VersionPolicyForm platform="android" policy={configQuery.data?.androidVersion} disabled={!configQuery.data} />
+        </StoreSettingsCard>
         <StoreSettingsCard
           title="iOS · App Store"
           form={appStoreForm}
@@ -336,26 +368,7 @@ export const AppDistributionPage: React.FC = () => {
           onSave={() => appStoreMutation.mutate()}
           loading={appStoreMutation.isPending || configQuery.isLoading}
         >
-          <form noValidate onSubmit={handleSubmit(policy => iosVersionMutation.mutate(policy))} className="space-y-4 border-t border-border-light pt-4 dark:border-border-dark">
-            <h4 className="text-sm font-semibold text-text-main dark:text-white">Обновления iOS</h4>
-            <fieldset disabled={!configQuery.data || iosVersionMutation.isPending} className="grid gap-4 sm:grid-cols-2">
-              <Field label="Актуальный код версии">
-                <Input type="number" min={1} max={2147483647} step={1} placeholder="46" required
-                  {...register('latestVersionCode', { valueAsNumber: true })}
-                  aria-invalid={!!errors.latestVersionCode} aria-describedby="ios-latest-version-error" />
-                {errors.latestVersionCode && <span id="ios-latest-version-error" role="alert" className="block text-xs text-red-500">{errors.latestVersionCode.message}</span>}
-              </Field>
-              <Field label="Минимальный код версии">
-                <Input type="number" min={0} max={2147483647} step={1} placeholder="0" required
-                  {...register('minVersionCode', { valueAsNumber: true })}
-                  aria-invalid={!!errors.minVersionCode} aria-describedby="ios-min-version-help ios-min-version-error" />
-                {errors.minVersionCode && <span id="ios-min-version-error" role="alert" className="block text-xs text-red-500">{errors.minVersionCode.message}</span>}
-              </Field>
-            </fieldset>
-            <p id="ios-min-version-help" className="text-xs text-text-muted dark:text-stone-400">Версии ниже минимального кода требуют обновления. 0 — без обязательного обновления.</p>
-            {iosVersionMutation.isError && <p role="alert" className="text-sm text-red-500">{validationMessage(iosVersionMutation.error, 'Не удалось сохранить версии iOS')}</p>}
-            <Button type="submit" loading={iosVersionMutation.isPending} disabled={!configQuery.data} className="min-h-[44px] w-full sm:w-auto">Сохранить версии iOS</Button>
-          </form>
+          <VersionPolicyForm platform="ios" policy={configQuery.data?.iosVersion} disabled={!configQuery.data} />
         </StoreSettingsCard>
       </div>
 
