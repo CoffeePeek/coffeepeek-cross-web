@@ -7,7 +7,7 @@ jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
     APP_DOWNLOADS_ANDROID_RELEASES: '/api/admin/v1/app-downloads/android/releases',
     APP_DOWNLOADS_ANDROID_GOOGLE_PLAY: '/api/admin/v1/app-downloads/android/google-play',
     APP_DOWNLOADS_IOS_APP_STORE: '/api/admin/v1/app-downloads/ios/app-store',
-    APP_DOWNLOADS_IOS_VERSION: '/api/admin/v1/app-downloads/ios/version',
+    APP_DOWNLOADS_VERSION: (platform: string) => `/api/admin/v1/app-downloads/${platform}/version`,
     USER_PROFILE: (id: string) => `/api/admin/users/${id}/profile`,
     CATALOG_ROASTER_BY_ID: (id: string) => `/api/admin/roasters/${id}`,
     SHOP_PUBLIC_ADDRESS_BY_ID: (id: string) => `/api/admin/shops/${id}/public-address`,
@@ -31,7 +31,7 @@ import { getAppDownloadsConfig } from '../src/api/appDistribution';
 const address = { slug: 'coffee-slug', canonicalPath: '/coffee-shops/canonical-coffee', revision: 2, isAlias: false };
 beforeEach(() => jest.clearAllMocks());
 
-test('store forms save links independently; iOS versions validate, save 46/0 and retain input after an API error', async () => {
+test.each(['android', 'ios'] as const)('store links save independently; %s versions validate, save and retain input after an API error', async platform => {
   const urls = ['https://play.google.com/store/apps/details?id=by.coffeepeek.app', 'https://apps.apple.com/app/id123456789'];
   const response = { data: {
     androidGooglePlay: { enabled: true, available: true, externalUrl: ` ${urls[0]} ` },
@@ -49,7 +49,7 @@ test('store forms save links independently; iOS versions validate, save 46/0 and
   client.setQueryData(['admin', 'app-distribution', 'config'], (await getAppDownloadsConfig()).data);
   client.setQueryData(['admin', 'app-distribution', 'android-releases'], []);
   const root = createRoot(document.getElementById('root'));
-  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  const settle = () => new Promise(resolve => setTimeout(resolve, 15));
   try {
     await act(async () => { root.render(createElement(QueryClientProvider, { client }, createElement(AppDistributionPage))); });
     const inputs = [...document.querySelectorAll<HTMLInputElement>('input[type="url"]')];
@@ -70,11 +70,13 @@ test('store forms save links independently; iOS versions validate, save 46/0 and
       expect(httpClient.put).toHaveBeenLastCalledWith(`/api/admin/v1/app-downloads/${path}`, { url: null, enabled: false });
     }
 
-    const form = document.querySelector('form')!;
+    const policyKey = platform === 'android' ? 'androidVersion' : 'iosVersion';
+    const otherKey = platform === 'android' ? 'iosVersion' : 'androidVersion';
+    const form = document.querySelector(`form[aria-label="Обновления ${platform === 'android' ? 'Android' : 'iOS'}"]`)!;
     const latest = form.querySelector<HTMLInputElement>('[name="latestVersionCode"]')!;
     const minimum = form.querySelector<HTMLInputElement>('[name="minVersionCode"]')!;
-    expect(latest.value).toBe('45');
-    expect(minimum.value).toBe('0');
+    expect(latest.value).toBe(String(response.data[policyKey].latestVersionCode));
+    expect(minimum.value).toBe(String(response.data[policyKey].minVersionCode));
     const set = async (input: HTMLInputElement, value: string) => {
       await act(async () => {
         Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, value);
@@ -99,12 +101,12 @@ test('store forms save links independently; iOS versions validate, save 46/0 and
     await set(latest, '46');
     await set(minimum, '0');
     const policy = { latestVersionCode: 46, minVersionCode: 0 };
-    jest.mocked(httpClient.put).mockResolvedValueOnce({ data: { ...response.data, iosVersion: policy } } as never);
+    jest.mocked(httpClient.put).mockResolvedValueOnce({ data: { ...response.data, [policyKey]: policy } } as never);
     await submit();
     expect(httpClient.put).toHaveBeenCalledTimes(1);
-    expect(httpClient.put).toHaveBeenLastCalledWith('/api/admin/v1/app-downloads/ios/version', policy);
+    expect(httpClient.put).toHaveBeenLastCalledWith(`/api/admin/v1/app-downloads/${platform}/version`, policy);
     expect(client.getQueryData(['admin', 'app-distribution', 'config'])).toMatchObject({
-      iosVersion: policy, androidVersion: response.data.androidVersion,
+      [policyKey]: policy, [otherKey]: response.data[otherKey],
     });
     expect(latest.value).toBe('46');
     expect(minimum.value).toBe('0');
@@ -114,7 +116,7 @@ test('store forms save links independently; iOS versions validate, save 46/0 and
     await submit();
     expect(form.textContent).toContain('Ошибка сохранения версии');
     expect(latest.value).toBe('47');
-    expect(client.getQueryData(['admin', 'app-distribution', 'config'])).toMatchObject({ iosVersion: policy });
+    expect(client.getQueryData(['admin', 'app-distribution', 'config'])).toMatchObject({ [policyKey]: policy });
   } finally {
     await act(async () => { root.unmount(); });
     client.clear();
