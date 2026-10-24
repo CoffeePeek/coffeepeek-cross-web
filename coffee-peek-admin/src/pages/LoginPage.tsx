@@ -1,16 +1,19 @@
 import { Input } from '@/src/components/ui/Input';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { login } from '../api/auth';
+import { googleLogin, login } from '../api/auth';
 import { useUser } from '../contexts/UserContext';
 import { useToast } from '../contexts/ToastContext';
 import { Button } from '../components/ui/Button';
 import LogoMark from '../components/LogoMark';
 import { forceLogoutMessage } from '../realtime/forceLogout';
-import { getUserRoles } from '../utils/jwt';
+import { getUserRoles, isTokenExpired } from '../utils/jwt';
+import { getErrorMessage } from '../utils/errors';
+import { getGoogleClientId } from '../lib/googleIdentity';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 
 // Роли, у которых есть страницы в панели (см. ProtectedRoute / Sidebar).
 const STAFF_ROLES = ['Admin', 'Moderator', 'Owner'];
@@ -38,6 +41,9 @@ export const LoginPage: React.FC = () => {
   const { updateUserFromToken, logout } = useUser();
   const { showToast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const authenticating = useRef(false);
+  const googleConfigured = Boolean(getGoogleClientId());
   const sessionMessage = forceLogoutMessage(searchParams.get('reason') || undefined);
   const showSessionNotice = Boolean(searchParams.get('reason'));
 
@@ -47,22 +53,50 @@ export const LoginPage: React.FC = () => {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) });
 
+  const completeLogin = async (accessToken?: string) => {
+    if (!accessToken || isTokenExpired(accessToken)) {
+      await logout();
+      throw new Error('Не удалось получить сессию. Попробуйте войти ещё раз.');
+    }
+    const roles = getUserRoles(accessToken);
+    if (!roles.some((role) => STAFF_ROLES.includes(role))) {
+      // Не пускаем в панель и отзываем только что созданную сессию.
+      await logout();
+      showToast('У этого аккаунта нет доступа к панели', 'error');
+      return;
+    }
+    updateUserFromToken(accessToken);
+    navigate('/dashboard', { replace: true });
+  };
+
   const onSubmit = async (data: FormData) => {
+    if (authenticating.current) return;
+    authenticating.current = true;
     try {
       const response = await login(data);
-      if (response.data?.accessToken) {
-        const roles = getUserRoles(response.data.accessToken);
-        if (!roles.some((role) => STAFF_ROLES.includes(role))) {
-          // Не пускаем в панель и отзываем только что созданную сессию.
-          await logout();
-          showToast('У этого аккаунта нет доступа к панели', 'error');
-          return;
-        }
-        updateUserFromToken(response.data.accessToken);
-        navigate('/dashboard', { replace: true });
-      }
-    } catch (err: any) {
-      showToast(err?.message ?? 'Ошибка входа. Проверьте данные.', 'error');
+      await completeLogin(response.data?.accessToken);
+    } catch (err) {
+      showToast(getErrorMessage(err, 'Ошибка входа. Проверьте данные.'), 'error');
+    } finally {
+      authenticating.current = false;
+    }
+  };
+
+  const onGoogleCredential = async (credential: string) => {
+    if (authenticating.current) return;
+    authenticating.current = true;
+    setGoogleSubmitting(true);
+    try {
+      const response = await googleLogin(credential);
+      await completeLogin(response.data?.accessToken);
+    } catch (err) {
+      const message = getErrorMessage(err, 'Не удалось войти через Google. Попробуйте ещё раз.');
+      showToast(/already exists|email and password/i.test(message)
+        ? 'Этот аккаунт использует вход по почте и паролю. Войдите с паролем.'
+        : /invalid token/i.test(message) ? 'Не удалось подтвердить аккаунт Google. Попробуйте ещё раз.' : message, 'error');
+    } finally {
+      authenticating.current = false;
+      setGoogleSubmitting(false);
     }
   };
 
@@ -141,11 +175,26 @@ export const LoginPage: React.FC = () => {
               variant="primary"
               size="md"
               loading={isSubmitting}
+              disabled={googleSubmitting}
               className="w-full mt-2"
             >
               Войти
             </Button>
           </form>
+
+          {googleConfigured && (
+            <>
+              <div className="my-5 flex items-center gap-3 text-xs text-stone-400" aria-hidden="true">
+                <span className="h-px flex-1 bg-border-dark" />или<span className="h-px flex-1 bg-border-dark" />
+              </div>
+              <GoogleSignInButton
+                disabled={isSubmitting || googleSubmitting}
+                loading={googleSubmitting}
+                onCredential={onGoogleCredential}
+                onError={message => showToast(message, 'error')}
+              />
+            </>
+          )}
         </div>
 
         <p className="text-center text-stone-400 text-xs mt-6 font-body">

@@ -31,6 +31,23 @@ export async function login(credentials: LoginRequest): Promise<ApiResponse<Auth
   return response;
 }
 
+export async function googleLogin(idToken: string): Promise<ApiResponse<AuthData>> {
+  const response = await httpClient.post<AuthData>(
+    API_ENDPOINTS.AUTH.GOOGLE_LOGIN,
+    { idToken },
+    { requiresAuth: false, skipAuthHeader: true }
+  );
+
+  if (response.isSuccess === false || response.success === false) {
+    throw new Error(response.message || 'Не удалось войти через Google');
+  }
+  const { accessToken } = pickAuthTokens(response.data);
+  if (!accessToken) throw new Error('Не удалось получить сессию. Попробуйте войти ещё раз.');
+  TokenManager.setAccessToken(accessToken);
+  response.data.accessToken = accessToken;
+  return response;
+}
+
 export async function logout(): Promise<void> {
   try {
     await ensureFreshAccessToken(API_BASE_URL);

@@ -9,11 +9,16 @@
 | Метод | Путь | Назначение |
 |---|---|---|
 | POST | `/api/tokens` | Вход: JSON `{email,password}` |
+| POST | `/api/tokens/google/login` | Google-вход: JSON `{idToken}` из Google Identity Services; access token в ответе, refresh cookie — HttpOnly |
 | PUT | `/api/tokens` | Refresh cookie → новый access token |
 | DELETE | `/api/tokens` | Завершение текущей сессии |
 | SignalR | `/realtime/session` | Уведомления об отзыве сессии |
 
 Policy `Moderator` включает Moderator и Admin. Policy `Admin` разрешает только Admin. Owner API требует владельца и проверяет принадлежность кофейни. Gateway и контроллеры проверяют права независимо; наличие кнопки в интерфейсе не заменяет серверную проверку.
+
+На экране входа нет регистрации; Google-вход дополняет email/пароль и использует ту же проверку ролей Admin/Moderator/Owner. Сессия аккаунта без доступа к панели отзывается. Общий серверный Google endpoint по-прежнему может создать новый обычный аккаунт; отдельный запрет регистрации в API не вводится. ID token передаётся только в теле запроса без Bearer-заголовка; полученный access token хранится в памяти.
+
+Кнопка Google появляется при заданном `VITE_GOOGLE_CLIENT_ID` (OAuth client типа Web application). Для локальной разработки и production нужно добавить соответствующие origin админки в Authorized JavaScript origins этого клиента в Google Cloud; backend должен принимать его audience. Используется официальная кнопка Google с popup-входом, без автоматического входа и One Tap. Если Google недоступен, остаётся вход по паролю; загрузку кнопки можно повторить.
 
 ## Публичные адреса и административные ID
 

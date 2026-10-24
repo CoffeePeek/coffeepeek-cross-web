@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
 
   AUTH: {
     LOGIN: '/api/tokens',
+    GOOGLE_LOGIN: '/api/tokens/google/login',
   },
 
   ADMIN: {
