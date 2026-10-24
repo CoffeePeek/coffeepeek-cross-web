@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import handler, { renderPublicPage } from '../api/public-page.mjs';
+import handler, { renderHomePage, renderPublicPage } from '../api/public-page.mjs';
 const shell = '<html><head><title>CoffeePeek</title></head><body><div id="root"></div></body></html>';
 const address = { slug: '1801', canonicalPath: '/coffee-shops/1801', revision: 1, isAlias: false };
 const shop = { address, name: '1801 кофе', description: 'Спешелти кофейня', rating: 4.9, checkInCount: 20,
@@ -13,13 +13,25 @@ async function withMock(body, run, status = 200) {
   const calls = [];
   globalThis.fetch = async input => {
     const url = String(input);
-    if (url.endsWith('/index.html')) return new Response(shell);
+    if (url.endsWith('/spa-shell.html')) return new Response(shell);
     calls.push(url);
     assert.doesNotMatch(url, /public-address/);
     return new Response(JSON.stringify(body), { status, headers: { 'Retry-After': '30' } });
   };
   try { await run(calls); } finally { globalThis.fetch = original; }
 }
+test('home HTML contains useful metadata and crawlable navigation without JavaScript or the API', () => {
+  const html = renderHomePage(shell);
+  const head = html.split('</head>')[0];
+  assert.match(head, /<title>CoffeePeek — кофейни Минска, карта и отзывы<\/title>/);
+  assert.match(head, /name="description" content="Кофейни Минска на карте: адреса, часы работы/);
+  assert.match(head, /property="og:image" content="https:\/\/coffeepeek.by\/favicon\/android-chrome-512x512.png"/);
+  assert.match(head, /name="twitter:card" content="summary_large_image"/);
+  assert.match(head, /"@type":"WebSite"/);
+  assert.match(html, /<div id="root"><div id="server-rendered-content"/);
+  for (const path of ['/shops', '/map', '/coffees', '/roasters', '/feed']) assert.ok(html.includes(`href="${path}"`));
+  assert.doesNotMatch(html, /\.remove\(\)/);
+});
 test('catalog uses inline addresses for links and SEO, in one request', async () => {
   await withMock({ isSuccess: true, data: { coffeeShops: [shop] } }, async calls => {
     const result = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shops'));
@@ -38,8 +50,55 @@ test('shop details are directly in data; menu, photos and structured metadata re
     assert.match(result.html, /property="og:image"/);
     assert.match(result.html, /CafeOrCoffeeShop/);
     assert.match(result.html, /1801 кофе — CoffeePeek/);
+    assert.match(result.html.split('</head>')[0], /"@type":"CafeOrCoffeeShop"/);
     assert.equal(calls.length, 1);
   });
+});
+test('an empty shop description still shares its address and rating', async () => {
+  await withMock({ isSuccess: true, data: { ...shop, description: '  ' } }, async () => {
+    const { html } = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801'));
+    assert.match(html, /property="og:description" content="Кофейня «1801 кофе». Адрес: пр. Независимости 95. Оценка посетителей: 4,9 из 5./);
+    assert.match(html, /name="twitter:description" content="Кофейня «1801 кофе»/);
+  });
+});
+test('sharing uses the primary photo card variant even if other photos precede it', async () => {
+  const photos = [
+    { fullUrl: 'https://media.example/other.jpg', sortIndex: 0 },
+    { isPrimary: true, fullUrl: 'https://media.example/original.jpg', urls: { card: 'https://media.example/card.jpg', detail: 'https://media.example/detail.jpg' } },
+  ];
+  await withMock({ isSuccess: true, data: { ...shop, photos } }, async () => {
+    const { html } = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801'));
+    assert.match(html, /property="og:image" content="https:\/\/media.example\/card.jpg"/);
+    assert.match(html, /name="twitter:image" content="https:\/\/media.example\/card.jpg"/);
+    assert.match(html, /"image":"https:\/\/media.example\/card.jpg"/);
+  });
+});
+test('a photo without a usable URL does not hide a later valid photo', async () => {
+  await withMock({ isSuccess: true, data: { ...shop, photos: [{ fullUrl: null }, ...shop.photos] } }, async () => {
+    const { html } = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801'));
+    assert.match(html, /property="og:image" content="https:\/\/media.example\/shop.jpg"/);
+  });
+});
+test('shops without photos get an absolute public fallback image and no invented rating', async () => {
+  await withMock({ isSuccess: true, data: { ...shop, description: '', photos: [], rating: 0, checkInCount: 0 } }, async () => {
+    const { html } = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801'));
+    assert.match(html, /property="og:image" content="https:\/\/coffeepeek.by\/favicon\/android-chrome-512x512.png"/);
+    assert.match(html, /property="og:image:width" content="512"/);
+    assert.doesNotMatch(html, /Оценка посетителей|AggregateRating/);
+  });
+});
+test('shell defaults are replaced rather than competing with shop metadata', async () => {
+  const original = globalThis.fetch;
+  const defaults = shell.replace('</head>', '<meta name="description" content="Default"><meta property="og:image" content="https://example.com/default.png"><meta name="twitter:card" content="summary"><link rel="canonical" href="https://example.com/"></head>');
+  globalThis.fetch = async input => String(input).endsWith('/spa-shell.html')
+    ? new Response(defaults) : Response.json({ isSuccess: true, data: shop });
+  try {
+    const { html } = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801'));
+    for (const tag of ['name="description"', 'property="og:image"', 'name="twitter:card"', 'rel="canonical"']) {
+      assert.equal(html.split(tag).length - 1, 1, tag);
+    }
+    assert.doesNotMatch(html, /example.com\/default|content="Default"/);
+  } finally { globalThis.fetch = original; }
 });
 for (const kind of ['shops', 'roasters', 'users']) {
   test(`${kind}: response shape supplies canonical path and alias redirect`, async () => {

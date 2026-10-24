@@ -34,7 +34,7 @@ const questions = [
 ];
 
 const LandingPage: React.FC = () => {
-  usePageTitle('Главная');
+  usePageTitle('Кофейни Минска, карта и отзывы');
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { isLoading: authLoading } = useUser();

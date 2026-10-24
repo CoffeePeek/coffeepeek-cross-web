@@ -1,5 +1,8 @@
 const SITE_URL = 'https://coffeepeek.by';
 const DEFAULT_API_URL = 'https://api.coffeepeek.by';
+const DEFAULT_IMAGE = `${SITE_URL}/favicon/android-chrome-512x512.png`;
+const HOME_TITLE = 'CoffeePeek — кофейни Минска, карта и отзывы';
+const HOME_DESCRIPTION = 'Кофейни Минска на карте: адреса, часы работы, меню, фотографии и оценки посетителей. Находите новые места, выбирайте кофе и делитесь впечатлениями в CoffeePeek.';
 
 const escapeHtml = (value = '') => String(value)
   .replaceAll('&', '&amp;')
@@ -31,13 +34,15 @@ async function fetchJson(path, direct = false) {
 
 async function loadSpaShell(request) {
   const requestUrl = new URL(request.url);
-  const shellUrl = new URL('/index.html', requestUrl.origin);
-  const response = await fetch(shellUrl, { headers: { Accept: 'text/html' } });
+  const shellUrl = new URL('/spa-shell.html', requestUrl.origin);
+  const response = await fetch(shellUrl, {
+    headers: { Accept: 'text/html' }, signal: AbortSignal.timeout(8000),
+  });
   if (!response.ok) throw new Error(`SPA shell returned ${response.status}`);
   return response.text();
 }
 
-function replaceMeta(html, { title, description, canonical, type = 'website', image }) {
+function replaceMeta(html, { title, description, canonical, type = 'website', image = DEFAULT_IMAGE, structuredData }) {
   const tags = [
     `<meta name="description" content="${escapeHtml(description)}">`,
     `<link rel="canonical" href="${escapeHtml(canonical)}">`,
@@ -46,10 +51,25 @@ function replaceMeta(html, { title, description, canonical, type = 'website', im
     `<meta property="og:url" content="${escapeHtml(canonical)}">`,
     `<meta property="og:type" content="${type}">`,
     `<meta property="og:site_name" content="CoffeePeek">`,
-    image ? `<meta property="og:image" content="${escapeHtml(image)}">` : '',
+    '<meta property="og:locale" content="ru_BY">',
+    `<meta property="og:image" content="${escapeHtml(image)}">`,
+    `<meta property="og:image:alt" content="${escapeHtml(title)}">`,
+    ...(image === DEFAULT_IMAGE ? [
+      '<meta property="og:image:type" content="image/png">',
+      '<meta property="og:image:width" content="512">',
+      '<meta property="og:image:height" content="512">',
+    ] : []),
+    '<meta name="twitter:card" content="summary_large_image">',
+    `<meta name="twitter:title" content="${escapeHtml(title)}">`,
+    `<meta name="twitter:description" content="${escapeHtml(description)}">`,
+    `<meta name="twitter:image" content="${escapeHtml(image)}">`,
+    `<meta name="twitter:image:alt" content="${escapeHtml(title)}">`,
+    structuredData ? jsonLd(structuredData) : '',
   ].filter(Boolean).join('\n    ');
 
   return html
+    .replace(/<meta\b[^>]*(?:name|property)=["'](?:description|og:[^"']+|twitter:[^"']+)["'][^>]*>\s*/gi, '')
+    .replace(/<link\b[^>]*rel=["']canonical["'][^>]*>\s*/gi, '')
     .replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${escapeHtml(title)}</title>`)
     .replace('</head>', () => `    ${tags}\n</head>`);
 }
@@ -58,13 +78,13 @@ function serverContent(content) {
   return `<div id="server-rendered-content" style="min-height:100vh;background:#1A1412;color:#fff;font-family:'Manrope',sans-serif">
     <header style="border-bottom:1px solid #3D2F28;padding:16px clamp(20px,5vw,64px)"><a href="/" style="color:#fff;text-decoration:none;font-size:20px;font-weight:700">Coffee<span style="color:#EAB308">Peek</span></a></header>
     ${content}
-  </div>
-  <script>document.getElementById('server-rendered-content')?.remove()</script>`;
+  </div>`;
 }
 
 function injectContent(html, content) {
   // Функции-замены: `$&` / `$'` / "$`" в названиях кофеен иначе раскрываются в куски шаблона.
-  return html.replace('<body>', () => `<body>\n${serverContent(content)}`);
+  // React replaces these children when it mounts. Without JavaScript the page stays readable.
+  return html.replace('<div id="root"></div>', () => `<div id="root">${serverContent(content)}</div>`);
 }
 
 function pageLayout(title, intro, body) {
@@ -77,9 +97,15 @@ function pageLayout(title, intro, body) {
 
 function renderHome() {
   return pageLayout(
-    'Кофейни Беларуси',
-    'CoffeePeek помогает находить интересные кофейни, изучать меню и выбирать место для следующей чашки кофе.',
-    '<p><a href="/shops" style="display:inline-block;background:#EAB308;color:#1A1412;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:700">Смотреть кофейни</a></p>',
+    'Кофейни Минска — CoffeePeek',
+    HOME_DESCRIPTION,
+    `<nav aria-label="Разделы CoffeePeek"><ul>
+      <li><a href="/shops">Кофейни: адреса, часы работы и меню</a></li>
+      <li><a href="/map">Карта кофеен Минска</a></li>
+      <li><a href="/coffees">Каталог кофе</a></li>
+      <li><a href="/roasters">Обжарщики</a></li>
+      <li><a href="/feed">Чекины и впечатления посетителей</a></li>
+    </ul></nav>`,
   );
 }
 
@@ -107,7 +133,7 @@ function renderShopDetails(shop) {
     : '';
   return pageLayout(
     shop.name,
-    shop.description || `${shop.name} — кофейня на CoffeePeek. Адрес: ${address}.`,
+    shopDescription(shop),
     `<article>
       <p><strong>Адрес:</strong> ${escapeHtml(address)}</p>
       ${shop.checkInCount ? `<p><strong>Рейтинг:</strong> ${escapeHtml(shop.rating)} из 5 · ${escapeHtml(shop.checkInCount)} чекинов</p>` : '<p>Пока без чекинов</p>'}
@@ -129,17 +155,42 @@ function jsonLd(value) {
   return `<script type="application/ld+json">${JSON.stringify(value).replaceAll('<', '\\u003c')}</script>`;
 }
 
+export function renderHomePage(shell) {
+  const html = replaceMeta(shell, {
+    title: HOME_TITLE, description: HOME_DESCRIPTION, canonical: `${SITE_URL}/`,
+    structuredData: {
+      '@context': 'https://schema.org', '@type': 'WebSite', name: 'CoffeePeek',
+      url: `${SITE_URL}/`, description: HOME_DESCRIPTION, inLanguage: 'ru-BY', image: DEFAULT_IMAGE,
+    },
+  });
+  return injectContent(html, renderHome());
+}
+
+function shopDescription(shop) {
+  if (shop.description?.trim()) return shop.description.trim();
+  const address = shop.location?.address?.trim();
+  const rating = shop.checkInCount > 0 && shop.rating > 0
+    ? ` Оценка посетителей: ${Number(shop.rating).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} из 5.` : '';
+  return `Кофейня «${shop.name}».${address ? ` Адрес: ${address}.` : ''}${rating} Фотографии, меню и чекины на CoffeePeek.`;
+}
+
+function pageImage(data) {
+  const photos = [...(data.photos || [])].sort((a, b) =>
+    Number(Boolean(b.isPrimary)) - Number(Boolean(a.isPrimary)) || (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
+  for (const photo of [...photos, data.coverPhoto]) {
+    const image = photo?.urls?.card || photo?.urls?.detail || photo?.fullUrl;
+    if (image) return image;
+  }
+  return data.photoUrl || data.avatarUrl || DEFAULT_IMAGE;
+}
+
 export async function renderPublicPage(request) {
   const url = new URL(request.url);
   const page = url.searchParams.get('page') || 'home';
   const shell = await loadSpaShell(request);
 
   if (page === 'home') {
-    const title = 'CoffeePeek — кофейни Беларуси';
-    const description = 'Находите кофейни Беларуси, изучайте меню и чекины, выбирайте место для следующей чашки кофе.';
-    let html = replaceMeta(shell, { title, description, canonical: `${SITE_URL}/` });
-    html = injectContent(html, `${renderHome()}${jsonLd({ '@context': 'https://schema.org', '@type': 'WebSite', name: 'CoffeePeek', url: `${SITE_URL}/` })}`);
-    return { html, status: 200 };
+    return { html: renderHomePage(shell), status: 200 };
   }
 
   if (page === 'shops') {
@@ -162,10 +213,10 @@ export async function renderPublicPage(request) {
         name: shop.name,
       })),
     };
-    let html = replaceMeta(shell, { title, description, canonical: `${SITE_URL}/shops` });
+    let html = replaceMeta(shell, { title, description, canonical: `${SITE_URL}/shops`, structuredData });
     html = injectContent(
       html,
-      `${pageLayout('Кофейни', 'Каталог кофеен с адресами, рейтингами и меню.', renderShopCards(shops))}${jsonLd(structuredData)}`,
+      pageLayout('Кофейни', 'Каталог кофеен с адресами, рейтингами и меню.', renderShopCards(shops)),
     );
     return { html, status: 200 };
   }
@@ -185,20 +236,20 @@ export async function renderPublicPage(request) {
   }
   if (path !== address.canonicalPath) return { html: '', status: 301, location: address.canonicalPath };
   const title = data.name || data.userName || 'CoffeePeek';
-  const description = data.description || data.about || title;
+  const description = kind === 'shops' ? shopDescription(data) : data.description || data.about || title;
   const canonical = `${SITE_URL}${address.canonicalPath}`;
-  let html = replaceMeta(shell, { title: `${title} — CoffeePeek`, description, canonical,
-    type: kind === 'shops' ? 'business.business' : 'website',
-    image: data.photos?.[0]?.urls?.detail || data.photos?.[0]?.fullUrl,
-  });
+  const image = pageImage(data);
   const content = kind === 'shops' ? renderShopDetails(data) : pageLayout(title, description,
     kind === 'users' ? `<p>Чекинов: ${escapeHtml(data.checkInCount)}</p>` : '');
-  const structured = kind === 'shops' ? jsonLd({ '@context': 'https://schema.org', '@type': 'CafeOrCoffeeShop', name: data.name, description, url: canonical,
+  const structuredData = kind === 'shops' ? { '@context': 'https://schema.org', '@type': 'CafeOrCoffeeShop', name: data.name, description, url: canonical, image,
     address: { '@type': 'PostalAddress', streetAddress: data.location?.address, addressCountry: 'BY' },
     geo: data.location?.latitude != null ? { '@type': 'GeoCoordinates', latitude: data.location.latitude, longitude: data.location.longitude } : undefined,
     aggregateRating: data.checkInCount ? { '@type': 'AggregateRating', ratingValue: data.rating, ratingCount: data.checkInCount } : undefined,
-  }) : '';
-  html = injectContent(html, content + structured);
+  } : undefined;
+  let html = replaceMeta(shell, { title: `${title} — CoffeePeek`, description, canonical,
+    type: kind === 'shops' ? 'business.business' : 'website', image, structuredData,
+  });
+  html = injectContent(html, content);
   return { html, status: 200 };
 }
 

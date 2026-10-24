@@ -29,18 +29,17 @@
     {"source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json"},
     {"source": "/api/support/:path*", "destination": "https://api.coffeepeek.by/api/support/:path*"},
     {"source": "/support", "destination": "/support.html"},
-    {"source": "/coffee-shops/new", "destination": "/index.html"},
-    {"source": "/roasters/new", "destination": "/index.html"},
+    {"source": "/coffee-shops/new", "destination": "/spa-shell.html"},
+    {"source": "/roasters/new", "destination": "/spa-shell.html"},
     {"source": "/coffee-shops/:shopId", "destination": "/api/public-page?page=address&kind=shops&segment=:shopId&path=/coffee-shops/:shopId"},
     {"source": "/roasters/:roasterId", "destination": "/api/public-page?page=address&kind=roasters&segment=:roasterId&path=/roasters/:roasterId"},
     {"source": "/users/:userId", "destination": "/api/public-page?page=address&kind=users&segment=:userId&path=/users/:userId"},
-    { "source": "/", "destination": "/api/public-page?page=home" },
     { "source": "/shops", "destination": "/api/public-page?page=shops" },
     { "source": "/shops/:shopId", "destination": "/api/public-page?page=shop&shopId=:shopId" },
     { "source": "/download/android", "destination": "https://api.coffeepeek.by/download/android" },
     { "source": "/download/apk", "destination": "https://api.coffeepeek.by/download/apk" },
     { "source": "/download/ios", "destination": "https://api.coffeepeek.by/download/ios" },
-    { "source": "/:path*", "destination": "/index.html" }
+    { "source": "/:path*", "destination": "/spa-shell.html" }
   ],
   "headers": [
     {
@@ -73,6 +72,12 @@
     },
     {
       "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/spa-shell.html",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
