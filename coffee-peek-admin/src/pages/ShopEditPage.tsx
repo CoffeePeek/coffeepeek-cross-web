@@ -38,7 +38,7 @@ const schema = z.object({
   address: z.string().min(1, 'Обязательное поле'),
   description: z.string().optional(),
   cityId: z.string().optional(),
-  priceRange: z.coerce.number().min(1).max(4).optional().or(z.literal('')),
+  priceRange: z.coerce.number<number>().min(1).max(4).optional().or(z.literal('')),
   ...moderationContactShape,
 });
 

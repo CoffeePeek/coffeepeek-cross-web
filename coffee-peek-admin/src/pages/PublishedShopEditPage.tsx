@@ -64,7 +64,7 @@ const MAX_SHOP_TAGS = 20;
 const schema = z.object({
   name: z.string().min(1, 'Обязательное поле'),
   description: z.string().optional(),
-  priceRange: z.coerce.number().min(1).max(4),
+  priceRange: z.coerce.number<number>().min(1).max(4),
   status: z.enum(['Active', 'TemporarilyClosed', 'PermanentlyClosed']),
   ownerUserId: z.string().optional(),
   cityId: z.string().optional(),

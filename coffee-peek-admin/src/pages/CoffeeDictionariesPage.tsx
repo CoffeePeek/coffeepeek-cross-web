@@ -19,7 +19,7 @@ const entrySchema = z.object({
   code: z.string().min(1, 'Введите код').max(100, 'Не больше 100 символов').regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Используйте строчные латинские буквы, цифры и дефисы'),
   name: z.string().trim().min(1, 'Введите название').max(100, 'Не больше 100 символов'),
   description: z.string().trim().max(2000, 'Не больше 2000 символов'),
-  sortOrder: z.coerce.number().int('Введите целое число'),
+  sortOrder: z.coerce.number<string | number>().int('Введите целое число'),
   isActive: z.boolean(),
 });
 type EntryForm = z.infer<typeof entrySchema>;
@@ -27,7 +27,7 @@ function EntryEditor({ kind, group, entry, onClose }: { kind: 'tags' | 'values';
   const qc = useQueryClient();
   const { showToast } = useToast();
   const schema = kind === 'values' ? entrySchema.extend({ code: z.string().min(1, 'Введите код').max(100, 'Не больше 100 символов').regex(/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/, 'Используйте строчные латинские буквы, цифры и дефисы. Начните с буквы') }) : entrySchema;
-  const form = useForm<EntryForm>({ resolver: zodResolver(schema), defaultValues: { code: entry?.slug ?? entry?.code ?? '', name: entry?.name ?? '', description: entry?.description ?? '', sortOrder: entry?.sortOrder ?? 0, isActive: entry?.isActive ?? true } });
+  const form = useForm<z.input<typeof entrySchema>, unknown, EntryForm>({ resolver: zodResolver(schema), defaultValues: { code: entry?.slug ?? entry?.code ?? '', name: entry?.name ?? '', description: entry?.description ?? '', sortOrder: entry?.sortOrder ?? 0, isActive: entry?.isActive ?? true } });
   const mutation = useMutation({ mutationFn: (value: EntryForm) => entry ? editDictionaryEntry(kind, entry.id, { name: value.name, description: value.description || null, sortOrder: value.sortOrder, isActive: value.isActive })
     : createDictionaryEntry(kind, { ...(kind === 'tags' ? { slug: value.code } : { code: value.code, groupCode: group }), name: value.name, description: value.description || null, sortOrder: value.sortOrder }),
     onSuccess: async () => {

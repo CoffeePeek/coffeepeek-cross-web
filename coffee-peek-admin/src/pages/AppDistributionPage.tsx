@@ -27,9 +27,9 @@ const distributionKeys = {
 };
 
 const versionPolicySchema = z.object({
-  latestVersionCode: z.number({ invalid_type_error: 'Введите целое число' })
+  latestVersionCode: z.number({ error: 'Введите целое число' })
     .int('Введите целое число').min(1, 'Актуальный код должен быть больше нуля').max(2147483647, 'Код слишком большой'),
-  minVersionCode: z.number({ invalid_type_error: 'Введите целое число' })
+  minVersionCode: z.number({ error: 'Введите целое число' })
     .int('Введите целое число').min(0, 'Минимальный код не может быть отрицательным').max(2147483647, 'Код слишком большой'),
 }).refine(value => value.minVersionCode <= value.latestVersionCode, {
   message: 'Минимальный код не может превышать актуальный',
