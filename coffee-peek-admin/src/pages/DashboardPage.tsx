@@ -19,7 +19,7 @@ export const DashboardPage = () => {
     queryKey: ['admin', 'stats', 'overview'],
     queryFn: () => getOverviewStats().then((response) => response.data),
     staleTime: 60_000,
-    enabled: isAdmin,
+    enabled: isModerator,
   });
 
   const stats = data ? [
@@ -50,13 +50,13 @@ export const DashboardPage = () => {
             Добро пожаловать{user?.email ? `, ${user.email.split('@')[0]}` : ''}
           </h2>
           <p className="mt-1 text-sm text-text-muted dark:text-stone-400">
-            {isAdmin ? 'Сводка CoffeePeek и задачи, требующие внимания.' : 'Выберите раздел для работы.'}
+            {isModerator ? 'Сводка CoffeePeek и задачи, требующие внимания.' : 'Выберите раздел для работы.'}
           </p>
         </div>
         {isModerator && <Button asChild><Link to="/import">Открыть импорт<ArrowRight className="h-4 w-4" /></Link></Button>}
       </div>
 
-      {isAdmin && isError && (
+      {isModerator && isError && (
         <LoadError
           message={data ? 'Не удалось обновить сводку. Показаны последние загруженные данные.' : 'Не удалось загрузить сводку. Проверьте соединение и повторите попытку.'}
           onRetry={() => void refetch()}
@@ -79,7 +79,7 @@ export const DashboardPage = () => {
         </section>
       )}
 
-      {isAdmin && (
+      {isModerator && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {isLoading ? Array.from({ length: 4 }, (_, index) => <StatSkeleton key={index} />) : stats.map(({ label, value, hint, icon: Icon }) => (
             <Card key={label} className="p-4">
@@ -96,7 +96,7 @@ export const DashboardPage = () => {
         </div>
       )}
 
-      {isAdmin && data && <AdminStatsPanel overview={data} />}
+      {isModerator && data && <AdminStatsPanel overview={data} />}
     </div>
   );
 };

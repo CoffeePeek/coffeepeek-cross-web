@@ -59,7 +59,7 @@ const NAV_SECTIONS: NavSection[] = [
   ] },
   { id: 'system', label: 'Система', items: [
     { path: '/audit', label: 'Audit log', icon: History, adminOnly: true },
-    { path: '/users', label: 'Пользователи', icon: Users, adminOnly: true },
+    { path: '/users', label: 'Пользователи', icon: Users, moderatorOnly: true },
     { path: '/notifications', label: 'Уведомления', icon: MessageSquareText, adminOnly: true },
     { path: '/app-distribution', label: 'Приложения', icon: AppWindow, adminOnly: true },
   ] },
@@ -77,12 +77,11 @@ const QUEUE_PATHS: Record<AdminModerationQueueName, string> = {
 const BADGE_POLL_MS = 60_000;
 
 /** Pending counts per nav path. Query keys are shared with the dashboard and import stats pages. */
-function useNavBadges(isAdmin: boolean, isModerator: boolean): Record<string, number> {
-  // ponytail: /stats/moderation/insights is Admin-only on the backend, so non-admin moderators get only the import badge.
+function useNavBadges(isModerator: boolean): Record<string, number> {
   const moderation = useQuery({
     queryKey: ['admin', 'stats', 'moderation-insights'],
     queryFn: () => getModerationInsights().then((r) => r.data),
-    enabled: isAdmin,
+    enabled: isModerator,
     refetchInterval: BADGE_POLL_MS,
   });
   const importStats = useQuery({
@@ -138,7 +137,7 @@ export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({ moderation: true, data: true });
   const showLabels = !collapsed || mobileOpen;
   const roles = useMemo(() => ({ isAdmin, isModerator, isOwner }), [isAdmin, isModerator, isOwner]);
-  const badges = useNavBadges(isAdmin, isModerator);
+  const badges = useNavBadges(isModerator);
   const visibleSections = useMemo(
     () => NAV_SECTIONS.map((section) => ({ ...section, items: section.items.filter((item) => canSee(item, roles)) }))
       .filter((section) => section.items.length),

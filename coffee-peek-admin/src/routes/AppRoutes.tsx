@@ -244,7 +244,7 @@ export const AppRoutes: React.FC = () => (
         <Route
           path="/users"
           element={
-            <ProtectedRoute requireAdmin>
+            <ProtectedRoute requireModerator>
               <UsersPage />
             </ProtectedRoute>
           }

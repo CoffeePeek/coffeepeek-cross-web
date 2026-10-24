@@ -18,6 +18,7 @@ import {
   UserSession,
 } from '../api/admin';
 import { useToast } from '../contexts/ToastContext';
+import { useUser } from '../contexts/UserContext';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -252,6 +253,7 @@ function getRoleDescription(role: UserRole): string {
 }
 
 export const UsersPage: React.FC = () => {
+  const { isAdmin } = useUser();
   const { showToast } = useToast();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -345,7 +347,10 @@ export const UsersPage: React.FC = () => {
     { accessorKey: 'checkInCount', header: 'Чекинов', meta: { className: 'hidden md:table-cell', headerClassName: 'hidden md:table-cell' }, cell: ({ row }) => row.original.checkInCount ?? 0 },
     { accessorKey: 'addedShopsCount', header: 'Кофеен', meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' }, cell: ({ row }) => row.original.addedShopsCount ?? 0 },
     { accessorKey: 'createdAtUtc', header: 'Дата', meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' }, cell: ({ row }) => new Date(row.original.createdAtUtc).toLocaleDateString('ru') },
-    {
+  ];
+
+  if (isAdmin) {
+    columns.push({
       id: 'actions',
       cell: ({ row }) => {
         const user = row.original;
@@ -371,8 +376,8 @@ export const UsersPage: React.FC = () => {
           </div>
         );
       },
-    },
-  ];
+    });
+  }
 
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6">
@@ -381,7 +386,7 @@ export const UsersPage: React.FC = () => {
           Пользователи
         </h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          Управление пользователями, ролями и статистика
+          {isAdmin ? 'Управление пользователями, ролями и статистика' : 'Просмотр пользователей и статистики · Только чтение'}
         </p>
       </div>
 
@@ -432,8 +437,8 @@ export const UsersPage: React.FC = () => {
           loading={isLoading}
           emptyText="Пользователи не найдены"
           getRowId={(user) => user.id}
-          expandedRowId={sessionsUser?.id}
-          renderExpandedRow={(user) => <UserSessionsPanel user={user} />}
+          expandedRowId={isAdmin ? sessionsUser?.id : undefined}
+          renderExpandedRow={isAdmin ? (user) => <UserSessionsPanel user={user} /> : undefined}
         />
         {data && data.totalPages > 1 && (
           <div className="border-t border-border-light px-5 py-3 dark:border-border-dark">
@@ -442,7 +447,7 @@ export const UsersPage: React.FC = () => {
         )}
       </Card>
 
-      {editingUser && (
+      {isAdmin && editingUser && (
         <EditRoleModal
           key={editingUser.id}
           user={editingUser}
@@ -453,50 +458,54 @@ export const UsersPage: React.FC = () => {
         />
       )}
 
-      <ConfirmDialog
-        isOpen={!!kickingUser}
-        title="Оборвать все сессии?"
-        message={`${kickingUser?.email ?? 'Пользователь'} будет разлогинен на всех устройствах сразу.`}
-        confirmLabel="Оборвать"
-        variant="danger"
-        onConfirm={async () => {
-          if (kickingUser) await revokeAllMutation.mutateAsync(kickingUser.id);
-        }}
-        onCancel={() => setKickingUser(null)}
-      />
+      {isAdmin && (
+        <>
+          <ConfirmDialog
+            isOpen={!!kickingUser}
+            title="Оборвать все сессии?"
+            message={`${kickingUser?.email ?? 'Пользователь'} будет разлогинен на всех устройствах сразу.`}
+            confirmLabel="Оборвать"
+            variant="danger"
+            onConfirm={async () => {
+              if (kickingUser) await revokeAllMutation.mutateAsync(kickingUser.id);
+            }}
+            onCancel={() => setKickingUser(null)}
+          />
 
-      <ConfirmDialog
-        isOpen={!!blockingUser}
-        title={blockingUser?.isBlocked ? 'Разблокировать пользователя?' : 'Заблокировать пользователя?'}
-        message={
-          blockingUser?.isBlocked
-            ? 'Пользователь снова сможет входить в систему.'
-            : 'Все активные сессии будут отозваны. Вход будет запрещён до разблокировки.'
-        }
-        confirmLabel={blockingUser?.isBlocked ? 'Разблокировать' : 'Заблокировать'}
-        variant={blockingUser?.isBlocked ? 'primary' : 'danger'}
-        onConfirm={async () => {
-          if (blockingUser) {
-            await blockMutation.mutateAsync({
-              id: blockingUser.id,
-              blocked: !blockingUser.isBlocked,
-            });
-          }
-        }}
-        onCancel={() => setBlockingUser(null)}
-      />
+          <ConfirmDialog
+            isOpen={!!blockingUser}
+            title={blockingUser?.isBlocked ? 'Разблокировать пользователя?' : 'Заблокировать пользователя?'}
+            message={
+              blockingUser?.isBlocked
+                ? 'Пользователь снова сможет входить в систему.'
+                : 'Все активные сессии будут отозваны. Вход будет запрещён до разблокировки.'
+            }
+            confirmLabel={blockingUser?.isBlocked ? 'Разблокировать' : 'Заблокировать'}
+            variant={blockingUser?.isBlocked ? 'primary' : 'danger'}
+            onConfirm={async () => {
+              if (blockingUser) {
+                await blockMutation.mutateAsync({
+                  id: blockingUser.id,
+                  blocked: !blockingUser.isBlocked,
+                });
+              }
+            }}
+            onCancel={() => setBlockingUser(null)}
+          />
 
-      <ConfirmDialog
-        isOpen={!!deletingUserId}
-        title="Удалить пользователя навсегда?"
-        message="Учётная запись будет полностью удалена, все сессии отозваны. Это действие необратимо."
-        confirmLabel="Удалить"
-        variant="danger"
-        onConfirm={async () => {
-          if (deletingUserId) await deleteMutation.mutateAsync(deletingUserId);
-        }}
-        onCancel={() => setDeletingUserId(null)}
-      />
+          <ConfirmDialog
+            isOpen={!!deletingUserId}
+            title="Удалить пользователя навсегда?"
+            message="Учётная запись будет полностью удалена, все сессии отозваны. Это действие необратимо."
+            confirmLabel="Удалить"
+            variant="danger"
+            onConfirm={async () => {
+              if (deletingUserId) await deleteMutation.mutateAsync(deletingUserId);
+            }}
+            onCancel={() => setDeletingUserId(null)}
+          />
+        </>
+      )}
     </div>
   );
 };

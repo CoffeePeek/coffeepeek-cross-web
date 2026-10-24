@@ -49,13 +49,19 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 | Справочники | `/api/admin/cities`, `/beans`, `/equipments`, `/roasters`, `/brew-methods`, `/shop-tags` | Административные UUID для редактирования/связей; публичные списки содержат slug и для этих форм не подходят |
 | Кофейные зоны | `/api/admin/coffee-zones`, `/{id}`, `/membership`, `/candidates` | Редактирование, публикация, состав зоны |
 | Импорт | `/api/admin/import` | Кандидаты, решения, файл/OSM, статистика, повторная проверка, меню, дубликаты |
-| Пользователи | `/api/admin/users`, `/stats`, `/{id}/role`, `/block`, `/sessions` | Admin: список/поиск, роли, блокировка, удаление, сессии |
-| Статистика | `/api/admin/stats/overview`, `/users/timeseries`, `/shops/timeseries`, `/shops/insights`, `/moderation/insights` | Обзор и подробная статистика |
+| Пользователи | `/api/admin/users`, `/stats`, `/{id}/role`, `/block`, `/sessions` | Moderator/Admin: GET списка/поиска и статистики; только Admin: роли, блокировка, удаление и все операции с сессиями |
+| Статистика | `/api/admin/stats/overview`, `/users/timeseries`, `/shops/timeseries`, `/shops/insights`, `/moderation/insights` | Moderator/Admin: GET всей сводки и подробной статистики |
 | Audit log | `/api/admin/audit/moderation` | Кто принял решение и когда |
 | Приложения | `/api/admin/v1/app-downloads` | Ссылки магазинов, Android releases, публикация релиза |
 | Owner | `/api/owner/coffee-shops`, `/{id}`, `/{id}/photos` | Собственные кофейни владельца |
 
 Таблица группирует ресурсы; методы и точные тела каждого запроса задаются соответствующим `src/api` и серверным контроллером. Не все backend-операции имеют экран в админке: например, backfill публичных адресов и каталог напитков. Отсутствие экрана не означает отсутствие API.
+
+### Доступ к дашборду и пользователям
+
+Moderator и Admin доступны все GET `/api/admin/stats/overview`, `/api/admin/stats/users/timeseries`, `/api/admin/stats/shops/timeseries`, `/api/admin/stats/shops/insights`, `/api/admin/stats/moderation/insights`, `/api/admin/users` и `/api/admin/users/stats`. Для модератора список пользователей доступен только для чтения: поиск, фильтры, пагинация и статистика.
+
+Только Admin доступны PATCH `/api/admin/users/{id}/role`, PATCH `/api/admin/users/{id}/block`, DELETE `/api/admin/users/{id}`, GET `/api/admin/users/{id}/sessions`, DELETE `/api/admin/users/{id}/sessions/{sessionId}` и DELETE `/api/admin/users/{id}/sessions`. Интерфейс показывает действия с пользователями и раздел сессий только администратору. URL, HTTP-методы, JSON-поля, параметры запросов и заголовки пагинации прежние. Bearer-авторизация: отсутствующий или недействительный токен — 401; недостаточные права — 403.
 
 ## Ссылки магазинов приложений
 
