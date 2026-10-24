@@ -132,7 +132,7 @@ export const checkInCard = {
   bodyFontSize: 16,
   bodyLineHeight: 1.55,
   drink: { placement: 'bottom-right', layout: 'horizontal', verticalAlign: 'center', photoSize: 80, photoFit: 'contain', fallbackIconSize: 32, fontSize: 14 },
-  photos: { borderRadius: 12, gap: 4, singleAspectRatio: '3:2', collageAspectRatio: '5:3', fourAspectRatio: '5:4' },
+  photos: { borderRadius: 12, gap: 4, singleAspectRatio: '3:2', feedSingleAspectRatio: '2:1', twoAspectRatio: '8:3', collageAspectRatio: '4:3', fourAspectRatio: '4:3' },
   reaction: { iconSize: 26, minHeight: 44, color: '#EF4444', fontSize: 14 },
 } as const;
 

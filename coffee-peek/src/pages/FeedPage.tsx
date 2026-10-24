@@ -1,5 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { useEffect, useRef } from 'react';
+import type { TouchEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFeed } from '../hooks/queries/useCheckIns';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -22,7 +23,8 @@ export default function FeedPage() {
   const feed = useFeed({ citySlug: params.get('citySlug') || undefined, coffeeShopSlug: params.get('coffeeShopSlug') || undefined, authorSlug: params.get('authorSlug') || undefined });
   const items = feed.data?.pages.flatMap(page => page.items) ?? [];
   const marker = useRef<HTMLDivElement>(null);
-  const touchStart = useRef<number | null>(null);
+  const touchStart = useRef<{ id: number; x: number; y: number } | null>(null);
+  const refreshing = useRef(false);
   const viewedQuery = useRef<string | null>(null);
   const queryIdentity = params.toString();
   const exposureRef = useFeatureExposure<HTMLHeadingElement>('feed', 'feed');
@@ -37,9 +39,36 @@ export default function FeedPage() {
     window.addEventListener('coffeepeek:analytics-ready', captureView);
     return () => window.removeEventListener('coffeepeek:analytics-ready', captureView);
   }, [feed.isSuccess, firstPageCount, queryIdentity]);
-  const refresh = (trigger: 'button' | 'gesture') => {
-    captureAnalyticsEvent('feed_action_clicked', { action: 'refresh', trigger });
-    void client.resetQueries({ queryKey: ['checkIns', 'feed'] });
+  const refresh = async () => {
+    if (feed.isFetching || refreshing.current) return;
+    refreshing.current = true;
+    captureAnalyticsEvent('feed_action_clicked', { action: 'refresh', trigger: 'gesture' });
+    try {
+      await client.resetQueries({ queryKey: ['checkIns', 'feed'] });
+    } finally {
+      refreshing.current = false;
+    }
+  };
+  const startRefreshGesture = (event: TouchEvent<HTMLElement>) => {
+    touchStart.current = null;
+    const touch = event.touches[0];
+    if (window.scrollY > 0 || feed.isFetching || refreshing.current || event.touches.length !== 1 || !touch) return;
+    touchStart.current = { id: touch.identifier, x: touch.clientX, y: touch.clientY };
+  };
+  const moveRefreshGesture = (event: TouchEvent<HTMLElement>) => {
+    const start = touchStart.current;
+    const touch = event.touches[0];
+    if (!start) return;
+    if (!touch || event.touches.length !== 1 || touch.identifier !== start.id || window.scrollY > 0
+      || touch.clientY < start.y - 8 || Math.abs(touch.clientX - start.x) > Math.max(8, touch.clientY - start.y)) touchStart.current = null;
+  };
+  const endRefreshGesture = (event: TouchEvent<HTMLElement>) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch || event.touches.length || touch.identifier !== start.id || window.scrollY > 0) return;
+    const distance = touch.clientY - start.y;
+    if (distance > 80 && distance > Math.abs(touch.clientX - start.x)) void refresh();
   };
   const loadMore = (trigger: 'button' | 'scroll', retry = false) => {
     captureAnalyticsEvent('feed_action_clicked', { action: retry ? 'retry' : 'load_more', trigger });
@@ -60,8 +89,8 @@ export default function FeedPage() {
     observer.observe(element);
     return () => observer.disconnect();
   }, [feed.hasNextPage, feed.isFetchingNextPage, feed.fetchNextPage]);
-  return <main onTouchStart={event => { if (window.scrollY < 20) touchStart.current = event.touches[0].clientY; }} onTouchEnd={event => { if (touchStart.current !== null && event.changedTouches[0].clientY - touchStart.current > 80) refresh('gesture'); touchStart.current = null; }} className={`min-h-screen px-4 pb-32 pt-3 sm:py-8 ${classes.bg.primary} ${classes.text.primary}`}><div className="mx-auto max-w-3xl">
-    <div className="mb-4 flex items-center justify-between gap-4"><h1 ref={exposureRef} className="text-2xl font-bold">Лента</h1><button type="button" className="min-h-11" disabled={feed.isFetching} onClick={() => refresh('button')}>Обновить</button></div>
+  return <main onTouchStart={startRefreshGesture} onTouchMove={moveRefreshGesture} onTouchEnd={endRefreshGesture} onTouchCancel={() => { touchStart.current = null; }} className={`min-h-screen px-4 pb-32 pt-3 sm:py-8 ${classes.bg.primary} ${classes.text.primary}`}><div className="mx-auto max-w-3xl">
+    <h1 ref={exposureRef} className="mb-4 text-2xl font-bold">Лента</h1>
     {feed.isLoading && <div className="flex justify-center py-10"><WobbleRing /></div>}
     {feed.error && <p role="alert" className="text-red-500">{getErrorMessage(feed.error)}</p>}
     {!feed.isLoading && !feed.error && !items.length && <div className="py-8 text-center"><Mascot pose="book" size={120} /><p>Пока нет опубликованных чек-инов.</p></div>}
