@@ -9,7 +9,7 @@ import { brand, card, dark, light, getThemeColors, shadow } from '../design-syst
 import { getCatalogScope } from '../lib/catalogSession';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
-import { LEGAL } from '../constants/legal';
+import { APP_DOWNLOAD_URL } from '../utils/appDownload';
 import { AppIcon } from '../components/icons';
 import Button from '../components/Button';
 import { CoffeeCatalogCard } from '../components/CatalogCards';
@@ -21,8 +21,6 @@ import LandingMapWidget from '../components/LandingMapWidget';
 import Header from '../components/Header';
 import Mascot from '../components/Mascot';
 import './LandingPage.css';
-
-const APP_DOWNLOAD_URL = new URL('/settings#app-download-title', LEGAL.siteUrl).href;
 
 const appScreenshots = ['shops', 'map', 'feed'] as const;
 

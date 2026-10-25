@@ -8,9 +8,11 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { AuthenticatedLayout } from '../components/layouts/AuthenticatedLayout';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { APP_DOWNLOAD_PATH } from '../utils/appDownload';
 
 // Lazy load pages; retry via full reload if a deploy invalidated hashed chunks
 const LandingPage = lazyWithRetry(() => import('../pages/LandingPage'));
+const AppDownloadPage = lazyWithRetry(() => import('../pages/AppDownloadPage'));
 const LoginPage = lazyWithRetry(() => import('../pages/LoginPage'));
 const RegisterPage = lazyWithRetry(() => import('../pages/RegisterPage'));
 const CoffeeShopListPage = lazyWithRetry(() => import('../pages/CoffeeShopListPage'));
@@ -103,6 +105,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/profile/delete" element={<DeleteAccountPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path={APP_DOWNLOAD_PATH} element={<AppDownloadPage />} />
         <Route path="/download" element={<Navigate to="/settings" replace />} />
 
         <Route path="/coffee-shops/:shopId" element={<AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CoffeeShopDetailPage /></PublicAddressPage></AuthenticatedLayout>} />

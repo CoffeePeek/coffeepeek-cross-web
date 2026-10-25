@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       host: "0.0.0.0",
       proxy: apiTarget ? {
-        '/download/': {
+        '^/download/(android|ios|apk)/?(\\?.*)?$': {
           target: apiTarget,
           changeOrigin: true,
           secure: true,

@@ -39,3 +39,9 @@ test('loading and failures do not claim that downloads are available', () => {
   expect(render()).toContain('Попробовать ещё раз');
   expect(render()).not.toContain('href="/download/');
 });
+
+test('all unavailable channels explain why installation links are missing', () => {
+  downloads.mockReturnValue({ data: { android: { googlePlay: { available: false }, apk: { available: false } }, ios: { appStore: { available: false } } } });
+  expect(render()).toContain('Установка временно недоступна. Попробуй зайти позже.');
+  expect(render()).not.toContain('href="/download/');
+});

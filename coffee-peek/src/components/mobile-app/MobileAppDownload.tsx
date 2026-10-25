@@ -52,6 +52,7 @@ const MobileAppDownload: React.FC<MobileAppDownloadProps> = ({ variant = 'full',
   if (!channels.length) return null;
 
   if (variant === 'inline') return <div className={`flex flex-wrap items-start justify-center gap-3 ${className}`}>
+    {channels.every(channel => !channel.available) && <p className="w-full text-sm" role="status">Установка временно недоступна. Попробуй зайти позже.</p>}
     {channels.map(channel => <div key={channel.key} className="flex flex-col items-center gap-1">
       <DownloadButton channel={channel.key} href={channel.href} label={channel.available ? channel.label : 'App Store — скоро'} disabled={!channel.available} />
       {!channel.available && <span className="text-xs">Скоро в App Store</span>}

@@ -82,7 +82,7 @@ test('download dialog has a public phone link and real app screenshots', () => {
   const html = render();
   expect(html).toContain('<dialog');
   expect(html).toContain('aria-labelledby="download-dialog-title"');
-  expect(html).toContain('https://coffeepeek.by/settings#app-download-title');
+  expect(html).toContain('https://coffeepeek.by/download/auto');
   expect(html).not.toContain('mailto:');
   expect(html).not.toContain('Написать нам');
   for (const screen of ['shops', 'map', 'feed']) expect(html).toContain(`/images/app-screenshots/${screen}-dark.png`);
