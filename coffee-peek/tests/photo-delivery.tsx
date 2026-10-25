@@ -43,6 +43,7 @@ function Fixture() {
     <div className="flex flex-wrap gap-2">
       <button onClick={() => setMounted(value => !value)}>{mounted ? 'Unmount' : 'Mount'}</button>
       <button onClick={invalidateProtectedPhotos}>New session</button>
+      <button onClick={() => window.dispatchEvent(new Event('focus'))}>Window focus</button>
       <button onClick={() => { denied = true; invalidateProtectedPhotos(); }}>Deny access</button>
       <button onClick={() => { denied = true; }}>Deny next request</button>
       <button onClick={() => { denied = false; invalidateProtectedPhotos(); }}>Allow access</button>

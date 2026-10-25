@@ -1,4 +1,4 @@
-jest.mock('../src/api/core/apiConfig', () => ({ API_BASE_URL: 'https://api.example', API_GATEWAY_URL: '/backend', buildUrlWithParams: (path: string) => path }));
+jest.mock('../src/api/core/apiConfig', () => ({ API_BASE_URL: 'https://api.example', API_GATEWAY_URL: '/backend', buildUrlWithParams: (path: string, params?: Record<string, string>) => params ? `${path}?${new URLSearchParams(params)}` : path }));
 jest.mock('../src/api/core/interceptors', () => ({
   requestInterceptor: (_url: string, options: RequestInit) => options,
   ensureFreshAccessToken: jest.fn(), isAuthTokenEndpoint: () => false,
@@ -23,6 +23,23 @@ test('raw GET uses HTTP status even for empty or non-JSON gateway errors', async
     globalThis.fetch = jest.fn().mockResolvedValue(new Response(body, { status: 429, headers: { 'Retry-After': '30' } }));
     await expect(client.getRaw('/address')).rejects.toMatchObject({ status: 429, retryAfter: '30' });
   }
+});
+
+test('raw connections GET retains pagination query parameters', async () => {
+  globalThis.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ items: [], totalCount: 0 })));
+  await client.getRaw('/api/Users/maria/followers', { params: { page: 2, pageSize: 20 } });
+  expect(globalThis.fetch).toHaveBeenCalledWith('https://api.example/api/Users/maria/followers?page=2&pageSize=20', expect.objectContaining({ method: 'GET' }));
+});
+
+test('raw follow writes accept direct JSON and propagate HTTP failures', async () => {
+  const state = { isFollowing: true, followersCount: 3 };
+  globalThis.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify(state)));
+  expect(await client.putRaw('/api/Users/maria/follow')).toEqual(state);
+  expect(globalThis.fetch).toHaveBeenCalledWith('https://api.example/api/Users/maria/follow', expect.objectContaining({ method: 'PUT', cache: 'no-store' }));
+  globalThis.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ ...state, isFollowing: false })));
+  expect(await client.deleteRaw('/api/Users/maria/follow')).toMatchObject({ isFollowing: false });
+  globalThis.fetch = jest.fn().mockResolvedValue(new Response('', { status: 403 }));
+  await expect(client.putRaw('/api/Users/maria/follow')).rejects.toMatchObject({ status: 403 });
 });
 
 test('protected photos use the gateway binary request without parsing a JSON envelope', async () => {

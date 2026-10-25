@@ -1,0 +1,66 @@
+.public-profile {
+  background: var(--profile-bg);
+  color: var(--profile-text);
+}
+
+.profile-shell { max-width: 680px; }
+.profile-columns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+
+.public-profile button, .public-profile a { -webkit-tap-highlight-color: transparent; }
+.public-profile :is(button, a, input):focus-visible { outline: 2px solid var(--profile-gold); outline-offset: 3px; }
+.public-profile button:disabled { cursor: default; opacity: .5; }
+.public-profile .profile-muted { color: var(--profile-muted); }
+.public-profile .profile-panel { background: var(--profile-surface); border-color: var(--profile-border); }
+.public-profile .profile-divider { border-color: var(--profile-border); }
+.profile-icon-button { display: inline-flex; width: 44px; height: 44px; padding: 0; border: 0; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; }
+.profile-icon-button:hover { background: var(--profile-surface); }
+.profile-text-button { min-height: 44px; padding: 8px; font-size: 14px; font-weight: 600; color: var(--profile-muted); }
+.profile-text-button:hover { color: var(--profile-text); }
+.profile-pill { min-height: 44px; border: 1px solid var(--profile-border); border-radius: 999px; padding: 8px 16px; font-size: 13px; font-weight: 600; transition: background-color .15s; }
+.profile-pill:hover { background: var(--profile-surface); }
+.profile-pill.is-selected { background: color-mix(in srgb, var(--profile-gold) 12%, transparent); border-color: var(--profile-gold); }
+.profile-avatar { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 50%; background: linear-gradient(135deg, var(--profile-gold-warm), var(--profile-gold)); color: #1A1412; font-weight: 600; }
+.profile-main-avatar { width: 88px; height: 88px; font-size: 32px; }
+.profile-stat-label { display: block; font-size: 11px; line-height: 16px; color: var(--profile-muted); }
+.profile-stat-value { display: block; font-size: 22px; line-height: 28px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.public-profile dl > div { display: flex; flex-direction: column; }
+.public-profile dl > div > dt:not(.sr-only) { order: 1; }
+.profile-followers { padding: 0; border: 0; }
+.profile-followers:hover .profile-stat-label { text-decoration: underline; }
+.profile-calendar-day { position: relative; display: flex; aspect-ratio: 1; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 10px; background: var(--profile-surface); font-size: 14px; font-variant-numeric: tabular-nums; }
+.profile-calendar-day.is-today { border-color: var(--profile-gold); font-weight: 700; }
+.profile-calendar-day.is-active { background: color-mix(in srgb, var(--profile-gold) 14%, var(--profile-surface)); font-weight: 600; }
+.profile-calendar-day.is-future { opacity: .45; }
+.profile-day-dot { position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--profile-gold); }
+.profile-favorites { scrollbar-width: thin; scrollbar-color: var(--profile-border) transparent; scroll-snap-type: x mandatory; }
+.profile-dialog { position: fixed; inset: 0; width: min(100% - 32px, 640px); max-width: none; max-height: 85dvh; margin: auto; padding: 0; overflow: hidden; border: 1px solid var(--profile-border); border-radius: 24px; background: var(--profile-bg); color: var(--profile-text); }
+.profile-dialog::backdrop { background: rgba(0, 0, 0, .55); }
+@media (max-width: 639px) {
+  .profile-dialog { inset: auto 0 0; width: 100%; margin: 0; border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom); }
+}
+@media (min-width: 640px) {
+  .profile-main-avatar { width: 104px; height: 104px; font-size: 40px; }
+  .profile-stat-label { font-size: 13px; line-height: 20px; }
+}
+@media (min-width: 1024px) {
+  .profile-shell { max-width: 1280px; }
+  .profile-columns { grid-template-columns: 420px minmax(0, 1fr); gap: 32px; }
+  .profile-overview {
+    position: sticky;
+    top: calc(var(--app-header-height, 65px) + 16px);
+    max-height: calc(var(--app-content-height, calc(100dvh - 65px)) - 32px);
+    overflow-y: auto;
+    /* Keep keyboard focus outlines inside the scrollable area. */
+    margin: -6px;
+    padding: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--profile-border) transparent;
+  }
+}
+@media (min-width: 1280px) {
+  .profile-columns { gap: 48px; }
+}
+@media (max-width: 359px) {
+  .profile-main-avatar { width: 72px; height: 72px; }
+  .profile-stat-label { font-size: 10px; }
+}

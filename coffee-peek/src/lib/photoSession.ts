@@ -8,15 +8,5 @@ export function invalidateProtectedPhotos() {
 }
 export function subscribePhotoSession(listener: () => void) {
   listeners.add(listener);
-  if (listeners.size === 1 && typeof window !== 'undefined') {
-    document.addEventListener('visibilitychange', invalidateProtectedPhotos);
-    window.addEventListener('focus', invalidateProtectedPhotos);
-  }
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0 && typeof window !== 'undefined') {
-      document.removeEventListener('visibilitychange', invalidateProtectedPhotos);
-      window.removeEventListener('focus', invalidateProtectedPhotos);
-    }
-  };
+  return () => { listeners.delete(listener); };
 }

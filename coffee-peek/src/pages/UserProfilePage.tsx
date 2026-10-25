@@ -1,222 +1,138 @@
+import { useState, type CSSProperties } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { CaretLeft, ShareNetwork, PencilSimple } from '@phosphor-icons/react';
 import { usePublicResolution } from '../components/PublicAddressPage';
-import WobbleRing from '../components/WobbleRing';
-import React from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { getUserPublicProfile, type PublicUserProfile } from '../api/user';
-import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
-import CheckInCard from '../components/CheckInCard';
+import { publicProfileKey, useProfileFollow } from '../hooks/queries/usePublicProfile';
+import PhotoLightbox from '../components/PhotoLightbox';
+import PublicProfileActivity from '../components/profile/PublicProfileActivity';
+import PublicProfileFavorites from '../components/profile/PublicProfileFavorites';
+import PublicProfileCheckIns from '../components/profile/PublicProfileCheckIns';
+import ProfileConnections from '../components/profile/ProfileConnections';
+import { ProfileAvatar, ProfileDialog, ProfileError, ProfileLoading } from '../components/profile/ProfileUI';
 import { useTheme } from '../contexts/ThemeContext';
 import { useUser } from '../contexts/UserContext';
-import { getThemeClasses } from '../utils/theme';
-import Button from '../components/Button';
-import { logger } from '../utils/logger';
+import { useToast } from '../contexts/ToastContext';
 import { usePageTitle } from '../hooks/usePageTitle';
-import {
-  SealCheck, ShoppingCart, Star,
-  CaretLeft,
-} from '@/components/Icon';
-import Mascot from '../components/Mascot';
+import { getCatalogScope } from '../lib/catalogSession';
+import { brand, dark, light } from '../design-system';
+import './UserProfilePage.css';
 
-const UserProfilePage: React.FC = () => {
-  const { userId: routeId } = useParams<{ userId: string }>();
+export default function UserProfilePage() {
+  const { userId: routeId = '' } = useParams<{ userId: string }>();
   const resolution = usePublicResolution();
-  const userId = resolution?.id ?? routeId;
-  const navigate = useNavigate();
-  const { user } = useUser();
+  const { isLoading } = useUser();
   const { theme } = useTheme();
-  const themeClasses = getThemeClasses(theme);
-  
-  const [profile, setProfile] = React.useState<PublicUserProfile | null>(null);
-  const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  
-  const publicCheckIns = usePublicCheckIns({ authorSlug: userId, pageSize: 10 }, !!userId && !!profile);
-  const checkIns = publicCheckIns.data?.pages.flatMap(page => page.items) ?? [];
-
-  // Устанавливаем title с именем пользователя
+  const navigate = useNavigate();
+  const slug = resolution?.id ?? routeId;
+  const query = useQuery({
+    queryKey: [...publicProfileKey(slug), 'detail'],
+    queryFn: async () => {
+      const response = await getUserPublicProfile(slug);
+      if (!response.success || !response.data) throw new Error('Не удалось загрузить профиль');
+      return response.data;
+    },
+    enabled: !resolution && !!slug && !isLoading, gcTime: 0,
+  });
+  const profile: PublicUserProfile | undefined = resolution ? { ...resolution.data, id: resolution.id } : query.data;
   usePageTitle(profile?.userName || 'Профиль пользователя');
-
-  // Load profile
-  React.useEffect(() => {
-    let cancelled = false;
-
-    const loadProfile = async () => {
-      if (resolution) { setProfile({ ...resolution.data, id: resolution.id }); setError(null); setIsLoadingProfile(false); return; }
-      if (!userId || user?.id === userId) return;
-      
-      try {
-        setIsLoadingProfile(true);
-        setProfile(null);
-        setError(null);
-        const response = await getUserPublicProfile(userId);
-        
-        if (cancelled) return;
-        
-        if (response.success && response.data) {
-          setProfile(response.data);
-        } else {
-          setError('Не удалось загрузить профиль пользователя');
-        }
-      } catch (err) {
-        if (!cancelled) {
-          logger.error('Error loading profile:', err);
-          setError('Произошла ошибка при загрузке профиля');
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingProfile(false);
-        }
-      }
-    };
-
-    loadProfile();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, user?.id, resolution]);
-
-  const bgClass = themeClasses.bg.primary;
-  const bgSurface = theme === 'dark' ? themeClasses.bg.secondary : themeClasses.bg.card;
-  const borderClass = themeClasses.border.default;
-  const textMain = themeClasses.text.primary;
-  const textMuted = themeClasses.text.secondary;
-
-  if (!resolution && userId && user?.id === userId) {
-    return <Navigate to="/profile" replace />;
-  }
-
-  if (isLoadingProfile) {
-    return (
-      <div className={`min-h-screen ${bgClass} flex items-center justify-center`}>
-        <WobbleRing size={48} />
-      </div>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <div className={`min-h-screen ${bgClass} flex items-center justify-center p-4`}>
-        <div className="text-center">
-          <div className="flex justify-center mb-2" aria-hidden>
-            <Mascot pose="astonishment" size={148} />
-          </div>
-          <p className={`text-xl ${textMain} mb-4`}>
-            {error || 'Профиль не найден'}
-          </p>
-          <Button onClick={() => navigate(-1)} variant="primary">
-            Вернуться назад
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const ratings = checkIns.flatMap(item => item.rating ? [item.rating] : []);
-  const averageRating = ratings.length > 0
-    ? (ratings.reduce((sum, rating) => sum + ((rating.coffee + rating.service + rating.place) / 3), 0) / ratings.length).toFixed(1)
-    : '—';
-
-  return (
-    <div className={`min-h-screen ${bgClass} pt-16`}>
-      {/* Back button */}
-      <div className="fixed top-20 left-4 z-10">
-        <Button onClick={() => navigate(-1)} variant="secondary">
-          <CaretLeft size={20} />
-          Назад
-        </Button>
-      </div>
-
-      {/* Profile header */}
-      <header className={`${bgSurface} border-b ${borderClass} px-4 sm:px-12 py-6 sm:py-10`}>
-        <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-8">
-              <div className="relative flex-shrink-0">
-                <div className={`w-20 h-20 sm:w-32 sm:h-32 rounded-full border-4 ${theme === 'dark' ? themeClasses.border.default : 'border-white'} shadow-xl overflow-hidden`}>
-                  {profile.avatarUrl ? (
-                    <img
-                      src={profile.avatarUrl}
-                      alt={profile.userName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className={`w-full h-full ${themeClasses.primary.bg} flex items-center justify-center`}>
-                      <span className="text-3xl sm:text-5xl font-bold text-white">
-                        {profile.userName.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-col gap-2 sm:gap-3 text-center sm:text-left">
-                <h1 className={`text-2xl sm:text-4xl font-bold ${textMain} tracking-tight`}>
-                  {profile.userName}
-                </h1>
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  {profile.nickname && (
-                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${themeClasses.primary.bgLight} ${themeClasses.primary.borderLighter} border`}>
-                      <SealCheck size={16} className={themeClasses.primary.text} />
-                      <span className={`${themeClasses.primary.text} text-xs font-bold uppercase tracking-widest`}>
-                        @{profile.nickname}
-                      </span>
-                    </div>
-                  )}
-                  {profile.createdAtUtc && (
-                    <span className={`${textMuted} text-sm`}>
-                      На сайте с {new Date(profile.createdAtUtc).getFullYear()}
-                    </span>
-                  )}
-                </div>
-                {profile.about && (
-                  <p className={`${textMuted} text-sm max-w-lg`}>
-                    {profile.about}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-12 py-6 sm:py-10 space-y-8 sm:space-y-12">
-        {/* Statistics */}
-        <section>
-          <div className="grid grid-cols-2 gap-3 sm:gap-6">
-            <div className={`${bgSurface} p-8 rounded-3xl border ${borderClass} shadow-sm flex flex-col items-center text-center group ${themeClasses.border.activeHover} transition-all`}>
-              <div className={`w-12 h-12 rounded-2xl ${themeClasses.primary.bgLight} ${themeClasses.primary.text} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <ShoppingCart size={30} />
-              </div>
-              <span className={`text-4xl font-bold ${textMain}`}>
-                {profile.checkInCount ?? 0}
-              </span>
-              <span className={`text-xs font-bold ${textMuted} uppercase tracking-[0.2em] mt-2`}>
-                ЧЕКИНЫ
-              </span>
-            </div>
-            <div className={`${bgSurface} p-8 rounded-3xl border ${borderClass} shadow-sm flex flex-col items-center text-center group ${themeClasses.border.activeHover} transition-all`}>
-              <div className={`w-12 h-12 rounded-2xl ${themeClasses.primary.bgLight} ${themeClasses.primary.text} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <Star size={30} weight="fill" />
-              </div>
-              <span className={`text-4xl font-bold ${textMain}`}>
-                {averageRating}
-              </span>
-              <span className={`text-xs font-bold ${textMuted} uppercase tracking-[0.2em] mt-2`}>
-                РЕЙТИНГ
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h2 className={`mb-6 text-2xl font-bold ${textMain}`}>Публичные чекины</h2>
-          {publicCheckIns.isLoading ? <WobbleRing /> : publicCheckIns.error ? <p role="alert">Не удалось загрузить чекины. <button type="button" onClick={() => void publicCheckIns.refetch()}>Повторить</button></p> : checkIns.length ? <div className="space-y-4">{checkIns.map(item => <CheckInCard key={item.id} item={item} />)}</div> : <div className={`${bgSurface} rounded-2xl border p-12 text-center ${borderClass}`}><Mascot pose="book" size={132} /><p className={textMuted}>Пользователь пока не опубликовал ни одного чекина</p></div>}
-          {publicCheckIns.hasNextPage && <Button className="mt-6" disabled={publicCheckIns.isFetchingNextPage} onClick={() => void publicCheckIns.fetchNextPage()}>Загрузить ещё</Button>}
-        </section>
-      </div>
+  const colors = theme === 'dark' ? dark : light;
+  return <main className="public-profile min-h-screen" style={{
+    '--profile-bg': colors.background,
+    '--profile-surface': colors.surface,
+    '--profile-border': colors.border,
+    '--profile-text': colors.textPrimary,
+    '--profile-muted': colors.textSecondary,
+    '--profile-gold': brand.primary,
+    '--profile-gold-warm': brand.goldWarm,
+  } as CSSProperties}>
+    <div className="profile-shell mx-auto w-full px-4 pb-10 pt-3 sm:px-8 sm:pt-6">
+      {!profile ? <>
+        <div className="mb-4 flex items-center gap-3"><BackButton onBack={() => navigate(-1)} /><h1 className="text-xl font-bold">Профиль</h1></div>
+        {slug && query.isPending ? <ProfileLoading label="Загрузка профиля…" /> : <ProfileError message="Не удалось загрузить профиль пользователя" onRetry={() => void query.refetch()} />}
+      </> : <PublicProfileContent key={`${getCatalogScope()}:${slug}`} profile={profile} />}
     </div>
-  );
-};
+  </main>;
+}
 
-export default UserProfilePage;
+function BackButton({ onBack }: { onBack: () => void }) {
+  return <button type="button" className="profile-icon-button" aria-label="Назад" onClick={onBack}><CaretLeft size={23} /></button>;
+}
+
+function PublicProfileContent({ profile }: { profile: PublicUserProfile }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useUser();
+  const { showToast } = useToast();
+  const [showAvatar, setShowAvatar] = useState(false);
+  const [showConnections, setShowConnections] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const follow = useProfileFollow(profile.id);
+  const blocked = !!profile.isBlockedByViewer;
+  const nickname = (profile.nickname || profile.userName || profile.id).replace(/^@+/, '');
+  const isOwn = user?.address?.slug === profile.id || (!!user?.address?.canonicalPath && user.address.canonicalPath === profile.canonicalPath);
+  // The mutation response is authoritative even if the background profile refresh fails.
+  const isFollowing = follow.data?.isFollowing ?? profile.isFollowing ?? false;
+  const followersCount = follow.data?.followersCount ?? profile.followersCount ?? 0;
+  const onBack = () => {
+    if (typeof window.history.state?.idx === 'number' && window.history.state.idx > 0) navigate(-1);
+    else navigate('/feed', { replace: true });
+  };
+  const share = async () => {
+    const url = new URL(profile.canonicalPath || `/users/${encodeURIComponent(profile.id)}`, window.location.origin).href;
+    if (navigator.share) {
+      try { await navigator.share({ title: `@${nickname} в CoffeePeek`, url }); return; }
+      catch (error) { if (error instanceof Error && error.name === 'AbortError') return; }
+    }
+    try { await navigator.clipboard.writeText(url); showToast('Ссылка на профиль скопирована', 'success'); }
+    catch { setShareUrl(url); }
+  };
+
+  return <>
+    <div className="mb-5 grid grid-cols-[44px_1fr_44px] items-center gap-3">
+      <BackButton onBack={onBack} />
+      <h1 className="text-center text-xl font-bold">Профиль</h1>
+      <button type="button" className="profile-icon-button" aria-label="Поделиться профилем" onClick={() => void share()}><ShareNetwork size={22} /></button>
+    </div>
+    {blocked ? <div className="profile-panel rounded-2xl border px-6 py-10 text-center">
+      <h2 className="text-xl font-bold">Автор заблокирован</h2>
+      <p className="mt-3 text-sm profile-muted">Вы заблокировали @{nickname}. Его активность скрыта.</p>
+    </div> : <div className="profile-columns">
+      <div className="profile-overview min-w-0 space-y-5">
+        <section aria-label={`Профиль @${nickname}`}>
+          <div className="flex items-center gap-3 sm:gap-5">
+            {profile.avatarUrl ? <button type="button" className="shrink-0 rounded-full border-0 p-0" aria-label={`Открыть аватар @${nickname}`} onClick={() => setShowAvatar(true)}>
+              <ProfileAvatar name={nickname} url={profile.avatarUrl} className="profile-main-avatar" />
+            </button> : <ProfileAvatar name={nickname} className="profile-main-avatar shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <h2 className="break-words text-[22px] font-bold leading-tight tracking-tight sm:text-3xl">@{nickname}</h2>
+              <dl className="mt-3 grid grid-cols-3 gap-1 sm:gap-4">
+                <div className="min-w-0"><dt className="profile-stat-label">Чекины</dt><dd className="profile-stat-value">{profile.checkInCount ?? 0}</dd></div>
+                <div className="min-w-0"><dt className="profile-stat-label">Кофейни</dt><dd className="profile-stat-value">{profile.addedShopsCount ?? 0}</dd></div>
+                <div className="min-w-0"><dt className="sr-only">Подписчики</dt><dd><button type="button" className="profile-followers min-h-11 text-left" onClick={() => setShowConnections(true)} aria-label={`Подписчики: ${followersCount}. Открыть список`}>
+                  <span className="profile-stat-value">{followersCount}</span><span className="profile-stat-label">Подписчики</span>
+                </button></dd></div>
+              </dl>
+            </div>
+          </div>
+          {profile.about?.trim() && <p className="mt-3 whitespace-pre-line break-words text-sm leading-relaxed profile-muted">{profile.about}</p>}
+          <div className="mt-3">
+            {isOwn ? <Link to="/profile" className="profile-pill inline-flex items-center gap-2"><PencilSimple size={16} />Редактировать профиль</Link>
+              : <button type="button" className={`profile-pill ${isFollowing ? 'is-selected' : ''}`} aria-pressed={isFollowing} aria-label={`${isFollowing ? 'Отписаться от' : 'Подписаться на'} @${nickname}`} disabled={follow.isPending} onClick={() => {
+                if (!user) navigate('/login', { state: { from: location } });
+                else follow.mutate(!isFollowing);
+              }}>{follow.isPending ? 'Сохраняем…' : isFollowing ? 'Вы подписаны' : 'Подписаться'}</button>}
+          </div>
+          {follow.isError && <div className="mt-3"><ProfileError message="Не удалось изменить подписку" onRetry={() => follow.mutate(!isFollowing)} /></div>}
+        </section>
+        <PublicProfileActivity slug={profile.id} />
+        <PublicProfileFavorites slug={profile.id} />
+      </div>
+      <PublicProfileCheckIns slug={profile.id} />
+    </div>}
+    {!blocked && showAvatar && profile.avatarUrl && <PhotoLightbox images={[profile.avatarUrl]} shopName={`@${nickname}`} onClose={() => setShowAvatar(false)} />}
+    {!blocked && showConnections && <ProfileConnections slug={profile.id} onClose={() => setShowConnections(false)} />}
+    {shareUrl && <ProfileDialog title="Ссылка на профиль" onClose={() => setShareUrl('')}><p className="mb-3 text-sm profile-muted">Скопируйте ссылку, чтобы поделиться профилем.</p><input aria-label="Ссылка на профиль" readOnly value={shareUrl} onFocus={event => event.currentTarget.select()} className="profile-panel min-h-11 w-full rounded-xl border px-3 text-sm" /></ProfileDialog>}
+  </>;
+}

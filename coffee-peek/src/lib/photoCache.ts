@@ -124,14 +124,14 @@ export class ProtectedPhotoCache {
     }, options.concurrency ?? 4);
   }
 
-  acquire(url: string, scope: number, binding?: string) {
+  acquire(url: string, scope: number, binding?: string, revalidate = false) {
     binding = eligible(url, binding) ? binding : undefined;
     const key = JSON.stringify([scope, url, binding ?? null]);
     try {
       this.check(scope);
       const now = this.now();
       const entry = this.stored.get(key);
-      if (entry && now.mono < entry.freshUntil && now.mono < entry.displayUntil && now.wall < entry.freshExpiresAt && now.wall < entry.displayExpiresAt && now.wall < entry.credentialExpiresAt) {
+      if (!revalidate && entry && now.mono < entry.freshUntil && now.mono < entry.displayUntil && now.wall < entry.freshExpiresAt && now.wall < entry.displayExpiresAt && now.wall < entry.credentialExpiresAt) {
         this.stored.delete(key);
         this.stored.set(key, entry);
         let released = false;

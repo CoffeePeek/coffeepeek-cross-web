@@ -29,7 +29,7 @@ export default function ProtectedPhoto({ photo, purpose, alt = '', className = '
     {image.src ? <img src={image.src} alt={alt} width={selected?.width} height={selected?.height}
       decoding="async" onError={() => { if (selected) setDecodeFailures(previous => [...previous, selected.url]); }} className="h-full w-full object-contain" />
       : <span role={image.failed ? 'status' : undefined} className="flex h-full min-h-12 items-center justify-center bg-black/5 px-2 text-center text-xs text-stone-500">
-        {image.failed || decodeFailures.length > 0 && !selected ? 'Фото недоступно' : selected ? 'Загрузка фото…' : 'Фото готовится'}
+        {image.failed || decodeFailures.length > 0 && !selected ? 'Фото недоступно' : selected ? null : 'Фото готовится'}
       </span>}
     {showRetry && (image.failed || decodeFailures.length > 0) && <button type="button" className="absolute bottom-2 left-2 min-h-11 rounded-lg bg-black/70 px-3 text-xs text-white" onClick={event => { event.stopPropagation(); setDecodeFailures([]); image.retry(); }}>Повторить</button>}
   </div>;

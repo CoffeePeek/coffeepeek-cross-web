@@ -260,8 +260,17 @@ class HttpClient {
   async getRaw<T>(endpoint: string, config?: ApiConfig): Promise<T> {
     return (await this.request<T>(endpoint, {
       method: 'GET', raw: true, cache: 'no-store', requiresAuth: false,
-      signal: config?.signal, headers: config?.headers,
+      signal: config?.signal, headers: config?.headers, params: config?.params,
     })).data;
+  }
+
+  /** Social endpoints return JSON directly, without the ApiResponse envelope. */
+  async putRaw<T>(endpoint: string): Promise<T> {
+    return (await this.request<T>(endpoint, { method: 'PUT', raw: true, cache: 'no-store' })).data;
+  }
+
+  async deleteRaw<T>(endpoint: string): Promise<T> {
+    return (await this.request<T>(endpoint, { method: 'DELETE', raw: true, cache: 'no-store' })).data;
   }
 
   private serializeBody(data?: unknown): BodyInit | undefined {

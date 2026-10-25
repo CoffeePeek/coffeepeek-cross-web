@@ -37,6 +37,18 @@ test('fresh ready bytes are reused without extending authorization, then revalid
   expect(f.load.mock.calls[1][2]).toBe('"v1"');
 });
 
+test('proactive renewal validates fresh bytes online instead of returning the old deadline', async () => {
+  const f = setup();
+  const first = await f.get().promise;
+  f.advance(15_000);
+  f.load.mockResolvedValueOnce(f.response({}, 304));
+  const renewed = await f.cache.acquire(url(), 1, binding(), true).promise;
+  expect(f.load).toHaveBeenCalledTimes(2);
+  expect(f.load.mock.calls[1][2]).toBe('"v1"');
+  expect(renewed.blob).toBe(first.blob);
+  expect(renewed.displayUntil).toBe(35_000);
+});
+
 test.each([
   ['private, no-store', {}],
   ['private, max-age=0, must-revalidate', {}],
