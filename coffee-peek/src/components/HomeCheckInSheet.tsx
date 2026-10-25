@@ -12,7 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import { captureAnalyticsEvent } from '../lib/analytics';
 import { CheckInAnalytics, readCheckInFlow, type CheckInFlow } from '../lib/checkInAnalytics';
 import DrinkSelector from './DrinkSelector';
-import CheckInPhotoThumb from './CheckInPhotoThumb';
+import CheckInPhotoGallery from './CheckInPhotoGallery';
 import CheckInPhotos from './CheckInPhotos';
 import Mascot from './Mascot';
 
@@ -160,7 +160,14 @@ export default function HomeCheckInSheet({ id, onClose, onSaved, analyticsFlow }
         <div><p className={labelClass}>Время заваривания (необязательно)</p><div className="grid grid-cols-2 gap-3"><label>Минуты<input className={inputClass} style={inputStyle} inputMode="numeric" value={draft.minutes} onChange={e => field('minutes', e.target.value)} disabled={busy} /></label><label>Секунды<input className={inputClass} style={inputStyle} inputMode="numeric" value={draft.seconds} onChange={e => field('seconds', e.target.value)} disabled={busy} /></label></div>{error('duration')}</div>
         <label className={labelClass}>Заметка (необязательно)<textarea className={`${inputClass} min-h-24 rounded-2xl`} style={inputStyle} maxLength={1000} value={draft.text} onChange={e => field('text', e.target.value)} disabled={busy} placeholder="Какой вкус? Что хочется повторить?" /></label>{error('text')}
         <DrinkSelector drinkSlug={draft.drinkSlug} customDrinkName={draft.customDrinkName} savedName={detail.data?.drinkNameRu || detail.data?.drinkNameEn || undefined} disabled={busy} onChange={(slug, name) => { analytics.field('drinkSlug'); setDraft(previous => ({ ...previous, drinkSlug: slug, customDrinkName: name })); }} />{error('customDrinkName')}
-        {id ? <><p className="text-sm" style={{ color: colors.textSecondary }}>Фотографии при редактировании не изменяются.</p><CheckInPhotos photos={detail.data?.photos || []} shopName="Кофе дома" /></> : <div><p className={labelClass}>Фотографии</p><p className="text-xs" style={{ color: colors.textSecondary }}>Чашка, зерно или процесс приготовления — до 5 фото.</p><p className="mt-2 text-sm">Добавлено: {photos.selectedFiles.length}/5</p>{photos.selectedFiles.length < 5 && <label className="mt-2 flex h-24 w-24 cursor-pointer items-center justify-center rounded-xl border text-3xl" style={{ borderColor: colors.border }}>+<input type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif" multiple className="sr-only" disabled={busy} onChange={photoChange} /></label>}<div className="mt-2 flex gap-2 overflow-x-auto">{photos.selectedFiles.map((file, index) => <CheckInPhotoThumb key={`${file.name}-${file.size}-${file.lastModified}`} file={file} onRemove={() => { analytics.field('photos'); photos.removeFile(index); }} />)}</div>{error('photos')}{photos.error && <p className="text-sm text-red-500">{photos.error}</p>}</div>}
+        {id ? <><p className="text-sm" style={{ color: colors.textSecondary }}>Фотографии при редактировании не изменяются.</p><CheckInPhotos photos={detail.data?.photos || []} shopName="Кофе дома" /></> : <div>
+          <p className={labelClass}>Фотографии</p>
+          <p className="text-xs" style={{ color: colors.textSecondary }}>Чашка, зерно или процесс приготовления — до 5 фото.</p>
+          <p className="mt-2 text-sm">Добавлено: {photos.selectedFiles.length}/5</p>
+          {photos.selectedFiles.length < 5 && <label className="mt-2 flex h-24 w-24 cursor-pointer items-center justify-center rounded-xl border text-3xl" style={{ borderColor: colors.border }}>+<input type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif" multiple className="sr-only" disabled={busy} onChange={photoChange} /></label>}
+          <CheckInPhotoGallery files={photos.selectedFiles} disabled={busy} onChange={files => { analytics.field('photos'); photos.setSelectedFiles(files); }} />
+          {error('photos')}{photos.error && <p className="text-sm text-red-500">{photos.error}</p>}
+        </div>}
         </div>
       </div>
       <div className="border-t px-5 py-3" style={{ borderColor: colors.border }}><button type="button" disabled={busy} onClick={() => void submit()} className="min-h-11 w-full rounded-full bg-[#EAB308] px-5 font-bold text-[#1A1412] disabled:opacity-50">{busy ? 'Сохраняем чекин…' : 'Сохранить чекин'}</button></div>

@@ -136,6 +136,21 @@ export const checkInCard = {
   reaction: { iconSize: 26, minHeight: 44, color: '#EF4444', fontSize: 14 },
 } as const;
 
+export const checkInPhotoGallery = {
+  thumbnailSize: 96,
+  borderRadius: 16,
+  gap: 12,
+  layout: 'flex-wrap',
+  maxPhotos: 5,
+  removeTouchTarget: 44,
+  reorderTouchTarget: 44,
+  reorderIconSize: 18,
+  dropIndicatorWidth: 2,
+  dropIndicatorColor: 'brand.primary',
+  preview: 'PhotoLightbox',
+  reorder: 'mouse-drag, pointer-handle, keyboard-arrows-home-end',
+} as const;
+
 export const toast = {
   minWidth: 320,
   maxWidth: 448,
@@ -244,6 +259,7 @@ export const components = {
   select,
   card,
   checkInCard,
+  checkInPhotoGallery,
   toast,
   header,
   badge,

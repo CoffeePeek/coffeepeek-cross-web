@@ -100,6 +100,8 @@ Radius 28, border 1, фото 16:9, padding контента 12px 16px 16px. Hov
 
 Основная реакция — красное сердце 26 и счётчик 14, touch target 44. Использует существующий helpful API; для своих чекинов и гостей отображается счётчик. Действия автора и жалоба находятся в меню с многоточием. Статус публикации виден автору. Для созданных менее 24 часов назад чекинов показываются «15 минут назад», «4 часа назад» с русскими склонениями и обновлением раз в минуту; далее отображается дата посещения.
 
+При создании чекина в кофейне и «Кофе дома» добавленные фотографии показаны миниатюрами 96×96 с radius 16, gap 12 и переносом строк. Номер в углу отражает порядок отправки. Нажатие открывает PhotoLightbox с перелистыванием всех выбранных снимков. Порядок меняется перетаскиванием миниатюры мышью, ручки «Порядок» мышью или пальцем, а также стрелками и Home/End при фокусе на ручке. Цель перетаскивания выделяется золотой рамкой 2 px. Удаление и ручка имеют touch target 44; изменения озвучиваются через live region. Во время отправки управление отключено.
+
 ### Header
 
 LogoMark в Header — 52, radius round(size × 0.28) = 15. Сам LogoMark по умолчанию имеет size 40. Avatar — 34, в меню 38. Desktop-nav: min-height 34, padding 0×14, pill radius 999, текст 14/600. Header полупрозрачный (alpha 0.78), blur 24. Dropdown radius 16, min-width 224.
@@ -479,6 +481,23 @@ const inputRadius = borderRadius['3xl']; // 26
 | `checkInCard.reaction.minHeight` | `44` |
 | `checkInCard.reaction.color` | `#EF4444` |
 | `checkInCard.reaction.fontSize` | `14` |
+
+### checkInPhotoGallery
+
+| Токен / поле | Значение |
+|---|---|
+| `checkInPhotoGallery.thumbnailSize` | `96` |
+| `checkInPhotoGallery.borderRadius` | `16` |
+| `checkInPhotoGallery.gap` | `12` |
+| `checkInPhotoGallery.layout` | `flex-wrap` |
+| `checkInPhotoGallery.maxPhotos` | `5` |
+| `checkInPhotoGallery.removeTouchTarget` | `44` |
+| `checkInPhotoGallery.reorderTouchTarget` | `44` |
+| `checkInPhotoGallery.reorderIconSize` | `18` |
+| `checkInPhotoGallery.dropIndicatorWidth` | `2` |
+| `checkInPhotoGallery.dropIndicatorColor` | `brand.primary` |
+| `checkInPhotoGallery.preview` | `PhotoLightbox` |
+| `checkInPhotoGallery.reorder` | `mouse-drag, pointer-handle, keyboard-arrows-home-end` |
 
 ### toast
 

@@ -20,7 +20,7 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { AppIcon, StarIcon } from '../components/icons';
 import CheckInPhotos from '../components/CheckInPhotos';
 import CheckInStatus from '../components/CheckInStatus';
-import CheckInPhotoThumb from '../components/CheckInPhotoThumb';
+import CheckInPhotoGallery from '../components/CheckInPhotoGallery';
 import Mascot from '../components/Mascot';
 import { buildCheckInRequest, todayInputValue, formatCheckInDate } from '../utils/checkInForm';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -75,7 +75,7 @@ export default function CheckInEditorPage() {
   const [createdVisibility, setCreatedVisibility] = useState<'Private' | 'Public' | null>(null);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [photoDraftKey, setPhotoDraftKey] = useState('');
-  const { selectedFiles, setSelectedFiles, handleFileSelect, removeFile, uploadPhotos, uploadingPhotos } = useCheckInPhotoUpload();
+  const { selectedFiles, setSelectedFiles, handleFileSelect, uploadPhotos, uploadingPhotos } = useCheckInPhotoUpload();
   const draftKey = shopId && user?.id && !isEditMode ? `check-in-draft:${user.id}:${shopId}` : '';
   useEffect(() => {
     const track = () => {
@@ -359,8 +359,8 @@ export default function CheckInEditorPage() {
               {isEditMode && existing ? <CheckInPhotos photos={existing.photos} shopName={existing.shopName} /> : <>
                 <p className="mt-1 text-sm" style={{ color: colors.textMuted }}>Добавлено: {selectedFiles.length}/5</p>
                 {selectedFiles.length < 5 && <label htmlFor="photo-upload" className="mt-3 flex h-24 w-24 cursor-pointer items-center justify-center rounded-2xl border border-dashed text-3xl" style={{ borderColor: colors.borderSubtle, color: colors.textMuted }}>+</label>}
-                <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif" multiple onChange={event => { analytics.field('photos'); handleFileSelect(event); }} className="sr-only" />
-                <div className="mt-3 flex gap-3 overflow-x-auto">{selectedFiles.map((file, index) => <CheckInPhotoThumb key={`${file.name}-${file.size}-${index}`} file={file} onRemove={() => { analytics.field('photos'); removeFile(index); }} />)}</div>
+                <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/avif" multiple disabled={isSubmitting} onChange={event => { analytics.field('photos'); handleFileSelect(event); event.target.value = ''; }} className="sr-only" />
+                <CheckInPhotoGallery files={selectedFiles} disabled={isSubmitting} onChange={files => { analytics.field('photos'); setSelectedFiles(files); }} />
                 {uploadingPhotos && <p className="mt-3">Загрузка фотографий…</p>}
               </>}
             </section>
