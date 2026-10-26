@@ -26,6 +26,7 @@
   ],
   "rewrites": [
     {"source": "/robots.txt", "destination": "/robots.txt"},
+    {"source": "/sitemap.xml", "destination": "/api/sitemap"},
     {"source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json"},
     {"source": "/api/support/:path*", "destination": "https://api.coffeepeek.by/api/support/:path*"},
     {"source": "/support", "destination": "/support.html"},
@@ -34,12 +35,21 @@
     {"source": "/coffee-shops/:shopId", "destination": "/api/public-page?page=address&kind=shops&segment=:shopId&path=/coffee-shops/:shopId"},
     {"source": "/roasters/:roasterId", "destination": "/api/public-page?page=address&kind=roasters&segment=:roasterId&path=/roasters/:roasterId"},
     {"source": "/users/:userId", "destination": "/api/public-page?page=address&kind=users&segment=:userId&path=/users/:userId"},
+    {"source": "/coffees/:slug", "destination": "/api/public-page?page=address&kind=coffees&segment=:slug&path=/coffees/:slug"},
     { "source": "/shops", "destination": "/api/public-page?page=shops" },
-    { "source": "/shops/:shopId", "destination": "/api/public-page?page=shop&shopId=:shopId" },
+    { "source": "/shops/:shopId", "destination": "/api/public-page?page=shop&shopId=:shopId&path=/shops/:shopId" },
     { "source": "/download/android", "destination": "https://api.coffeepeek.by/download/android" },
     { "source": "/download/apk", "destination": "https://api.coffeepeek.by/download/apk" },
     { "source": "/download/ios", "destination": "https://api.coffeepeek.by/download/ios" },
-    { "source": "/:path*", "destination": "/spa-shell.html" }
+    { "source": "/:page(search|map|roasters|coffees|feed|login|logout|register|privacy|terms|error|confirm-email|confirm-account-deletion|forgot-password|reset-password|profile|settings|check-ins|reviews|dashboard|coffeeshops|shop-change-requests)", "destination": "/spa-shell.html" },
+    { "source": "/profile/delete", "destination": "/spa-shell.html" },
+    { "source": "/my/:kind", "destination": "/spa-shell.html" },
+    { "source": "/check-ins/:checkInId/edit", "destination": "/spa-shell.html" },
+    { "source": "/:base(shops|coffee-shops)/:shopId/:action(edit|checkin)", "destination": "/spa-shell.html" },
+    { "source": "/:base(shops|coffee-shops)/:shopId/check-ins/new", "destination": "/spa-shell.html" },
+    { "source": "/:base(shops|coffee-shops)/:shopId/check-ins/:checkInId/edit", "destination": "/spa-shell.html" },
+    { "source": "/download/auto", "destination": "/spa-shell.html" },
+    { "source": "/:path*", "destination": "/api/public-page?page=not-found&path=/:path*" }
   ],
   "headers": [
     {

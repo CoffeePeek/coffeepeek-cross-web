@@ -16,6 +16,12 @@ import { Analytics } from '@vercel/analytics/react';
 import { getLandingRedirect } from './utils/landingRedirect';
 import ProductAnalytics from './components/ProductAnalytics';
 import NotificationActivity from './components/NotificationActivity';
+import { usePageTitle } from './hooks/usePageTitle';
+
+const RouteMetadata = () => {
+  usePageTitle('');
+  return null;
+};
 
 // Component to initialize global error handler
 const GlobalErrorHandler: React.FC = () => {
@@ -49,6 +55,7 @@ const AuthRedirect: React.FC = () => {
 const AppContent: React.FC = () => {
   return (
     <>
+      <RouteMetadata />
       <ScrollToTop />
       <GlobalErrorHandler />
       <AuthRedirect />

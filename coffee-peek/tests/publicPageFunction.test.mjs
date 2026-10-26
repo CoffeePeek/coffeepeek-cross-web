@@ -152,3 +152,39 @@ test('replacement patterns in names remain literal', async () => {
     assert.equal(result.html.match(/<body>/g)?.length, 1);
   });
 });
+
+test('unknown routes return readable 404 HTML and noindex without querying the API', async () => {
+  await withMock(null, async calls => {
+    const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=not-found&path=/missing'));
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get('X-Robots-Tag'), 'noindex');
+    assert.match(await response.text(), /Страница не найдена/);
+    assert.equal(calls.length, 0);
+  });
+});
+
+test('legacy shop URLs redirect to their canonical coffee-shop URLs', async () => {
+  await withMock({ isSuccess: true, data: shop }, async () => {
+    const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801&path=/shops/1801'));
+    assert.equal(response.status, 301);
+    assert.equal(response.headers.get('Location'), '/coffee-shops/1801');
+  });
+});
+
+test('coffee pages resolve the public API and include metadata before JavaScript', async () => {
+  const coffee = { name: 'Blend', description: 'Шоколад и орехи', address: { ...address, canonicalPath: '/coffees/blend' }, roaster: { name: 'Roast' } };
+  await withMock({ isSuccess: true, data: coffee }, async calls => {
+    const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=address&kind=coffees&segment=blend&path=/coffees/blend'));
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /<link rel="canonical" href="https:\/\/coffeepeek.by\/coffees\/blend">/);
+    assert.match(calls[0], /\/api\/v1\/coffees\/blend$/);
+  });
+});
+
+test('missing coffee pages preserve HTTP 404', async () => {
+  await withMock(null, async () => {
+    const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=address&kind=coffees&segment=missing&path=/coffees/missing'));
+    assert.equal(response.status, 404);
+    assert.equal(response.headers.get('X-Robots-Tag'), 'noindex');
+  }, 404);
+});

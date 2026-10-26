@@ -36,7 +36,7 @@ export default function UserProfilePage() {
     enabled: !resolution && !!slug && !isLoading, gcTime: 0,
   });
   const profile: PublicUserProfile | undefined = resolution ? { ...resolution.data, id: resolution.id } : query.data;
-  usePageTitle(profile?.userName || 'Профиль пользователя');
+  usePageTitle(profile?.userName || 'Профиль пользователя', { description: profile?.about, canonicalPath: profile?.canonicalPath });
   const colors = theme === 'dark' ? dark : light;
   return <main className="public-profile min-h-screen" style={{
     '--profile-bg': colors.background,

@@ -271,7 +271,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/shop-change-requests" element={<Navigate to="/my/edits" replace />} />
 
         {/* 404 */}
-        <Route path="*" element={<Navigate to="/error" replace />} />
+        <Route path="*" element={<ErrorPage />} />
       </Routes>
     </Suspense>
     </ErrorBoundary>

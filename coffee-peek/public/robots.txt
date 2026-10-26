@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
 
+Sitemap: https://coffeepeek.by/sitemap.xml
+
 Disallow: /api/
 Disallow: /login
 Disallow: /logout

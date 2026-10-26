@@ -63,7 +63,7 @@ const CoffeeShopPage: React.FC = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  usePageTitle(shop?.name || 'Кофейня');
+  usePageTitle(shop?.name || 'Кофейня', { description: shop?.description, canonicalPath: shop?.publicAddress?.canonicalPath });
   useEntityDetailAnalytics('coffee_shop', !isLoading && !error && shop ? shop.id : undefined);
   const directionsRef = useFeatureExposure<HTMLAnchorElement>('directions', 'shop_detail');
   const checkInRef = useFeatureExposure<HTMLButtonElement>('check_in', 'shop_detail');

@@ -40,7 +40,7 @@ export default function CoffeeDetailPage() {
   };
   const similar = useQuery({ queryKey: ['catalog', getCatalogScope(), 'similar-coffees', slug, similarFilters],
     queryFn: ({ signal }) => searchCoffees({ q: '', filters: similarFilters, sort: 'name_asc', page: 1, pageSize: 5 }, signal), enabled: !!query.data && !isLoading, retry: false });
-  usePageTitle(query.data?.name ?? 'Кофе');
+  usePageTitle(query.data?.name ?? 'Кофе', { description: query.data?.description, canonicalPath: query.data?.address.canonicalPath });
   useEntityDetailAnalytics('coffee', query.isSuccess ? query.data.address.slug : undefined);
   const offersRef = useFeatureExposure<HTMLHeadingElement>('coffee_offers', 'coffee_detail');
   const similarRef = useFeatureExposure<HTMLHeadingElement>('similar_coffees', 'coffee_detail');
@@ -51,8 +51,6 @@ export default function CoffeeDetailPage() {
     if (!query.data) return;
     const address = query.data.address;
     if (address.slug !== slug) navigate(address.canonicalPath, { replace: true });
-    const canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = `https://coffeepeek.by${address.canonicalPath}`;
-    document.head.append(canonical); return () => canonical.remove();
   }, [query.data, slug, navigate]);
   if (query.isPending) return <CoffeeDetailSkeleton />;
   if (query.isError) return <main className="p-6"><p role="alert">{(query.error as { status?: number }).status === 404 ? 'Кофе не найден' : 'Карточка временно недоступна'}</p><button className={catalogButton} onClick={() => void query.refetch()}>Повторить</button><Link className={catalogButton} to="/coffees">Каталог кофе</Link></main>;

@@ -18,15 +18,17 @@ function apiUrl(path) {
   return `${stripTrailingSlash(configured)}${path}`;
 }
 
-async function fetchJson(path, direct = false) {
+export async function fetchJson(path, { direct = false, body } = {}) {
   try {
     const response = await fetch(apiUrl(path), {
-      headers: { Accept: 'application/json' }, cache: 'no-store',
+      method: body ? 'POST' : 'GET',
+      headers: { Accept: 'application/json', ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      body: body ? JSON.stringify(body) : undefined, cache: 'no-store',
       signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) return { ok: false, status: response.status, body: null, retryAfter: response.headers.get('Retry-After') };
-    const body = await response.json();
-    return { ok: direct || body?.isSuccess === true, status: response.status, body };
+    const envelope = await response.json();
+    return { ok: direct || envelope?.isSuccess === true, status: response.status, body: envelope };
   } catch {
     return { ok: false, status: 503, body: null };
   }
@@ -144,7 +146,7 @@ function renderShopDetails(shop) {
 }
 
 function renderNotFound() {
-  return pageLayout('Кофейня не найдена', 'Возможно, кофейня была удалена или ссылка указана неверно.', '<p><a href="/shops" style="color:#EAB308">Вернуться в каталог</a></p>');
+  return pageLayout('Страница не найдена', 'Возможно, страница была удалена или ссылка указана неверно.', '<p><a href="/shops" style="color:#EAB308">Вернуться в каталог</a></p>');
 }
 
 function renderUnavailable() {
@@ -193,6 +195,11 @@ export async function renderPublicPage(request) {
     return { html: renderHomePage(shell), status: 200 };
   }
 
+  if (page === 'not-found') {
+    const html = replaceMeta(shell, { title: 'Страница не найдена — CoffeePeek', description: 'Запрашиваемая страница не существует.', canonical: `${SITE_URL}${url.searchParams.get('path') || '/'}` });
+    return { html: injectContent(html, renderNotFound()), status: 404 };
+  }
+
   if (page === 'shops') {
     const result = await fetchJson('/api/CoffeeShops?page=1&pageSize=48');
     if (!result.ok) {
@@ -221,12 +228,12 @@ export async function renderPublicPage(request) {
     return { html, status: 200 };
   }
 
-  const prefixes = { shops: '/api/CoffeeShops', roasters: '/api/Roasters', users: '/api/Users' };
+  const prefixes = { shops: '/api/CoffeeShops', roasters: '/api/Roasters', users: '/api/Users', coffees: '/api/v1/coffees' };
   const kind = page === 'shop' ? 'shops' : url.searchParams.get('kind');
   const segment = page === 'shop' ? url.searchParams.get('shopId') || '' : url.searchParams.get('segment') || '';
   if (!prefixes[kind]) return { html: '', status: 400 };
   const path = url.searchParams.get('path') || `/coffee-shops/${encodeURIComponent(segment)}`;
-  const result = await fetchJson(`${prefixes[kind]}/by-slug/${encodeURIComponent(segment)}`, kind === 'users');
+  const result = await fetchJson(`${prefixes[kind]}${kind === 'coffees' ? '/' : '/by-slug/'}${encodeURIComponent(segment)}`, { direct: kind === 'users' });
   const data = result.body?.data;
   const address = kind === 'users' ? result.body?.address : data?.address;
   if (!result.ok || !data || !address) {
@@ -236,7 +243,7 @@ export async function renderPublicPage(request) {
   }
   if (path !== address.canonicalPath) return { html: '', status: 301, location: address.canonicalPath };
   const title = data.name || data.userName || 'CoffeePeek';
-  const description = kind === 'shops' ? shopDescription(data) : data.description || data.about || title;
+  const description = kind === 'shops' ? shopDescription(data) : data.description || data.about || (kind === 'coffees' ? `Кофе «${title}» от ${data.roaster?.name || 'обжарщика'}. Описание и предложения на CoffeePeek.` : title);
   const canonical = `${SITE_URL}${address.canonicalPath}`;
   const image = pageImage(data);
   const content = kind === 'shops' ? renderShopDetails(data) : pageLayout(title, description,
@@ -265,6 +272,7 @@ export default {
           ...(location ? { Location: location } : {}),
           ...(retryAfter ? { 'Retry-After': retryAfter } : {}),
           'X-Content-Type-Options': 'nosniff',
+          ...(status === 404 ? { 'X-Robots-Tag': 'noindex' } : {}),
         },
       });
     } catch {

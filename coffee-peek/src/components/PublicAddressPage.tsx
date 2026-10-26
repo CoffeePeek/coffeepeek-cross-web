@@ -25,16 +25,10 @@ export default function PublicAddressPage({ kind, param, children }: { kind: Add
   useEffect(() => {
     const address = query.data?.address;
     if (!address) return;
-    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    const previous = canonical?.href;
-    const created = !canonical;
-    if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.append(canonical); }
-    canonical.href = `https://coffeepeek.by${address.canonicalPath}`;
     const prefix = kind === 'shops' ? /^\/(?:shops|coffee-shops)\/[^/]+/ : /^\/[^/]+\/[^/]+/;
     const suffix = location.pathname.replace(prefix, '');
     const target = address.canonicalPath + suffix;
     if (target !== location.pathname) navigate(target + location.search, { replace: true, state: location.state });
-    return () => { if (created) canonical?.remove(); else if (canonical && previous) canonical.href = previous; };
   }, [query.data, location.pathname, location.search, location.state, navigate, kind]);
   if (query.isPending) return kind === 'shops' && /^\/(?:shops|coffee-shops)\/[^/]+\/?$/.test(location.pathname)
     ? <ShopDetailSkeleton />

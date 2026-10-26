@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "test": "jest --runInBand",
-    "test:ssr": "node --test tests/publicPageFunction.test.mjs",
+    "test:ssr": "node --test tests/*.test.mjs",
     "design:sync": "node scripts/sync-design-system.mjs",
     "design:check": "node scripts/sync-design-system.mjs --check"
   },

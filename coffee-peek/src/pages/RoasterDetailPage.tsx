@@ -34,7 +34,7 @@ const RoasterDetailPage: React.FC = () => {
   const legacy = useRoaster(resolution ? null : roasterId ?? null);
   const { data: roaster, isLoading, error } = resolution ? { data: resolution.data as RoasterDetails, isLoading: false, error: null } : legacy;
 
-  usePageTitle(roaster?.name || 'Обжарщик');
+  usePageTitle(roaster?.name || 'Обжарщик', { description: roaster?.about, canonicalPath: roaster?.publicAddress?.canonicalPath });
   useEntityDetailAnalytics('roaster', !isLoading && !error ? roaster?.id : undefined);
   const assortmentRef = useFeatureExposure<HTMLHeadingElement>('roaster_assortment', 'roaster_detail');
   const shopsRef = useFeatureExposure<HTMLHeadingElement>('roaster_shops', 'roaster_detail');
@@ -45,8 +45,6 @@ const RoasterDetailPage: React.FC = () => {
     const address = roaster?.publicAddress;
     if (!address) return;
     if (address.slug !== roasterId) navigate(address.canonicalPath, { replace: true });
-    const canonical = document.createElement('link'); canonical.rel = 'canonical'; canonical.href = `https://coffeepeek.by${address.canonicalPath}`;
-    document.head.append(canonical); return () => canonical.remove();
   }, [roaster?.publicAddress, roasterId, navigate]);
   const assortment = useQuery({ queryKey: ['catalog', getCatalogScope(), 'roaster-assortment', slug],
     queryFn: ({ signal }) => searchCoffees({ q: '', filters: { roasters: [slug], availableOnly: true }, sort: 'name_asc', page: 1, pageSize: 6 }, signal), enabled: !!roaster, retry: false });
