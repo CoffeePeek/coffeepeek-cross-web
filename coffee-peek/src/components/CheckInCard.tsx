@@ -19,6 +19,7 @@ import CheckInDrink from './CheckInDrink';
 import { captureAnalyticsEvent } from '../lib/analytics';
 import type { EngagementAnalyticsEvents } from '../lib/engagementAnalytics';
 import { useFeatureExposure } from '../hooks/useFeatureExposure';
+import { checkInPath, useOpenCheckIn } from '../hooks/useOpenCheckIn';
 
 export default function CheckInCard({ item, own = false, showShop = true, feed = false }: { item: CheckInDto; own?: boolean; showShop?: boolean; feed?: boolean }) {
   if (item.kind === 'Home') return <HomeCheckInCard item={item} own={own} feed={feed} />;
@@ -46,13 +47,15 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
   const trackFeedAction = (action: EngagementAnalyticsEvents['feed_item_interacted']['action']) => {
     if (feed) captureAnalyticsEvent('feed_item_interacted', { action, check_in_kind: 'shop' });
   };
+  const openPost = useOpenCheckIn(item.id, feed, () => trackFeedAction('open'));
+  const date = formatCheckInDate(item, now);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
     return () => window.clearInterval(timer);
   }, []);
 
-  return <article ref={exposureRef} className={`min-w-0 rounded-[20px] border p-4 sm:p-5 ${classes.bg.card} ${classes.border.default} ${classes.text.primary} ${feed ? 'feed-check-in-card' : ''}`}>
+  return <article ref={exposureRef} onClick={openPost} className={`min-w-0 rounded-[20px] border p-4 sm:p-5 ${classes.bg.card} ${classes.border.default} ${classes.text.primary} ${feed ? 'feed-check-in-card cursor-pointer' : ''}`}>
     <header className="mb-4 flex items-center justify-between gap-2">
       <div className="flex min-w-0 items-center gap-3">
         <span aria-hidden="true" className={`relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full text-lg font-semibold ${classes.bg.tertiary} ${classes.text.secondary} ${feed ? 'feed-check-in-avatar' : ''}`}>
@@ -61,7 +64,8 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
         </span>
         <div className="min-w-0">
           {item.author ? <Link to={item.author.canonicalPath} onClick={() => trackFeedAction('author')} className={`block truncate font-semibold hover:underline ${feed ? 'text-base sm:text-sm' : 'text-sm'}`}>{username}</Link> : <p className={`truncate font-semibold ${feed ? 'text-base sm:text-sm' : 'text-sm'}`}>{username}</p>}
-          <p className={`mt-0.5 text-xs sm:text-sm ${classes.text.secondary}`}>{formatCheckInDate(item, now)}</p>
+          {feed ? <Link to={checkInPath(item.id)} onClick={() => trackFeedAction('open')} className={`mt-0.5 block text-xs hover:underline sm:text-sm ${classes.text.secondary}`}>{date}</Link>
+            : <p className={`mt-0.5 text-xs sm:text-sm ${classes.text.secondary}`}>{date}</p>}
         </div>
       </div>
       {(isOwn || published) && <ReportCheckInButton checkInId={item.id} actions={isOwn ? close => <>
@@ -84,7 +88,7 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
     <p className="whitespace-pre-line break-words text-base leading-[1.55]">{item.text}</p>
     <CheckInPhotos photos={item.photos} shopName={item.shopName} feed={feed} onPhotoOpen={() => trackFeedAction('photo')} />
     {(published || isOwn || drinkName || item.drinkPhotoUrl) && <div className={`mt-4 flex items-center justify-between gap-4 ${feed ? 'feed-check-in-footer' : ''}`}>
-      {(published || isOwn) && <div className="shrink-0">
+      {(published || isOwn) && <div data-card-control className="shrink-0">
       {!isOwn && user && published ? <button type="button" aria-label={item.isHelpfulByCurrentUser ? 'Убрать отметку «Нравится»' : 'Нравится'} aria-pressed={item.isHelpfulByCurrentUser} disabled={helpful.isPending} className={`-ml-2 inline-flex min-h-11 items-center gap-2 rounded-full px-2 pr-3 text-sm transition-colors hover:bg-red-500/10 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#EAB308] ${item.isHelpfulByCurrentUser ? 'bg-red-500/10' : ''}`} onClick={() => { trackFeedAction(item.isHelpfulByCurrentUser ? 'unlike' : 'like'); helpful.mutate({ id: item.id, helpful: !item.isHelpfulByCurrentUser }); }}>
         <Heart aria-hidden="true" size={26} weight={feed && !item.isHelpfulByCurrentUser ? 'regular' : 'fill'} className="text-red-500" /><span className="tabular-nums">{item.helpfulCount}</span>
       </button> : <span aria-label={`Отметок «Нравится»: ${item.helpfulCount}`} className="inline-flex min-h-11 items-center gap-2 text-sm"><Heart aria-hidden="true" size={26} weight={feed && !item.helpfulCount ? 'regular' : 'fill'} className="text-red-500" /><span className="tabular-nums">{item.helpfulCount}</span></span>}
