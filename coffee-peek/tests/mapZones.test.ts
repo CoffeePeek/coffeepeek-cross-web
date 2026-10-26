@@ -3,8 +3,18 @@ jest.mock('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url', () => 'worker', 
 jest.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}), { virtual: true });
 
 import type { Map as MapLibreMap } from 'maplibre-gl';
-import { renderMapZones } from '../src/map/osmMap';
+import { renderMapZones, updateMapZoneLabels } from '../src/map/osmMap';
 import { brand } from '../src/design-system/tokens';
+
+test('district labels hide below zoom 11 and return when zooming in', () => {
+  const toggle = jest.fn();
+  const map = { getZoom: jest.fn(), getContainer: () => ({ classList: { toggle } }) };
+  for (const [zoom, hidden] of [[12, false], [10.99, true], [9, true], [11, false]] as const) {
+    map.getZoom.mockReturnValue(zoom);
+    updateMapZoneLabels(map as unknown as MapLibreMap);
+    expect(toggle).toHaveBeenLastCalledWith('coffee-map--zoomed-out', hidden);
+  }
+});
 
 test('zones use their own colors for fill and outline; hiding zones clears the source', () => {
   const source = { setData: jest.fn() };

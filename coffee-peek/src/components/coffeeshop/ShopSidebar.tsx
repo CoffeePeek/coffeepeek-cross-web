@@ -8,7 +8,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { getThemeClasses } from '../../utils/theme';
 import { AppIcon } from '../icons';
 import { CaretDown } from '@/components/Icon';
-import { coffeeDetailIcon, createOsmMap, ensureMapPinMascots } from '../../map/osmMap';
+import { coffeeDetailIcon, createOsmMap } from '../../map/osmMap';
 
 interface ShopSidebarProps {
   shop: Pick<DetailedCoffeeShop, 'name' | 'location' | 'type' | 'schedules'>;
@@ -43,7 +43,6 @@ export const ShopSidebar: React.FC<ShopSidebarProps> = ({
   useEffect(() => {
     if (!hasCoordinates || !mapRef.current) return;
     const container = mapRef.current;
-    let cancelled = false;
 
     const map = createOsmMap(container, {
       center: [longitude, latitude],
@@ -54,19 +53,15 @@ export const ShopSidebar: React.FC<ShopSidebarProps> = ({
     });
     mapInstanceRef.current = map;
 
-    void ensureMapPinMascots().catch(() => {}).then(() => {
-      if (cancelled || mapInstanceRef.current !== map) return;
-      const element = coffeeDetailIcon(shop.type);
-      element.title = shop.name;
-      element.style.pointerEvents = 'none';
-      new maplibregl.Marker({ element, anchor: 'center' })
-        .setLngLat([longitude, latitude])
-        .addTo(map);
-      setIsMapLoaded(true);
-    });
+    const element = coffeeDetailIcon(shop.type);
+    element.title = shop.name;
+    element.style.pointerEvents = 'none';
+    new maplibregl.Marker({ element, anchor: 'center' })
+      .setLngLat([longitude, latitude])
+      .addTo(map);
+    setIsMapLoaded(true);
 
     return () => {
-      cancelled = true;
       map.remove();
       mapInstanceRef.current = null;
       setIsMapLoaded(false);

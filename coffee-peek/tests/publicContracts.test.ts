@@ -8,7 +8,7 @@ jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
   MODERATION: { SHOP: '/api/ModerationShops', ROASTER: '/api/ModerationRoasters', REVIEWS: '/api/ModerationReviews' },
 } }));
 import { normalizeResponseData } from '../src/api/core/interceptors';
-import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapShops, getMapZones, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
+import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapSearch, getMapShops, getMapZones, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
 import { sendCoffeeShopToModeration, sendRoasterToModeration } from '../src/api/moderation';
 import { createShopChangeRequest } from '../src/api/shopChangeRequests';
 import { httpClient } from '../src/api/core/httpClient';
@@ -86,6 +86,35 @@ test('map markers and zones use addresses without losing clusters', async () => 
   } } as never);
   const result = await getMapShops({ minLat: 52, maxLat: 54, minLon: 26, maxLon: 28 });
   expect(result.data).toMatchObject({ shops: [{ id: 'coffee', publicAddress: address, primaryZoneId: 'petr' }], zones: [{ id: 'petr' }], isTruncated: true });
+});
+
+test('map grouping follows camera zoom, shares rounded zooms and preserves server counts and bounds', async () => {
+  const bounds = { minLat: 52, maxLat: 54, minLon: 26, maxLon: 28 };
+  const cluster = { id: 'server-group', latitude: '53', longitude: '27', count: '125',
+    bounds: { minLatitude: '52.9', minLongitude: '26.9', maxLatitude: '53.1', maxLongitude: '27.1' } };
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { clusters: [cluster], isTruncated: true } } as never);
+  const result = await getMapSearch(bounds, 9.7);
+  await getMapSearch(bounds, 10.2);
+  expect(httpClient.get).toHaveBeenCalledTimes(1);
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/Map', expect.objectContaining({ params: { ...bounds, zoom: 10 } }));
+  expect(result.data).toMatchObject({ shops: [], clusters: [{ id: 'server-group', count: 125,
+    latitude: 53, longitude: 27, bounds: { minLatitude: 52.9, minLongitude: 26.9, maxLatitude: 53.1, maxLongitude: 27.1 } }], isTruncated: true });
+  await getMapShops(bounds);
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/Map', expect.objectContaining({ params: { ...bounds, zoom: 14 } }));
+});
+
+test('invalid cluster counts, coordinates and bounds are excluded before rendering', async () => {
+  const cluster = { id: 'valid', latitude: 53, longitude: 27, count: 1,
+    bounds: { minLatitude: 53, minLongitude: 27, maxLatitude: 53, maxLongitude: 27 } };
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { clusters: [cluster,
+    ...[0, -1, 1.5, null, 'bad'].map(count => ({ ...cluster, count })),
+    { ...cluster, latitude: 91 }, { ...cluster, longitude: Infinity },
+    { ...cluster, bounds: { ...cluster.bounds, minLatitude: 54 } },
+    { ...cluster, bounds: { ...cluster.bounds, maxLongitude: 181 } },
+    { ...cluster, bounds: null },
+  ] } } as never);
+  const result = await getMapSearch({ minLat: 52, maxLat: 54, minLon: 26, maxLon: 28 }, 10);
+  expect(result.data.clusters).toEqual([cluster]);
 });
 
 test.each([['#b45a78', '#b45a78'], [undefined, undefined], ['invalid', undefined]])('map zones validate the server color %s', async (color, expected) => {

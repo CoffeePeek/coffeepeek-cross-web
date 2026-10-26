@@ -219,6 +219,12 @@
   color: #facc15 !important;
 }
 
+.coffee-map-marker-motion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .coffee-map-pin,
 .coffee-map-zone-label {
   outline: none !important;
@@ -227,6 +233,22 @@
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
 }
+
+.coffee-map-pin {
+  --pin-fill: #2D241F;
+  --pin-ink: #FFFFFF;
+  --pin-border: #3D2F28;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:root[data-theme="light"] .coffee-map-pin {
+  --pin-fill: #FFFFFF;
+  --pin-ink: #2D241F;
+  --pin-border: #E7E5E4;
+}
+
 .coffee-map-pin:focus,
 .coffee-map-pin:focus-visible,
 .coffee-map-zone-label:focus,
@@ -252,30 +274,32 @@
   display: block;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
   border-radius: 999px;
+  background: var(--pin-fill);
+  border: 1.1px solid var(--pin-border);
   pointer-events: none;
-  box-shadow: 0 1px 3px rgba(26, 20, 18, 0.32);
+  box-shadow: 0 1px 3px rgba(26, 20, 18, 0.35);
 }
 
-.coffee-map-pin .coffee-pin-dot--placeholder {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--pin-fill, #eab308);
-  border: 2px solid #ffffff;
-  box-shadow: 0 1px 2px rgba(26, 20, 18, 0.28);
+.coffee-map-pin .coffee-pin-icon {
+  position: absolute;
+  inset: 20%;
+  background: var(--pin-ink);
+  -webkit-mask: var(--pin-icon) center / contain no-repeat;
+  mask: var(--pin-icon) center / contain no-repeat;
 }
 
-.coffee-map-pin .coffee-pin-dot svg {
-  display: none;
+.coffee-map-pin:focus-visible .coffee-pin-face {
+  outline: 2px solid #D4A84B;
+  outline-offset: 4px;
 }
 
 .coffee-map-pin .coffee-pin-pulse {
   position: absolute;
   inset: -4px;
   border-radius: 999px;
-  border: 2px solid rgba(234, 179, 8, 0.65);
+  border: 2px solid rgba(212, 168, 75, 0.65);
   opacity: 0;
   pointer-events: none;
   z-index: 0;
@@ -290,9 +314,29 @@
 }
 
 .coffee-map-pin--selected .coffee-pin-face {
-  box-shadow:
-    0 0 0 2px rgba(234, 179, 8, 0.45),
-    0 2px 8px rgba(26, 20, 18, 0.35);
+  border-color: transparent;
+  outline: 2px solid #D4A84B;
+  outline-offset: 1.5px;
+  box-shadow: 0 2px 8px rgba(26, 20, 18, 0.35);
+}
+
+.coffee-map-cluster {
+  padding: 0;
+}
+
+.coffee-map-cluster .coffee-cluster-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pin-ink);
+  font: 800 12px/1 "Manrope", sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.coffee-map-cluster:focus-visible,
+.coffee-map-zone-label:focus-visible {
+  outline: 2px solid #D4A84B !important;
+  outline-offset: 3px;
 }
 
 .coffee-map-zone-label {
@@ -308,7 +352,7 @@
   box-shadow: 0 2px 10px rgba(26, 20, 18, 0.28);
   font-family: "Manrope", system-ui, sans-serif;
   white-space: nowrap;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .coffee-map-zone-label strong {
@@ -317,6 +361,10 @@
   font-weight: 700;
   line-height: 1;
   text-overflow: ellipsis;
+}
+
+.coffee-map--zoomed-out .coffee-map-zone-label {
+  visibility: hidden;
 }
 
 .coffee-map-zone-label span {
@@ -336,7 +384,7 @@
     transform: scale(1.18);
   }
   100% {
-    transform: scale(1.1);
+    transform: scale(1);
   }
 }
 
@@ -362,7 +410,7 @@
   }
 
   .coffee-map-pin--selected .coffee-pin-shell {
-    transform: scale(1.08);
+    transform: none;
   }
 }
 .roaster-card-title {

@@ -653,6 +653,10 @@ function normalizeMapSearch(data: MapSearchResponseData): MapSearchData {
     const maxLatitude = finiteNumber(bounds?.maxLatitude);
     const maxLongitude = finiteNumber(bounds?.maxLongitude);
     if ([latitude, longitude, count, minLatitude, minLongitude, maxLatitude, maxLongitude].some(value => value === null)) return [];
+    if (!Number.isInteger(count) || count! < 1
+      || minLatitude! < -90 || maxLatitude! > 90 || minLongitude! < -180 || maxLongitude! > 180
+      || minLatitude! > maxLatitude! || minLongitude! > maxLongitude!
+      || latitude! < minLatitude! || latitude! > maxLatitude! || longitude! < minLongitude! || longitude! > maxLongitude!) return [];
     return [{
       id: typeof cluster.id === 'string' ? cluster.id : null,
       latitude: latitude!,
@@ -689,20 +693,21 @@ function normalizeMapSearch(data: MapSearchResponseData): MapSearchData {
 }
 
 /** Loads the server-selected map representation for the viewport at the given zoom. */
-async function getMapSearch(
+export async function getMapSearch(
   bounds: MapViewportBounds,
   zoom: number,
   signal?: AbortSignal,
 ): Promise<ApiResponse<MapSearchData>> {
   signal?.throwIfAborted();
+  const mapZoom = Math.max(0, Math.min(22, Math.round(zoom)));
   const requests = splitMapBounds(bounds).map((part) =>
     queryClient.fetchQuery({
-      queryKey: ['map', 'viewport', part, zoom],
+      queryKey: ['map', 'viewport', part, mapZoom],
       staleTime: 30 * 60_000,
       gcTime: 30 * 60_000,
       retry: false,
       queryFn: ({ signal: cacheSignal }) => httpClient.get<MapSearchResponseData>(API_ENDPOINTS.MAP.BASE, {
-        params: { ...part, zoom: Math.max(0, Math.min(22, Math.round(zoom))) },
+        params: { ...part, zoom: mapZoom },
         requiresAuth: false,
         signal: cacheSignal,
       }),
