@@ -13,6 +13,8 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Pagination } from '../components/ui/Pagination';
 import { DataTable } from '../components/ui/DataTable';
+import { LoadError } from '../components/ui/LoadError';
+import { getErrorMessage } from '../utils/errors';
 
 const PAGE_SIZE = 20;
 
@@ -27,27 +29,33 @@ const ACTION_OPTIONS: { value: AuditAction | ''; label: string }[] = [
   { value: 'Approved', label: 'Одобрено' },
   { value: 'Rejected', label: 'Отклонено' },
   { value: 'Pending', label: 'На модерации' },
+  { value: 'LeaderboardIncluded', label: 'Засчитано в рейтинг' },
+  { value: 'LeaderboardExcluded', label: 'Исключено из рейтинга' },
 ];
 
 const ACTION_LABELS: Record<AuditAction, string> = {
   Approved: 'Одобрено',
   Rejected: 'Отклонено',
   Pending: 'На модерации',
+  LeaderboardIncluded: 'Засчитано в рейтинг',
+  LeaderboardExcluded: 'Исключено из рейтинга',
 };
 
 const ACTION_VARIANT: Record<AuditAction, 'approved' | 'rejected' | 'pending'> = {
   Approved: 'approved',
   Rejected: 'rejected',
   Pending: 'pending',
+  LeaderboardIncluded: 'approved',
+  LeaderboardExcluded: 'rejected',
 };
 
 const columns: ColumnDef<ModerationAuditEntry>[] = [
   { accessorKey: 'createdAtUtc', header: 'Дата', cell: ({ row }) => <span className="whitespace-nowrap text-xs text-text-muted">{new Date(row.original.createdAtUtc).toLocaleString('ru')}</span>, meta: { headerClassName: 'pl-5', className: 'pl-5' } },
   { accessorKey: 'entityType', header: 'Тип', cell: ({ row }) => <Badge>{row.original.entityType === 'Shop' ? 'Кофейня' : row.original.entityType === 'CheckIn' ? 'Чекин' : 'Пост'}</Badge> },
   { accessorKey: 'entityName', header: 'Сущность', cell: ({ row }) => <span className="block max-w-[200px] truncate">{row.original.entityName}</span> },
-  { accessorKey: 'action', header: 'Действие', cell: ({ row }) => <Badge variant={ACTION_VARIANT[row.original.action]}>{ACTION_LABELS[row.original.action]}</Badge> },
-  { accessorKey: 'moderatorUserId', header: 'Модератор', cell: ({ row }) => <span className="font-mono text-xs text-text-muted">{row.original.moderatorUserId.slice(0, 8)}…</span>, meta: { headerClassName: 'hidden md:table-cell', className: 'hidden md:table-cell' } },
-  { accessorKey: 'comment', header: 'Комментарий', cell: ({ row }) => <span className="block max-w-[240px] truncate text-xs text-text-muted">{row.original.comment ?? '—'}</span>, meta: { headerClassName: 'hidden lg:table-cell', className: 'hidden lg:table-cell' } },
+  { accessorKey: 'action', header: 'Действие', cell: ({ row }) => <Badge variant={ACTION_VARIANT[row.original.action]}>{ACTION_LABELS[row.original.action] ?? row.original.action}</Badge> },
+  { accessorKey: 'moderatorUserId', header: 'Кто принял решение', cell: ({ row }) => <span className="block max-w-[240px] break-all font-mono text-xs text-text-muted">{row.original.moderatorUserId}</span> },
+  { accessorKey: 'comment', header: 'Комментарий / причина', cell: ({ row }) => <span className="block min-w-[200px] max-w-[360px] whitespace-pre-wrap break-words text-xs text-text-muted">{row.original.comment ?? '—'}</span> },
 ];
 
 export const AuditModerationPage: React.FC = () => {
@@ -56,7 +64,7 @@ export const AuditModerationPage: React.FC = () => {
   const entityType = (searchParams.get('entityType') ?? '') as AuditEntityType | '';
   const action = (searchParams.get('action') ?? '') as AuditAction | '';
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'audit', 'moderation', { page, entityType, action }],
     queryFn: () =>
       getModerationAuditLog({
@@ -80,7 +88,7 @@ export const AuditModerationPage: React.FC = () => {
       <div>
         <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Audit log модерации</h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          История approve / reject / pending по кофейням, чекинам и постам
+          История публикации и решений об участии чекинов в рейтинге
         </p>
       </div>
 
@@ -113,6 +121,7 @@ export const AuditModerationPage: React.FC = () => {
         </div>
       </div>
 
+      {error && <LoadError message={getErrorMessage(error, 'Не удалось загрузить журнал аудита')} onRetry={() => void refetch()} retrying={isFetching} />}
       <Card>
         <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} emptyText="Записей не найдено" getRowId={(entry) => entry.id} />
         {data && data.totalPages > 1 && <div className="border-t border-border-light px-5 py-3 dark:border-border-dark"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}

@@ -1,5 +1,6 @@
 import ModerationPhotos from '../components/ModerationPhotos';
 import { PublishedShopLink } from '../components/PublishedShopLink';
+import { CheckInLeaderboard } from '../components/CheckInLeaderboard';
 import { Input } from '@/src/components/ui/Input';
 import { DataTable } from '@/src/components/ui/DataTable';
 import React, { useEffect, useState } from 'react';
@@ -80,6 +81,8 @@ export const CheckInsModerationPage: React.FC = () => {
     onSuccess: () => {
       showToast('Чекин одобрен', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'checkIns'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'audit', 'moderation'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'leaderboard'] });
       setPendingAction(null);
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
@@ -91,6 +94,8 @@ export const CheckInsModerationPage: React.FC = () => {
     onSuccess: () => {
       showToast('Чекин отклонён', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'moderation', 'checkIns'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'audit', 'moderation'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'leaderboard'] });
       setPendingAction(null);
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
@@ -110,7 +115,7 @@ export const CheckInsModerationPage: React.FC = () => {
   };
 
   const columns: ColumnDef<ModerationCheckIn>[] = [
-    { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text || 'Без заметки'}</p>{checkInKind(row.original) === 'Home' && <p className="mt-1 text-xs text-text-muted">{displayRecipe(row.original)}</p>}<p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos || []} /></div> },
+    { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="min-w-[280px] max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text || 'Без заметки'}</p>{checkInKind(row.original) === 'Home' && <p className="mt-1 text-xs text-text-muted">{displayRecipe(row.original)}</p>}<p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos || []} /><CheckInLeaderboard checkIn={row.original} /></div> },
     { id: 'kind', header: 'Тип', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Дома' : checkInKind(row.original) === 'Shop' ? 'В кофейне' : 'Не указан' },
     { id: 'place', header: 'Место', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Кофе дома' : row.original.shopId ? <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400" /> : 'Кофейня недоступна' },
     { id: 'author', header: 'Автор', cell: ({ row }) => row.original.userName },

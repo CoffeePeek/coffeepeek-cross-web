@@ -90,6 +90,12 @@ export interface ModerationCheckIn extends CheckInKindFields {
   moderatedBy: string | null;
   moderatedAt: string | null;
   moderationStatus: ModerationStatus;
+  leaderboardGeoStatus?: string;
+  shopDistanceMeters?: number | null;
+  locationAccuracyMeters?: number | null;
+  locationCapturedAtUtc?: string | null;
+  leaderboardOverride?: boolean | null;
+  leaderboardReason?: string | null;
   photos: PhotoMetadataDto[];
 }
 
@@ -337,7 +343,7 @@ export interface AdminModerationInsights {
 export type CoffeeShopStatus = 'Active' | 'TemporarilyClosed' | 'PermanentlyClosed';
 export type { PriceRangeLevel } from '../constants/priceRange';
 export type AuditEntityType = 'Shop' | 'CheckIn' | 'CommunityPost';
-export type AuditAction = 'Approved' | 'Rejected' | 'Pending';
+export type AuditAction = 'Approved' | 'Rejected' | 'Pending' | 'LeaderboardIncluded' | 'LeaderboardExcluded';
 
 export interface PublishedShopLocation {
   cityId?: string;
@@ -726,6 +732,21 @@ export async function rejectCheckIn(submissionId: string, data?: ModerationActio
   });
 }
 
+export async function setCheckInLeaderboardDecision(
+  checkIn: ModerationCheckIn, countsForLeaderboard: boolean, leaderboardReason: string
+): Promise<ApiResponse<ModerationStatus>> {
+  const reason = leaderboardReason.trim();
+  if (!reason || reason.length > 1000) throw new Error('Причина должна содержать от 1 до 1000 символов');
+  return httpClient.put<ModerationStatus>(API_ENDPOINTS.MODERATION.CHECK_INS, {
+    submissionId: checkIn.id,
+    moderationStatus: checkIn.moderationStatus,
+    comment: null,
+    rejectReason: checkIn.rejectedReason,
+    countsForLeaderboard,
+    leaderboardReason: reason,
+  });
+}
+
 // ==================== Shop issue reports ====================
 
 interface ShopReportListParams {
@@ -1066,7 +1087,7 @@ export function mapPublishedShop(shop: Record<string, unknown>): PublishedShop {
 function mapAuditEntry(entry: Record<string, unknown>): ModerationAuditEntry {
   return {
     id: String(entry.id),
-    entityType: mapEnumStatus<AuditEntityType>(entry.entityType as AuditEntityType | number, [
+    entityType: entry.entityType === 'Review' ? 'CheckIn' : mapEnumStatus<AuditEntityType>(entry.entityType as AuditEntityType | number, [
       'Shop',
       'CheckIn',
       'CommunityPost',
@@ -1077,6 +1098,8 @@ function mapAuditEntry(entry: Record<string, unknown>): ModerationAuditEntry {
       'Pending',
       'Approved',
       'Rejected',
+      'LeaderboardIncluded',
+      'LeaderboardExcluded',
     ]),
     moderatorUserId: String(entry.moderatorUserId),
     comment: entry.comment ? String(entry.comment) : null,
@@ -1096,7 +1119,7 @@ export async function getModerationAuditLog(
   const pageSize = params.pageSize ?? 20;
   const response = await httpClient.get<GetModerationAuditLogResponse>(
     API_ENDPOINTS.ADMIN.AUDIT_MODERATION,
-    { params }
+    { params: { ...params, ...(params.entityType === 'CheckIn' ? { entityType: 'Review' } : {}) } }
   );
   const raw = response.data as unknown as GetModerationAuditLogResponse;
 
@@ -1104,7 +1127,7 @@ export async function getModerationAuditLog(
     ...response,
     data: toPaginatedResult(
       (raw.items ?? []).map((item) => mapAuditEntry(item as unknown as Record<string, unknown>)),
-      response.meta,
+      response.meta ?? { totalCount: raw.totalItems, totalPages: raw.totalPages, currentPage: raw.currentPage, pageSize: raw.pageSize },
       page,
       pageSize
     ),

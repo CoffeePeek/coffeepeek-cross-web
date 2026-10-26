@@ -10,6 +10,7 @@ if (!API_BASE_URL) {
 }
 
 export const API_ENDPOINTS = {
+  LEADERBOARD: '/api/v1/leaderboard',
   TOKEN: {
     BASE: '/api/tokens',
   },

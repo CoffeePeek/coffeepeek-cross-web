@@ -2,6 +2,14 @@
 
 Обновлено 4 октября 2026 после сверки с CoffeePeek-NET и исправления связок клиента. Это описание подключённого API, а не список отсутствующих возможностей. Полный исходный реестр маршрутов и потребителей сохранён в `../../docs/API-ENDPOINTS-2026-10-04.csv`; результаты исправлений — в `../../docs/API-IMPLEMENTATION-2026-10-04.md`.
 
+## Рейтинг активности (backend PR #362)
+
+Экран `/leaderboard` доступен Admin и Moderator. GET `/api/v1/leaderboard` принимает `period=week|month`, `date=YYYY-MM-DD` (день внутри периода, годы 2000–2100), `page` (1–10000), `pageSize` (1–100). Ответ `data`: `{period,startsOn,endsOnExclusive,timeZone,items,totalCount,page,pageSize,me}`. Периоды календарные, неделя с понедельника, Europe/Minsk. Строка: `{rank,authorId,username,avatarUrl,address?,points,additions,edits,checkIns}`. Места и баллы берутся с сервера, одинаковые баллы дают места 1, 1, 3. Admin/Moderator, удалённые и заблокированные аккаунты исключает сервер. Чтение без кеша.
+
+DTO модерации чекина содержит `leaderboardGeoStatus`, `shopDistanceMeters`, `locationAccuracyMeters`, `locationCapturedAtUtc`, `leaderboardOverride: boolean|null`, `leaderboardReason`. `WithinRange` означает успешную геопроверку; остальные результаты: `OutsideRadius`, `MissingLocation`, `InvalidLocation`, `MissingShopLocation`, `InaccurateLocation`, `StaleLocation`. Геопроверка не означает фактического зачёта: он требует публичного одобренного чекина в кофейне. DTO модерации не содержит текущую видимость.
+
+PUT `/api/v1/moderation/check-ins` сохраняет ручное решение через `countsForLeaderboard` и `leaderboardReason` (trim, 1–1000 символов), только Admin. При изменении зачёта текущий `moderationStatus` и `rejectReason` сохраняются; обычное approve/reject не отправляет поля рейтинга. Новая ревизия содержимого сбрасывает ручное решение на сервере. Аудит возвращает действия `LeaderboardIncluded` / `LeaderboardExcluded` (числовые значения 3 / 4), автора в `moderatorUserId`, время в `createdAtUtc`, причину в `comment`. Тип чекина в API аудита — `Review` (1); адаптер преобразует его в UI-тип `CheckIn` и обратно для фильтра.
+
 ## Транспорт и авторизация
 
 Все запросы приложения проходят через `src/api/core/httpClient.ts`. В development используется same-origin `/backend` с Vite proxy; production читает `VITE_API_URL`. Access token хранится в памяти, refresh cookie — HttpOnly. Refresh выполняется interceptor; ручная обёртка refresh не нужна.
