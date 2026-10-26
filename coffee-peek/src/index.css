@@ -321,6 +321,7 @@
 }
 
 .coffee-map-cluster {
+  --pin-size: 34.1px;
   padding: 0;
 }
 
