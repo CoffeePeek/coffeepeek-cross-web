@@ -36,6 +36,7 @@
     {"source": "/roasters/:roasterId", "destination": "/api/public-page?page=address&kind=roasters&segment=:roasterId&path=/roasters/:roasterId"},
     {"source": "/users/:userId", "destination": "/api/public-page?page=address&kind=users&segment=:userId&path=/users/:userId"},
     {"source": "/coffees/:slug", "destination": "/api/public-page?page=address&kind=coffees&segment=:slug&path=/coffees/:slug"},
+    {"source": "/check-ins/:checkInId", "destination": "/api/public-page?page=check-in&id=:checkInId"},
     { "source": "/shops", "destination": "/api/public-page?page=shops" },
     { "source": "/shops/:shopId", "destination": "/api/public-page?page=shop&shopId=:shopId&path=/shops/:shopId" },
     { "source": "/download/android", "destination": "https://api.coffeepeek.by/download/android" },

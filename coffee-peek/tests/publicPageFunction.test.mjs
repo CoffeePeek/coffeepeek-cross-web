@@ -188,3 +188,99 @@ test('missing coffee pages preserve HTTP 404', async () => {
     assert.equal(response.headers.get('X-Robots-Tag'), 'noindex');
   }, 404);
 });
+
+const checkInId = '6966d36f-f903-ccf8-8009-1a651d0c58ad';
+const checkInPhoto = `/api/v1/check-ins/${checkInId}/photos/3bc9f4c4-ac3d-4fb8-ad2f-409c8ec3f548`;
+const shopCheckIn = {
+  kind: 'Shop', home: null, id: checkInId, username: 'Maria', shopName: 'Memories',
+  shop: { slug: 'memories', canonicalPath: '/coffee-shops/memories' },
+  author: { slug: 'maria', canonicalPath: '/users/maria' },
+  text: 'Пробовала тут воронку.\nПока мой фаворит', rating: { coffee: 5, service: 4, place: 5 },
+  drinkNameRu: 'V60 / воронка', visibility: 'Public', moderationState: 'Approved',
+  photos: [{ sortIndex: 0, url: checkInPhoto, variants: [
+    { purpose: 'feed', format: 'jpeg', width: 720, height: 960, url: `${checkInPhoto}/variants/v/1/feed.jpeg` },
+    { purpose: 'detail', format: 'webp', width: 1200, height: 1600, url: `${checkInPhoto}/variants/v/1/detail.webp` },
+    { purpose: 'detail', format: 'jpeg', width: 1200, height: 1600, url: `${checkInPhoto}/variants/v/1/detail.jpeg` },
+  ] }],
+};
+const checkInRequest = (id = checkInId) => new Request(`https://coffeepeek.by/api/public-page?page=check-in&id=${id}`);
+
+test('shop check-in shares its text, absolute JPEG photo and links before JavaScript', async () => {
+  await withMock({ isSuccess: true, data: shopCheckIn }, async calls => {
+    const result = await renderPublicPage(checkInRequest());
+    const head = result.html.split('</head>')[0];
+    assert.equal(result.status, 200);
+    assert.deepEqual(calls, [`https://api.coffeepeek.by/api/v1/check-ins/${checkInId}`]);
+    assert.match(head, /<title>Maria в «Memories» — CoffeePeek<\/title>/);
+    assert.match(head, /property="og:description" content="Пробовала тут воронку. Пока мой фаворит"/);
+    assert.match(head, /property="og:type" content="article"/);
+    assert.match(head, new RegExp(`<link rel="canonical" href="https://coffeepeek.by/check-ins/${checkInId}">`));
+    assert.match(head, new RegExp(`property="og:image" content="https://api.coffeepeek.by${checkInPhoto}/variants/v/1/detail.jpeg"`));
+    assert.match(head, /property="og:image:width" content="1200"/);
+    assert.match(head, /property="og:image:height" content="1600"/);
+    assert.match(result.html, /href="\/coffee-shops\/memories"/);
+    assert.match(result.html, /href="\/users\/maria"/);
+    assert.match(result.html, /href="\/download\/auto"/);
+  });
+});
+
+test('home check-in without text or photos describes the brew and uses the fallback image', async () => {
+  const home = { ...shopCheckIn, kind: 'Home', shop: null, shopName: '', text: '', rating: null, photos: [],
+    username: 'Андрэй', drinkNameRu: 'капучино х2', home: { beanName: 'Перу Valle Sagrado', tasteScore: 5 } };
+  await withMock({ isSuccess: true, data: home }, async () => {
+    const { html, status } = await renderPublicPage(checkInRequest());
+    assert.equal(status, 200);
+    assert.match(html, /<title>Кофе дома — Андрэй — CoffeePeek<\/title>/);
+    assert.match(html, /property="og:description" content="Кофе дома — Андрэй. Зерно: Перу Valle Sagrado. Напиток: капучино х2. Оценка: 5 из 5."/);
+    assert.match(html, /property="og:image" content="https:\/\/coffeepeek.by\/favicon\/android-chrome-512x512.png"/);
+    assert.doesNotMatch(html, /coffee-shops/);
+  });
+});
+
+test('a check-in without its own photos falls back to the drink photo', async () => {
+  await withMock({ isSuccess: true, data: { ...shopCheckIn, photos: [], drinkPhotoUrl: 'https://media.example/drink.jpg' } }, async () => {
+    const { html } = await renderPublicPage(checkInRequest());
+    assert.match(html, /property="og:image" content="https:\/\/media.example\/drink.jpg"/);
+    assert.doesNotMatch(html, /og:image:width/);
+  });
+});
+
+test('long check-in text is shortened for previews but kept whole on the page', async () => {
+  const text = 'кофе '.repeat(80).trim();
+  await withMock({ isSuccess: true, data: { ...shopCheckIn, text } }, async () => {
+    const { html } = await renderPublicPage(checkInRequest());
+    const description = html.match(/property="og:description" content="([^"]*)"/)[1];
+    assert.equal(description.length, 200);
+    assert.ok(description.endsWith('…'));
+    assert.ok(html.includes(text));
+  });
+});
+
+test('check-in text and names are escaped in metadata and content', async () => {
+  await withMock({ isSuccess: true, data: { ...shopCheckIn, username: '"><b>', text: '<script>alert(1)</script>' } }, async () => {
+    const { html } = await renderPublicPage(checkInRequest());
+    assert.doesNotMatch(html, /<script>alert|"><b>/);
+    assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  });
+});
+
+for (const status of [404, 429, 503]) {
+  test(`check-in HTTP ${status} is preserved with a readable page`, async () => {
+    await withMock(null, async () => {
+      const response = await handler.fetch(checkInRequest());
+      assert.equal(response.status, status);
+      const html = await response.text();
+      assert.match(html, status === 404 ? /Публикация недоступна/ : /Страница временно недоступна/);
+      if (status === 404) assert.equal(response.headers.get('X-Robots-Tag'), 'noindex');
+      else assert.equal(response.headers.get('Retry-After'), '30');
+    }, status);
+  });
+}
+
+test('malformed check-in IDs are 404 without querying the API', async () => {
+  await withMock(null, async calls => {
+    const result = await renderPublicPage(checkInRequest('..%2F..%2Fapi%2Fadmin'));
+    assert.equal(result.status, 404);
+    assert.equal(calls.length, 0);
+  });
+});

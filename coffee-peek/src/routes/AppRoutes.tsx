@@ -36,6 +36,7 @@ const ForgotPasswordPage = lazyWithRetry(() => import('../pages/ForgotPasswordPa
 const ResetPasswordPage = lazyWithRetry(() => import('../pages/ResetPasswordPage'));
 const FeedPage = lazyWithRetry(() => import('../pages/FeedPage'));
 const CheckInsPage = lazyWithRetry(() => import('../pages/CheckInsPage'));
+const CheckInPage = lazyWithRetry(() => import('../pages/CheckInPage'));
 const EditCoffeeShopPage = lazyWithRetry(() => import('../pages/EditCoffeeShopPage'));
 const MyContributionsPage = lazyWithRetry(() => import('../pages/MyContributionsPage'));
 
@@ -116,6 +117,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/coffee-shops/:shopId/edit" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><EditCoffeeShopPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/coffee-shops/:shopId/checkin" element={<LegacyCheckInRedirect base="coffee-shops" />} />
         <Route path="/feed" element={<AuthenticatedLayout><FeedPage /></AuthenticatedLayout>} />
+        <Route path="/check-ins/:checkInId" element={<AuthenticatedLayout><CheckInPage /></AuthenticatedLayout>} />
         <Route path="/check-ins/:checkInId/edit" element={<ProtectedRoute><AuthenticatedLayout><CheckInEditorPage /></AuthenticatedLayout></ProtectedRoute>} />
         <Route path="/my/reviews" element={<Navigate to="/check-ins" replace />} />
         {/* Protected routes */}
