@@ -2,7 +2,9 @@ import { Input } from '@/src/components/ui/Input';
 import { DataTable } from '@/src/components/ui/DataTable';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import { Trash2 } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { BynSign } from '../ui/CoffeeBeanSign';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/Table';
 import { uploadMenuPhotoFiles } from '../../api/photos';
@@ -103,6 +105,7 @@ interface MenuEditorProps {
   onAttach: (photos: UploadedPhotoDto[]) => Promise<void>;
   onParse: () => Promise<void>;
   onSave: (body: UpdateShopMenuRequest) => Promise<void>;
+  onDeletePhoto?: (photoId: string) => Promise<void>;
   compact?: boolean;
 }
 
@@ -116,6 +119,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   onAttach,
   onParse,
   onSave,
+  onDeletePhoto,
   compact,
 }) => {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -129,13 +133,14 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pasteHint, setPasteHint] = useState(false);
+  const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     const next = cloneItems(menu?.items ?? []);
     setItems(next);
     setPriceDrafts(draftsFromItems(next));
     setApplyRange(false);
-  }, [menu]);
+  }, [menu?.items]);
 
   const parsingNow = isMenuParsing(menu?.parseStatus);
   const hint = suggestedRangeHint(menu?.suggestedPriceRange);
@@ -180,7 +185,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
-      if (uploading || parsingNow) return;
+      if (uploading || parsingNow || photoToDelete) return;
       if (isTypingTarget(event.target)) return;
       const pasted = filesFromClipboardData(event.clipboardData);
       if (!pasted.length) return;
@@ -191,7 +196,7 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
     };
     window.addEventListener('paste', onPaste);
     return () => window.removeEventListener('paste', onPaste);
-  }, [handleFiles, uploading, parsingNow]);
+  }, [handleFiles, uploading, parsingNow, photoToDelete]);
 
   const handleParse = async () => {
     setError(null);
@@ -260,17 +265,34 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
 
       {photos.length > 0 && (
         <div className="grid grid-cols-4 gap-1.5">
-          {photos.map((photo) =>
+          {photos.map((photo, index) =>
             photo.fullUrl ? (
-              <a
-                key={photo.id ?? photo.storageKey}
-                href={photo.fullUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-lg overflow-hidden aspect-[3/4] bg-black/5"
-              >
-                <img src={photo.fullUrl} alt="Фото меню" className="w-full h-full object-cover" />
-              </a>
+              <div key={photo.id ?? photo.storageKey} className="relative">
+                <a
+                  href={photo.fullUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-lg overflow-hidden aspect-[3/4] bg-black/5"
+                >
+                  <img src={photo.fullUrl} alt={`Фото меню ${index + 1}`} className="w-full h-full object-cover" />
+                </a>
+                {onDeletePhoto && photo.id && (
+                  <Button
+                    variant="danger"
+                    size="icon"
+                    className="absolute right-1 top-1"
+                    title={`Удалить фото меню ${index + 1}`}
+                    aria-label={`Удалить фото меню ${index + 1}`}
+                    disabled={uploading || saving || parsing || parsingNow}
+                    onClick={() => {
+                      setError(null);
+                      setPhotoToDelete(photo.id!);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             ) : null
           )}
         </div>
@@ -400,6 +422,30 @@ export const MenuEditor: React.FC<MenuEditorProps> = ({
           </p>
           <DataTable columns={unmatchedColumns} data={unmatched} getRowId={(row) => `${row.rawName}-${row.price ?? ''}`} />
         </div>
+      )}
+      {onDeletePhoto && (
+        <ConfirmDialog
+          isOpen={photoToDelete !== null}
+          title="Удалить фото меню?"
+          message="Фотография будет удалена из меню кофейни. Напитки и цены сохранятся."
+          confirmLabel="Удалить фото"
+          variant="danger"
+          error={error ?? undefined}
+          onCancel={() => {
+            setPhotoToDelete(null);
+            setError(null);
+          }}
+          onConfirm={async () => {
+            if (!photoToDelete) return;
+            setError(null);
+            try {
+              await onDeletePhoto(photoToDelete);
+              setPhotoToDelete(null);
+            } catch (err: unknown) {
+              setError(err instanceof Error ? err.message : 'Не удалось удалить фото меню');
+            }
+          }}
+        />
       )}
     </div>
   );

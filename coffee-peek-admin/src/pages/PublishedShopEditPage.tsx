@@ -47,6 +47,7 @@ import { PhotoGallery } from '../components/moderation/PhotoGallery';
 import { LoadError } from '../components/ui/LoadError';
 import {
   attachPublishedShopMenuPhotos,
+  deletePublishedShopMenuPhotos,
   getPublishedShopMenu,
   parsePublishedShopMenu,
   updatePublishedShopMenu,
@@ -708,6 +709,12 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
           <MenuEditor
             menu={shopMenu?.menu ?? null}
             unmatched={shopMenu?.unmatched}
+            onDeletePhoto={async (photoId) => {
+              const queryKey = ['admin', 'published-shop-menu', id];
+              await qc.cancelQueries({ queryKey });
+              const response = await deletePublishedShopMenuPhotos(id, [photoId]);
+              qc.setQueryData(queryKey, response.data);
+            }}
             onAttach={async (photos) => {
               await attachPublishedShopMenuPhotos(id, { photos });
               await qc.invalidateQueries({ queryKey: ['admin', 'published-shop-menu', id] });

@@ -265,6 +265,16 @@ export async function attachPublishedShopMenuPhotos(
   return { ...response, data: mapAdminShopMenu(response.data) };
 }
 
+export async function deletePublishedShopMenuPhotos(
+  id: string,
+  photoIds: string[]
+): Promise<ApiResponse<AdminShopMenuDto>> {
+  const response = await httpClient.delete<unknown>(API_ENDPOINTS.ADMIN.SHOP_MENU_PHOTOS(id), {
+    data: { photoIds },
+  });
+  return { ...response, data: mapAdminShopMenu(response.data) };
+}
+
 export async function parsePublishedShopMenu(id: string): Promise<ApiResponse<AdminShopMenuDto>> {
   const response = await httpClient.post<unknown>(API_ENDPOINTS.ADMIN.SHOP_MENU_PARSE(id));
   return { ...response, data: mapAdminShopMenu(response.data) };

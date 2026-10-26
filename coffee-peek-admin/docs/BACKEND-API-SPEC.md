@@ -58,7 +58,7 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 | Жалобы на чекины | `/api/admin/check-in-reports`, `/{id}`, `/{id}/resolution` | Список, чекин для проверки, решение `{deleteCheckIn}`; конфликт состояния — 409 |
 | Опубликованные кофейни | `/api/admin/shops`, `/{id}` | Список/detail/создание/обновление/удаление по UUID; Admin |
 | Управление кофейней | `/api/admin/shops/{id}/visibility`, `/owner`, `/focus`, `/tags`, `/photos` | Видимость, владелец, профиль кофе, теги и фотографии; Admin |
-| Меню | `/api/admin/shops/{id}/menu`, `/menu/photos`, `/menu/parse` | Чтение, изменение, загрузка фото, разбор меню |
+| Меню | `/api/admin/shops/{id}/menu`, `/menu/photos`, `/menu/parse` | Чтение, изменение, загрузка фото, разбор меню; DELETE `/menu/photos` с `{photoIds: [UUID]}` удаляет только выбранные фото, сохраняя напитки и цены (Admin) |
 | Справочники | `/api/admin/cities`, `/beans`, `/equipments`, `/roasters`, `/brew-methods`, `/shop-tags` | Административные UUID для редактирования/связей; публичные списки содержат slug и для этих форм не подходят |
 | Кофейные зоны | `/api/admin/coffee-zones`, `/{id}`, `/membership`, `/candidates` | Редактирование, публикация, состав зоны |
 | Импорт | `/api/admin/import` | Кандидаты, решения, файл/OSM, статистика, повторная проверка, меню, дубликаты |
