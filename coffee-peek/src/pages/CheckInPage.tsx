@@ -14,11 +14,11 @@ export default function CheckInPage() {
   const query = useCheckIn(checkInId);
   const { theme } = useTheme();
   const classes = getThemeClasses(theme);
-  const item = query.data;
+  const status = (query.error as { status?: number } | null)?.status;
+  const item = status === 404 ? undefined : query.data;
   const title = !item ? 'Публикация' : item.kind === 'Home'
     ? `Кофе дома — ${item.username || 'Пользователь'}` : `${item.username || 'Пользователь'} в «${item.shopName || 'кофейне'}»`;
   usePageTitle(title, { description: item?.text, canonicalPath: checkInId ? `/check-ins/${encodeURIComponent(checkInId)}` : undefined });
-  const status = (query.error as { status?: number } | null)?.status;
 
   return <main className={`min-h-screen px-4 pb-32 pt-3 sm:py-8 ${classes.bg.primary} ${classes.text.primary}`}><div className="mx-auto max-w-3xl space-y-6">
     {query.isLoading && <div className="flex justify-center py-10"><WobbleRing /></div>}
