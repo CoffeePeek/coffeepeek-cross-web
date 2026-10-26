@@ -11,10 +11,10 @@ const shop = { address, name: '1801 кофе', description: 'Спешелти к
 async function withMock(body, run, status = 200) {
   const original = globalThis.fetch;
   const calls = [];
-  globalThis.fetch = async input => {
+  globalThis.fetch = async (input, init) => {
     const url = String(input);
     if (url.endsWith('/spa-shell.html')) return new Response(shell);
-    calls.push(url);
+    calls.push({ url, init });
     assert.doesNotMatch(url, /public-address/);
     return new Response(JSON.stringify(body), { status, headers: { 'Retry-After': '30' } });
   };
@@ -33,13 +33,20 @@ test('home HTML contains useful metadata and crawlable navigation without JavaSc
   assert.doesNotMatch(html, /\.remove\(\)/);
 });
 test('catalog uses inline addresses for links and SEO, in one request', async () => {
-  await withMock({ isSuccess: true, data: { coffeeShops: [shop] } }, async calls => {
+  const card = { address, name: shop.name, addressLine: shop.location.address, rating: shop.rating, checkInCount: shop.checkInCount,
+    coverPhoto: { fullUrl: '/original.jpg', urls: { card: '/card.jpg' } } };
+  await withMock({ isSuccess: true, data: { items: [card] } }, async calls => {
     const result = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shops'));
     assert.equal(result.status, 200);
     assert.match(result.html, /href="\/coffee-shops\/1801"/);
     assert.match(result.html, /1801 кофе/);
     assert.match(result.html, /ItemList/);
+    assert.match(result.html, /пр\. Независимости 95/);
+    assert.match(result.html, /src="\/card\.jpg"/);
     assert.equal(calls.length, 1);
+    assert.equal(new URL(calls[0].url).pathname, '/api/v1/coffee-shops/search');
+    assert.equal(calls[0].init.method, 'POST');
+    assert.deepEqual(JSON.parse(calls[0].init.body), { q: '', filters: {}, sort: 'name_asc', page: 1, pageSize: 48 });
   });
 });
 test('shop details are directly in data; menu, photos and structured metadata render', async () => {
@@ -131,7 +138,7 @@ for (const status of [400, 404, 429, 503]) {
       assert.equal(result.status, status);
       assert.equal(result.retryAfter, '30');
       assert.equal(calls.length, 1);
-      assert.match(calls[0], /by-slug\/petr$/);
+      assert.match(calls[0].url, /by-slug\/petr$/);
     }, status);
   });
 }
@@ -177,7 +184,7 @@ test('coffee pages resolve the public API and include metadata before JavaScript
     const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=address&kind=coffees&segment=blend&path=/coffees/blend'));
     assert.equal(response.status, 200);
     assert.match(await response.text(), /<link rel="canonical" href="https:\/\/coffeepeek.by\/coffees\/blend">/);
-    assert.match(calls[0], /\/api\/v1\/coffees\/blend$/);
+    assert.match(calls[0].url, /\/api\/v1\/coffees\/blend$/);
   });
 });
 
@@ -210,7 +217,7 @@ test('shop check-in shares its text, absolute JPEG photo and links before JavaSc
     const result = await renderPublicPage(checkInRequest());
     const head = result.html.split('</head>')[0];
     assert.equal(result.status, 200);
-    assert.deepEqual(calls, [`https://api.coffeepeek.by/api/v1/check-ins/${checkInId}`]);
+    assert.deepEqual(calls.map(call => call.url), [`https://api.coffeepeek.by/api/v1/check-ins/${checkInId}`]);
     assert.match(head, /<title>Maria в «Memories» — CoffeePeek<\/title>/);
     assert.match(head, /property="og:description" content="Пробовала тут воронку. Пока мой фаворит"/);
     assert.match(head, /property="og:type" content="article"/);

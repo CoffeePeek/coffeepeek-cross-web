@@ -21,14 +21,13 @@ export async function renderSitemap() {
     let page = 1;
     let totalPages = 1;
     do {
-      const result = kind === 'shops' ? await fetchJson(`/api/CoffeeShops?page=${page}&pageSize=100`)
-        : kind === 'coffees' ? await fetchJson('/api/v1/coffees/search', { body: { q: '', filters: {}, sort: 'name_asc', page, pageSize: 100 } })
-          : await fetchJson('/api/Roasters');
+      const result = kind === 'roasters' ? await fetchJson('/api/Roasters')
+        : await fetchJson(`/api/v1/${kind === 'shops' ? 'coffee-shops' : 'coffees'}/search`, { body: { q: '', filters: {}, sort: 'name_asc', page, pageSize: 100 } });
       if (!result.ok) throw new Error('Public catalog unavailable');
       const data = result.body?.data;
       totalPages = kind === 'roasters' ? 1 : data?.totalPages;
       if (!Number.isInteger(totalPages) || totalPages < 0 || totalPages > 500) throw new Error('Invalid public catalog pagination');
-      addItems(kind === 'shops' ? data?.coffeeShops : kind === 'coffees' ? data?.items : data, kind === 'shops' ? '/coffee-shops/' : `/${kind}/`);
+      addItems(kind === 'roasters' ? data : data?.items, kind === 'shops' ? '/coffee-shops/' : `/${kind}/`);
       page++;
     } while (page <= totalPages);
   }

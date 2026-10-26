@@ -120,7 +120,7 @@ export const API_ENDPOINTS = {
   },
 
   COFFEE_SHOP: {
-    BASE: '/api/CoffeeShops',
+    SEARCH: '/api/v1/coffee-shops/search',
     BY_SLUG: (slug: string) => `/api/CoffeeShops/${encodeURIComponent(slug)}`,
   },
 

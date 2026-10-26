@@ -239,9 +239,6 @@ export function normalizeResponseData<T>(data: any): T {
   }
 
   data = normalizePublicDto(data.shopDto ?? data);
-  if ('coffeeShops' in data && Array.isArray(data.coffeeShops)) {
-    return { ...data, coffeeShops: data.coffeeShops.map(normalizeCoffeeShopData) } as T;
-  }
   if ('name' in data && ('shopContact' in data || 'schedules' in data || 'beans' in data || 'checkIns' in data || 'userCheckIns' in data)) {
     return normalizeCoffeeShopData(data) as T;
   }

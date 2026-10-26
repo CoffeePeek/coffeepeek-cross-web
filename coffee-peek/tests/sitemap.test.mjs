@@ -7,15 +7,12 @@ const publicFetch = async (input, init) => {
   const url = new URL(input);
   assert.equal(url.origin, 'https://api.coffeepeek.by');
   assert.equal(init.headers.Authorization, undefined);
-  if (url.pathname === '/api/CoffeeShops') {
-    assert.equal(url.searchParams.get('pageSize'), '100');
-    return Response.json({ isSuccess: true, data: { totalPages: 2, coffeeShops: [item(`/coffee-shops/shop-${url.searchParams.get('page')}`)] } });
-  }
-  if (url.pathname === '/api/v1/coffees/search') {
+  if (url.pathname === '/api/v1/coffee-shops/search' || url.pathname === '/api/v1/coffees/search') {
     assert.equal(init.method, 'POST');
     const body = JSON.parse(init.body);
-    assert.deepEqual(body.filters, {});
-    return Response.json({ isSuccess: true, data: { totalPages: 2, items: [item(`/coffees/coffee-${body.page}`)] } });
+    assert.deepEqual(body, { q: '', filters: {}, sort: 'name_asc', page: body.page, pageSize: 100 });
+    const path = url.pathname.includes('coffee-shops') ? `/coffee-shops/shop-${body.page}` : `/coffees/coffee-${body.page}`;
+    return Response.json({ isSuccess: true, data: { totalPages: 2, items: [item(path)] } });
   }
   assert.equal(url.pathname, '/api/Roasters');
   return Response.json({ isSuccess: true, data: [item('/roasters/roast&coffee'), item('/roasters/roast&coffee'), item(null)] });
@@ -57,7 +54,7 @@ test('an API failure returns an uncached 503 instead of a partial sitemap', asyn
 
 for (const totalPages of [undefined, -1, 501, '2']) {
   test(`invalid pagination (${totalPages}) does not publish an incomplete sitemap`, async () => {
-    await withFetch(async () => Response.json({ isSuccess: true, data: { totalPages, coffeeShops: [] } }), async () => {
+    await withFetch(async () => Response.json({ isSuccess: true, data: { totalPages, items: [] } }), async () => {
       assert.equal((await handler.fetch()).status, 503);
     });
   });
@@ -65,14 +62,14 @@ for (const totalPages of [undefined, -1, 501, '2']) {
 
 for (const canonicalPath of [undefined, 'https://other.example/coffee-shops/shop', '/login', '/coffee-shops/../login', '/coffee-shops/shop?private=true', '/coffee-shops/..']) {
   test(`invalid public address (${canonicalPath}) is not included`, async () => {
-    await withFetch(async () => Response.json({ isSuccess: true, data: { totalPages: 1, coffeeShops: [item(canonicalPath)] } }), async () => {
+    await withFetch(async () => Response.json({ isSuccess: true, data: { totalPages: 1, items: [item(canonicalPath)] } }), async () => {
       assert.equal((await handler.fetch()).status, 503);
     });
   });
 }
 
 test('empty public catalogs still produce the public section URLs', async () => {
-  await withFetch(async input => Response.json({ isSuccess: true, data: String(input).endsWith('/api/Roasters') ? [] : { totalPages: 0, coffeeShops: [], items: [] } }), async () => {
+  await withFetch(async input => Response.json({ isSuccess: true, data: String(input).endsWith('/api/Roasters') ? [] : { totalPages: 0, items: [] } }), async () => {
     const response = await handler.fetch();
     assert.equal(response.status, 200);
     assert.equal((await response.text()).match(/<loc>/g)?.length, 9);

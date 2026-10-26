@@ -1,14 +1,17 @@
 jest.mock('../src/utils/errorHandler', () => ({ getErrorMessageByStatus: () => 'Error' }));
 jest.mock('../src/utils/logger', () => ({ logger: { warn: jest.fn(), log: jest.fn(), error: jest.fn() } }));
 jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), post: jest.fn() } }));
+jest.mock('@tanstack/react-query', () => ({ ...jest.requireActual('@tanstack/react-query'), useQuery: jest.fn() }));
+jest.mock('../src/contexts/UserContext', () => ({ useUser: jest.fn() }));
 jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
-  COFFEE_SHOP: { BASE: '/api/CoffeeShops' },
   CHECK_IN: { BASE: '/api/v1/check-ins' },
   MAP: { BASE: '/api/Map' },
   MODERATION: { SHOP: '/api/ModerationShops', ROASTER: '/api/ModerationRoasters', REVIEWS: '/api/ModerationReviews' },
 } }));
 import { normalizeResponseData } from '../src/api/core/interceptors';
-import { EquipmentCategory, getEquipmentCategoryLabel, searchCoffeeShops, getMapSearch, getMapShops, getMapZones, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
+import { EquipmentCategory, getEquipmentCategoryLabel, getMapSearch, getMapShops, getMapZones, getPublicCheckIns, createCheckIn } from '../src/api/coffeeshop';
+import { useQuery } from '@tanstack/react-query';
+import { useSearchCoffeeShops } from '../src/hooks/queries/useCoffeeShops';
 import { sendCoffeeShopToModeration, sendRoasterToModeration } from '../src/api/moderation';
 import { createShopChangeRequest } from '../src/api/shopChangeRequests';
 import { httpClient } from '../src/api/core/httpClient';
@@ -19,11 +22,19 @@ beforeEach(() => { jest.clearAllMocks(); queryClient.clear(); });
 afterEach(() => { jest.useRealTimers(); queryClient.clear(); });
 
 test('map autocomplete requests the first three server search results without viewport filters', async () => {
-  jest.mocked(httpClient.get).mockResolvedValue({ data: { coffeeShops: [] } } as never);
-  await searchCoffeeShops(' кофе ', undefined, 1, 3);
-  expect(httpClient.get).toHaveBeenCalledWith('/api/CoffeeShops', {
-    params: { q: 'кофе', page: 1, pageSize: 3 }, requiresAuth: false,
-  });
+  const data = { items: [{ address, name: 'Coffee', addressLine: 'Street 1' }], totalItems: 1 };
+  jest.mocked(httpClient.post).mockResolvedValue({ data } as never);
+  useSearchCoffeeShops(' кофе ', 1, 3);
+  const options = jest.mocked(useQuery).mock.calls.at(-1)![0];
+  expect(options.enabled).toBe(true);
+  const request = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
+  const signal = new AbortController().signal;
+  expect(await request({ signal })).toBe(data);
+  expect(httpClient.post).toHaveBeenCalledWith('/api/v1/coffee-shops/search', {
+    q: 'кофе', filters: {}, sort: 'relevance', page: 1, pageSize: 3,
+  }, { requiresAuth: false, signal });
+  useSearchCoffeeShops(' ');
+  expect(jest.mocked(useQuery).mock.calls.at(-1)![0].enabled).toBe(false);
 });
 
 test('map responses are shared for 30 minutes, then refetched', async () => {
@@ -66,17 +77,6 @@ test('catalog arrays map supplied slugs without modifying address metadata or se
   expect(normalizeResponseData<any>({ items: [{ id: 'request-service-id', shop: null }], totalItems: 1 })).toMatchObject({
     items: [{ id: 'request-service-id', shopId: '' }], totalItems: 1,
   });
-});
-test('shop search with or without text send city and slug arrays using the same query fields', async () => {
-  jest.mocked(httpClient.get).mockResolvedValue({ data: {} } as never);
-  const filters = { cityId: 'minsk', equipmentIds: ['linea'], coffeeBeanIds: ['arabica'], tagIds: ['dog-friendly'] };
-  await searchCoffeeShops(undefined, filters, 1, 1000);
-  await searchCoffeeShops('coffee', filters);
-  for (const [, config] of jest.mocked(httpClient.get).mock.calls) {
-    expect(config?.params).toMatchObject({ city: 'minsk', equipments: ['linea'], beans: ['arabica'], tags: ['dog-friendly'] });
-    expect(config?.params).not.toHaveProperty('cityId');
-  }
-  expect(jest.mocked(httpClient.get).mock.calls[0][1]?.params?.pageSize).toBe(100);
 });
 test('map markers and zones use addresses without losing clusters', async () => {
   jest.mocked(httpClient.get).mockResolvedValue({ data: {

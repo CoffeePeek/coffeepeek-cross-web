@@ -1,6 +1,6 @@
-jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), put: jest.fn() } }));
+jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn() } }));
 jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {
-  COFFEE_SHOP: { BASE: '/api/CoffeeShops', BY_SLUG: (slug: string) => `/api/CoffeeShops/${encodeURIComponent(slug)}` },
+  COFFEE_SHOP: { SEARCH: '/api/v1/coffee-shops/search', BY_SLUG: (slug: string) => `/api/CoffeeShops/${encodeURIComponent(slug)}` },
   MAP: { BASE: '/api/Map' },
   ADMIN: {
     APP_DOWNLOADS: '/api/admin/v1/app-downloads',
@@ -140,11 +140,14 @@ test('missing version policies are not replaced with fabricated version codes', 
   expect((await getAppDownloadsConfig()).data).toMatchObject({ iosVersion: null, androidVersion: null });
 });
 
-test('public list reads slug identity and street address, preserving the canonical path', async () => {
-  jest.mocked(httpClient.get).mockResolvedValue({ data: { coffeeShops: [{ address, name: 'Coffee', location: { address: 'Street 1' } }], totalPages: 3 } } as never);
-  expect((await getBrowseCoffeeShops()).data).toMatchObject({
-    items: [{ id: 'coffee-slug', canonicalPath: address.canonicalPath, address: 'Street 1' }], totalPages: 3,
+test.each(['', ' coffee '])('public search preserves identity, street address, photos and pagination (%s)', async search => {
+  jest.mocked(httpClient.post).mockResolvedValue({ data: { items: [{ address, name: 'Coffee', addressLine: 'Street 1', coverPhoto: { fullUrl: '/original.jpg', urls: { card: '/card.jpg' } } }], totalPages: 3 } } as never);
+  expect((await getBrowseCoffeeShops(2, 20, search)).data).toMatchObject({
+    items: [{ id: 'coffee-slug', canonicalPath: address.canonicalPath, address: 'Street 1', imageUrl: '/card.jpg' }], totalPages: 3,
   });
+  expect(httpClient.post).toHaveBeenCalledWith('/api/v1/coffee-shops/search', {
+    q: search.trim(), filters: {}, sort: search.trim() ? 'relevance' : 'name_asc', page: 2, pageSize: 20,
+  }, { requiresAuth: false });
 });
 
 test('public details accept a slug and do not stringify address metadata', async () => {

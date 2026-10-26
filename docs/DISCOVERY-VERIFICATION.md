@@ -1,5 +1,7 @@
 # Discovery and coffee catalog verification — 2026-10-06
 
+Contract update — 2026-10-26: `POST /api/v1/discovery/search` has been removed along with its Gateway route, DTOs and OpenAPI schemas. All web shop lists, including the check-in picker, map autocomplete, admin browse, SEO and sitemap, use `POST /api/v1/coffee-shops/search` and its `data.items` response. The legacy GET list client and DTOs have been removed. The verification scripts no longer request either retired route. The live results below are historical results from October 6, not a verification of this contract update.
+
 Contracts: OpenAPI 3.1 supplied in this task, plus [backend PR #334](https://github.com/CoffeePeek/coffeepeek-backend/pull/334). Initially checked at `8a8bc274213404612e446fb46ae55fd45b8fa8a6`; after deployment, rechecked at merged PR head `09e383e890f3596942f44176d33be09f9511da41` (merge commit `ebbc0434e7cdc1d82a3b208b939b5a90f9c35e0c`). Admin content/status/public-address/import DTOs were checked against its controllers and DTOs. The API does not expose its deployed commit, so these identify the reviewed contract rather than independently prove the deployed binary revision.
 
 ## Live API
@@ -10,7 +12,6 @@ After the deployment, read-only checks against `https://api.coffeepeek.by` pass.
 | --- | --- |
 | GET `/api/v1/catalogs/coffee-filter-values` | 200; all 8 groups |
 | GET `/api/v1/catalogs/roaster-tags` | 200 |
-| POST `/api/v1/discovery/search` | 200; independent pages and null unselected section |
 | POST `/api/v1/coffee-shops/search` | 200; 139 shops with city=minsk |
 | POST `/api/v1/roasters/search` | 200; 22 roasters |
 | POST `/api/v1/coffees/search` | 200; 0 published coffee, including availableOnly=false |
@@ -19,7 +20,7 @@ After the deployment, read-only checks against `https://api.coffeepeek.by` pass.
 | GET `/api/v1/favorites`, admin dictionaries/coffees/import runs without JWT | 401 |
 | GET non-existent v1 coffee detail | 404 NOT_FOUND |
 
-`npm run test:discovery-live` inside admin performs 38 real API checks and a customer browser smoke. It verifies scopes, wrong-group/unknown values, invalid price/currency/weight/range, empty relevance, missing geo origin, forbidden nested roasters, overlapping tags/excludeTags, independent budgets/pages and JWT requirements. API responses are not mocked. The browser verifies discovery/roasters/coffee, restored shops, the original map, mobile filters and reload, 375 px width and light/dark themes, and all 22 roasters through scroll loading. A transient 502 during the next-page request retains the first page and exposes Retry.
+`npm run test:discovery-live` inside admin performs real API checks and a customer browser smoke. It verifies scopes, wrong-group/unknown values, invalid price/currency/weight/range, empty relevance, missing geo origin, forbidden nested roasters, overlapping tags/excludeTags and JWT requirements. API responses are not mocked. The browser verifies discovery/roasters/coffee, restored shops, the original map, mobile filters and reload, 375 px width and light/dark themes, and all 22 roasters through scroll loading. A transient 502 during the next-page request retains the first page and exposes Retry.
 
 No published coffee is currently available: positive offer/detail/price-ordering and same-product AND scenarios therefore remain on the explicit mock. No live admin writes or authenticated favorites/admin integration checks were performed; those require a test account. Database persistence across devices is not established by mock checks.
 

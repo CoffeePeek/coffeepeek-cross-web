@@ -3,9 +3,9 @@ import { getCatalogScope } from '../../lib/catalogSession';
 import { useUser } from '../../contexts/UserContext';
 import {
   getCoffeeShopBySlug,
-  searchCoffeeShops,
   type CoffeeShopFilters,
 } from '../../api/coffeeshop';
+import { searchShops } from '../../api/discovery';
 
 /**
  * Query keys for coffee shop queries
@@ -17,8 +17,8 @@ export const coffeeShopKeys = {
     [...coffeeShopKeys.lists(), { filters, page, pageSize }] as const,
   details: () => [...coffeeShopKeys.all, 'detail'] as const,
   detail: (id: string) => [...coffeeShopKeys.details(), id] as const,
-  search: (query?: string, filters?: CoffeeShopFilters, page?: number, pageSize?: number, minRating?: number) =>
-    [...coffeeShopKeys.all, 'search', { query, filters, page, pageSize, minRating }] as const,
+  search: (query: string, page: number, pageSize: number) =>
+    [...coffeeShopKeys.all, 'search', { query, page, pageSize }] as const,
   byCity: (cityId: string, page?: number, pageSize?: number) =>
     [...coffeeShopKeys.all, 'city', cityId, { page, pageSize }] as const,
 };
@@ -46,23 +46,16 @@ export function useCoffeeShop(shopId: string | null, enabled: boolean = true) {
  * Hook to search coffee shops
  */
 export function useSearchCoffeeShops(
-  searchQuery?: string,
-  filters?: CoffeeShopFilters,
+  searchQuery: string,
   page: number = 1,
   pageSize: number = 10,
-  minRating?: number,
   enabled: boolean = true
 ) {
+  const q = searchQuery.trim();
   return useQuery({
-    queryKey: coffeeShopKeys.search(searchQuery, filters, page, pageSize, minRating),
-    queryFn: async () => {
-      const response = await searchCoffeeShops(searchQuery, filters, page, pageSize, minRating);
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to search coffee shops');
-      }
-      return response.data;
-    },
-    enabled: enabled && (!!searchQuery || !!filters),
+    queryKey: [...coffeeShopKeys.search(q, page, pageSize), getCatalogScope()],
+    queryFn: ({ signal }) => searchShops({ q, filters: {}, sort: q ? 'relevance' : 'name_asc', page, pageSize }, signal),
+    enabled: enabled && !!q,
   });
 }
 

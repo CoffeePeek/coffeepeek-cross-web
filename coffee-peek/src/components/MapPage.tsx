@@ -89,8 +89,8 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
     const timer = setTimeout(() => setSearchQuery(query.trim()), 300);
     return () => clearTimeout(timer);
   }, [query]);
-  const search = useSearchCoffeeShops(searchQuery, undefined, 1, 3);
-  const searchResults = searchQuery && query.trim() === searchQuery ? (search.data?.coffeeShops ?? []).slice(0, 3) : [];
+  const search = useSearchCoffeeShops(searchQuery, 1, 3);
+  const searchResults = searchQuery && query.trim() === searchQuery ? (search.data?.items ?? []).slice(0, 3) : [];
   const searchAnalytics = useDiscoveryAnalytics({ catalog: 'shops', state: { q: searchQuery, filters: {}, sort: 'relevance' }, source: 'map',
     enabled: analyticsVisible && showSearch && !!searchQuery && query.trim() === searchQuery,
     ready: search.isSuccess && !search.isFetching, resultCount: search.data?.totalItems ?? searchResults.length,
@@ -426,17 +426,15 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
               {searchResults.map((shop, index) => (
                 <button
                   type="button"
-                  key={shop.id}
+                  key={shop.address.slug}
                   onClick={async () => {
                     captureAnalyticsEvent('map_interaction', { action: 'search_selected' });
                     try {
-                      const location = shop.location;
-                      const details = location?.latitude == null || location?.longitude == null
-                        ? (await getCoffeeShopBySlug(shop.id)).data : shop;
+                      const details = (await getCoffeeShopBySlug(shop.address.slug)).data;
                       const coordinates = details.location;
                       if (coordinates?.latitude == null || coordinates?.longitude == null) return;
-                      selectedSearch.current = { shopId: shop.id, searchId: searchAnalytics.search_id };
-                      selectShop({ id: shop.id, publicAddress: shop.publicAddress, title: shop.name,
+                      selectedSearch.current = { shopId: shop.address.slug, searchId: searchAnalytics.search_id };
+                      selectShop({ id: shop.address.slug, publicAddress: shop.address, title: shop.name,
                         latitude: coordinates.latitude, longitude: coordinates.longitude, type: null, primaryZoneId: null }, true);
                     } catch { /* Keep the map unchanged if the shop cannot be located. */ }
                   }}
@@ -445,7 +443,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
                   <MapPin size={21} weight="bold" className="shrink-0 text-[#EAB308]" />
                   <span className="min-w-0 flex-1">
                     <span className={`block truncate font-semibold ${themeClasses.text.primary}`}>{shop.name}</span>
-                    <span className={`block truncate text-sm ${themeClasses.text.secondary}`}>{shop.location?.address}</span>
+                    <span className={`block truncate text-sm ${themeClasses.text.secondary}`}>{shop.addressLine}</span>
                   </span>
                   <CaretRight size={20} className={`shrink-0 ${themeClasses.text.secondary}`} />
                 </button>

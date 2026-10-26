@@ -9,6 +9,7 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 jest.mock('../src/api/discovery', () => ({ searchShops: jest.fn() }));
 jest.mock('../src/api/coffeeshop', () => ({}));
+jest.mock('../src/utils/errorHandler', () => ({ getErrorMessage: () => 'Error' }));
 jest.mock('../src/api/publicAddresses', () => ({ getBySlug: jest.fn() }));
 jest.mock('../src/api/core/interceptors', () => ({ normalizeResponseData: (data: unknown) => data }));
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
@@ -25,6 +26,7 @@ jest.mock('../src/utils/lazyWithRetry', () => ({ lazyWithRetry: () => () => null
 jest.mock('../src/components/ShopFilterPanel', () => ({ __esModule: true, default: () => 'Цена' }));
 jest.mock('../src/components/CatalogFilters', () => ({ CatalogFilters: () => null, FilterChips: () => null, activeFilterCount: () => 0, catalogInput: '' }));
 jest.mock('../src/components/Mascot', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/components/HomeCheckInSheet', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/skeletons', () => ({ Shimmer: () => null, ShopCardSkeleton: () => 'Загрузка', ShopDetailSkeleton: () => 'Загрузка кофейни' }));
 jest.mock('../src/components/CatalogCards', () => ({
   ShopCatalogCard: ({ shop }: { shop: { name: string } }) => shop.name,
@@ -39,7 +41,31 @@ import PublicAddressPage from '../src/components/PublicAddressPage';
 import CoffeeShopList from '../src/components/CoffeeShopList';
 import ShopSearchBar from '../src/components/ShopSearchBar';
 import CatalogSearchPage from '../src/pages/CatalogSearchPage';
+import CheckInCreateFlow from '../src/components/CheckInCreateFlow';
 import { searchShops } from '../src/api/discovery';
+
+test.each([false, true])('check-in picker renders search cards and requests the selected mode (nearby: %s)', async nearby => {
+  const position = { latitude: 53.9, longitude: 27.6 };
+  const states = ['shops', null, 'shop', 'кофе', null, nearby, position, '', 'кофе'];
+  const stateMock = jest.spyOn(React, 'useState').mockImplementation((() => [states.shift(), jest.fn()]) as typeof React.useState);
+  const previous = mockRoasters;
+  mockRoasters = { data: { items: [{ address: { slug: 'coffee' }, name: 'Кофейня для чекина', addressLine: 'Улица 1', coverPhoto: null }] } };
+  jest.mocked(useQuery).mockClear();
+  try {
+    const html = renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: ['/search'] }, React.createElement(CheckInCreateFlow)));
+    expect(html).toContain('Кофейня для чекина');
+    expect(html).toContain('Улица 1');
+    const options = jest.mocked(useQuery).mock.calls.map(([options]) => options).find(options => options.queryKey?.[0] === (nearby ? 'checkInNearby' : 'checkInPicker'))!;
+    expect(options.enabled).toBe(true);
+    const request = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
+    const signal = new AbortController().signal;
+    await request({ signal });
+    expect(searchShops).toHaveBeenLastCalledWith({ q: nearby ? '' : 'кофе', filters: nearby ? { origin: position } : {}, sort: nearby ? 'distance_asc' : 'relevance', page: 1, pageSize: 20 }, signal);
+  } finally {
+    stateMock.mockRestore();
+    mockRoasters = previous;
+  }
+});
 
 test('coffee facets retain their values during filtering only within the same session and catalog', () => {
   jest.mocked(useQuery).mockClear();
@@ -55,7 +81,7 @@ test('coffee facets retain their values during filtering only within the same se
 test('failed catalog loads stay silent; empty results require success and loaded shops stay visible', () => {
   const shops = React.createElement(CoffeeShopList);
   const render = (element = shops) => renderToStaticMarkup(React.createElement(MemoryRouter, {}, element));
-  for (const element of [shops, ...(['roasters', 'coffees', 'discovery'] as const).map(kind => React.createElement(CatalogSearchPage, { kind }))]) {
+  for (const element of [shops, ...(['shops', 'roasters', 'coffees'] as const).map(kind => React.createElement(CatalogSearchPage, { kind }))]) {
     const html = render(element);
     expect(html).not.toMatch(/Не удалось загрузить|Каталог временно недоступен|Повторить|Ничего не найдено|role="alert"/);
   }

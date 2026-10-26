@@ -22,7 +22,6 @@ async function check(name, route, body, status = 200) {
 const shopPath = '/api/v1/coffee-shops/search';
 const roasterPath = '/api/v1/roasters/search';
 const coffeePath = '/api/v1/coffees/search';
-const discoveryPath = '/api/v1/discovery/search';
 const browserErrors = [], browserRequests = [];
 let browser, page;
 try {
@@ -46,11 +45,6 @@ try {
   assert(coffeeFacets.groups.find(group => group.code === 'caffeine').options.find(option => option.code === 'decaf').selected);
   const roasterFacets = await check('roaster facets', '/api/v1/roasters/facets', {});
   assert.equal(roasterFacets.groups.find(group => group.code === 'roasterTags').selection, 'and');
-  const discovery = await check('independent discovery pages', discoveryPath, { coffeeShops: { page: 2, pageSize: 5 }, roasters: { page: 1, pageSize: 5 } });
-  assert.equal(discovery.coffeeShops.currentPage, 2); assert.equal(discovery.roasters.currentPage, 1);
-  const section = await check('unselected discovery section is null', discoveryPath, { sections: ['roasters'], roasters: { page: 1 } });
-  assert.equal(section.coffeeShops, null);
-  await check('independent discovery budgets', discoveryPath, { filters: { brew: ['filter'], budget: { currency: 'BYN', maxDrinkPrice: 10, maxCoffeePrice: 50, coffeeWeightGrams: 250 } } });
   await check('roaster coffee criteria', roasterPath, { filters: { coffee: { caffeine: ['decaf'], roast: ['light'], acidity: ['low', 'balanced'] } } });
   await check('empty selections do not restrict', coffeePath, { filters: { caffeine: [], brew: [] } });
   for (const [name, route, body] of [
@@ -65,8 +59,6 @@ try {
     ['radius needs origin', shopPath, { filters: { radiusKm: 5 } }],
     ['nested roasters forbidden', roasterPath, { filters: { coffee: { roasters: ['daloni-coffee'] } } }],
     ['tag/exclude overlap', roasterPath, { filters: { tags: ['subscription'], excludeTags: ['subscription'] } }],
-    ['scoped discovery field forbidden', discoveryPath, { filters: { city: 'minsk' } }],
-    ['bag budget needs weight', discoveryPath, { filters: { budget: { currency: 'BYN', maxCoffeePrice: 50 } } }],
   ]) await check(name, route, body, 400);
   for (const [route, body] of [[shopPath, { filters: { visitedOnly: true } }], [shopPath, { filters: { favoritesOnly: true } }], [roasterPath, { filters: { favoritesOnly: true } }], ['/api/v1/favorites', undefined], ['/api/admin/coffees?page=1&pageSize=5', undefined], ['/api/admin/coffee-filter-values', undefined], ['/api/admin/roaster-tags', undefined], ['/api/admin/coffee-import/runs?limit=1', undefined]]) await check('JWT required', route, body, 401);
   await check('missing coffee detail', '/api/v1/coffees/live-check-nonexistent-coffee', undefined, 404);

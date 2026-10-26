@@ -1,6 +1,6 @@
 import { httpClient } from './core/httpClient';
 import type { PublicAddress } from './publicAddresses';
-import type { CoffeeFilters, DiscoveryFilters, ShopFilters } from '../utils/catalogSearch';
+import type { CoffeeFilters, ShopFilters } from '../utils/catalogSearch';
 
 export interface Photo { fullUrl: string; urls: { thumbnail: string; card: string; detail: string; fullscreen: string } | null }
 export interface PublicTag { slug: string; name: string; description: string | null; sortOrder: number }
@@ -45,15 +45,8 @@ export interface ShopCard {
 }
 export interface Page<T> { items: T[]; totalItems: number; totalPages: number; currentPage: number; pageSize: number }
 export interface SearchRequest<F> { q: string; filters: F; sort: string; page: number; pageSize: number }
-export interface DiscoveryRequest {
-  q: string; filters: DiscoveryFilters; sections: ('coffee_shops' | 'roasters')[]; sort: 'relevance' | 'name_asc';
-  coffeeShops: { page: number; pageSize: number }; roasters: { page: number; pageSize: number };
-}
-export interface DiscoveryResult { q: string; coffeeShops: Page<ShopCard> | null; roasters: Page<RoasterCard> | null }
-
 const read = async <T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> =>
   (await httpClient.post<T>(path, body, { requiresAuth: false, signal })).data;
-export const searchDiscovery = (body: DiscoveryRequest, signal?: AbortSignal) => read<DiscoveryResult>('/api/v1/discovery/search', body, signal);
 export const searchShops = (body: SearchRequest<ShopFilters>, signal?: AbortSignal) => read<Page<ShopCard>>('/api/v1/coffee-shops/search', body, signal);
 export const getRoasterCards = async (signal?: AbortSignal): Promise<RoasterCard[]> => {
   const { data } = await httpClient.get<RoasterCard[]>('/api/roasters', { requiresAuth: false, signal });

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getCoffeeShopBySlug, searchCoffeeShops, type CoffeeShop } from '../api/coffeeshop';
+import { getCoffeeShopBySlug, type CoffeeShop } from '../api/coffeeshop';
+import { searchShops } from '../api/discovery';
 import { getThemeColors } from '../constants/colors';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRequireAuth } from '../hooks/useRequireAuth';
@@ -32,7 +33,7 @@ export default function CheckInCreateFlow() {
   const visible = ['/search', '/coffees', '/feed', '/check-ins'].some(path => pathname === path);
   const createExposure = useFeatureExposure<HTMLButtonElement>('check_in', 'global_create', visible);
   const homeExposure = useFeatureExposure<HTMLLabelElement>('home_check_in', 'check_in_type_picker', step === 'choose');
-  const shops = useQuery({ queryKey: ['checkInPicker', debounced], queryFn: () => searchCoffeeShops(debounced, undefined, 1, 20).then(r => r.data), enabled: step === 'shops' && !nearby });
+  const shops = useQuery({ queryKey: ['checkInPicker', debounced], queryFn: ({ signal }) => searchShops({ q: debounced, filters: {}, sort: debounced ? 'relevance' : 'name_asc', page: 1, pageSize: 20 }, signal), enabled: step === 'shops' && !nearby });
   const close = () => { setStep(null); setSelected(null); };
   const cancel = (reason: 'close' | 'map' = 'close') => {
     analytics?.cancel(step === 'choose' ? 'type_picker' : 'shop_picker', reason);
@@ -69,13 +70,10 @@ export default function CheckInCreateFlow() {
       () => setGeoError('Не удалось определить местоположение'), { enableHighAccuracy: false, timeout: 10000 });
   };
   const nearbyShops = useQuery({ queryKey: ['checkInNearby', position], enabled: step === 'shops' && nearby && !!position,
-    queryFn: async () => {
-      const { searchShops } = await import('../api/discovery');
-      return searchShops({ q: '', filters: { origin: position! }, sort: 'distance_asc', page: 1, pageSize: 20 });
-    } });
+    queryFn: ({ signal }) => searchShops({ q: '', filters: { origin: position! }, sort: 'distance_asc', page: 1, pageSize: 20 }, signal) });
   const searchError = nearby ? nearbyShops.error : shops.error;
   useEffect(() => { if (step === 'shops' && searchError) analytics?.failure(searchError, 'shop_search'); }, [analytics, step, searchError]);
-  const list = nearby ? nearbyShops.data?.items.map(item => ({ id: item.address.slug, publicAddress: item.address, name: item.name, location: { address: item.addressLine }, photos: item.coverPhoto ? [{ fullUrl: item.coverPhoto.fullUrl, fileName: '', storageKey: '' }] : [] })) : shops.data?.coffeeShops || shops.data?.items || [];
+  const list = (nearby ? nearbyShops.data : shops.data)?.items.map(item => ({ id: item.address.slug, publicAddress: item.address, name: item.name, location: { address: item.addressLine }, photos: item.coverPhoto ? [{ ...item.coverPhoto, fileName: '', storageKey: '' }] : [] })) ?? [];
   const choose = async (shop: CoffeeShop) => {
     const slug = shop.publicAddress?.slug;
     if (!slug) return setGeoError('У кофейни нет публичного адреса');

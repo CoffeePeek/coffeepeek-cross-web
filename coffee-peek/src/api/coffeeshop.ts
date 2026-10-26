@@ -233,62 +233,6 @@ export interface CoffeeShopFilters {
   isVisited?: boolean;
 }
 
-/** Query value for `type` — matches CoffeeShopType JSON names. */
-const SHOP_TYPE_QUERY: Record<string, string> = {
-  specialty: 'Specialty',
-  coffee_bar: 'CoffeeBar',
-  cafe: 'Cafe',
-  Specialty: 'Specialty',
-  CoffeeBar: 'CoffeeBar',
-  Cafe: 'Cafe',
-};
-
-export interface ShortShopDto {
-  publicAddress?: PublicAddress;
-  canonicalPath?: string;
-  id: string;
-  cityId: string;
-  name: string;
-  photos: ShortPhotoMetadataDto[];
-  rating: number;
-  checkInCount: number;
-  isVisited: boolean;
-  isNew: boolean;
-  isOpen: boolean;
-  priceRange: number | string;
-  tags?: ShopTagDto[];
-  type?: string;
-  location?: {
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-  };
-  beans?: Array<{ id: string; name: string }>;
-  roasters?: Array<{ id: string; publicAddress?: PublicAddress; name: string; photoUrl?: string | null; coverPhoto?: ShortPhotoMetadataDto | null }>;
-  equipments?: Equipment[];
-  brewMethods?: Array<{ id: string; name: string }>;
-  shopContact?: {
-    phone?: string;
-    email?: string;
-    website?: string;
-    instagram?: string;
-  };
-  schedules?: Array<{
-    dayOfWeek: number;
-    openTime?: string;
-    closeTime?: string;
-  }>;
-}
-
-export interface GetCoffeeShopsResponse {
-  coffeeShops?: ShortShopDto[];
-  items?: CoffeeShop[];
-  totalItems?: number;
-  totalPages?: number;
-  currentPage?: number;
-  pageSize?: number;
-}
-
 export interface City {
   publicAddress?: PublicAddress;
   canonicalPath?: string;
@@ -507,54 +451,6 @@ export interface PublicCheckInsPage {
 export interface FeedPage {
   items: Array<{ publishedAtUtc: string; checkIn: CheckInDto }>;
   nextCursor: string | null;
-}
-
-/**
- * Поиск кофеен с фильтрами
- * Использует публичный список кофеен с query-параметрами
- */
-export async function searchCoffeeShops(
-  searchQuery?: string,
-  filters?: CoffeeShopFilters,
-  page: number = 1,
-  pageSize: number = 10,
-  minRating?: number
-): Promise<ApiResponse<GetCoffeeShopsResponse>> {
-  const params: Record<string, any> = {
-    page: page > 0 ? page : 1,
-    pageSize: Math.min(100, pageSize > 0 ? pageSize : 10),
-  };
-
-  // Добавляем поисковый запрос
-  if (searchQuery && searchQuery.trim()) {
-    params.q = searchQuery.trim();
-  }
-
-  // Добавляем фильтры
-  if (filters) {
-    if (filters.cityId) params.city = filters.cityId;
-    if (filters.priceRange) params.priceRange = filters.priceRange;
-    if (filters.equipmentIds) params.equipments = filters.equipmentIds;
-    if (filters.coffeeBeanIds) params.beans = filters.coffeeBeanIds;
-    if (filters.roasterIds) params.roasters = filters.roasterIds;
-    if (filters.brewMethodIds) params.brewMethods = filters.brewMethodIds;
-    if (filters.tagIds?.length) params.tags = filters.tagIds;
-    if (filters.coffeeFocus) params.type = SHOP_TYPE_QUERY[filters.coffeeFocus] ?? filters.coffeeFocus;
-    if (filters.isOpen !== undefined) params.isOpen = filters.isOpen;
-    if (filters.isNew !== undefined) params.isNew = filters.isNew;
-    if (filters.isVisited !== undefined) params.isVisited = filters.isVisited;
-  }
-
-  // Добавляем минимальный рейтинг
-  if (minRating !== undefined && minRating > 0) {
-    params.minRating = minRating;
-  }
-
-  // Используем базовый эндпоинт вместо отдельного /search
-  return httpClient.get<GetCoffeeShopsResponse>(API_ENDPOINTS.COFFEE_SHOP.BASE, {
-    params,
-    requiresAuth: false,
-  });
 }
 
 function normalizeLongitude(longitude: number): number {

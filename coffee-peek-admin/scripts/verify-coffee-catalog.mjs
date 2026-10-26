@@ -54,7 +54,6 @@ async function setup(isAdmin = false, roles = ['Admin']) {
     if (api === '/api/users/me') return reply({ id: identity, email: `${identity}@example.test`, userName: identity, roles });
     if (api === '/api/v1/catalogs/coffee-filter-values') return reply(groups);
     if (api === '/api/v1/catalogs/roaster-tags') return reply(tags.filter(tag => tag.isActive).map(({ id, isActive, ...tag }) => tag));
-    if (api === '/api/v1/discovery/search') return reply({ q: body.q, coffeeShops: pageResult(body.q === 'empty-shop' ? [] : [{ ...shop, name: body.coffeeShops.page === 2 ? 'Кофейня второй страницы' : shop.name }], body.coffeeShops.page, body.q === 'empty-shop' ? 0 : 20, 10), roasters: pageResult([roaster], body.roasters.page, 1, 10) });
     if (api.endsWith('/facets')) {
       const prefixed = api.includes('roasters');
       const facets = groups.map(group => ({ code: `${prefixed ? 'coffee.' : ''}${group.code}`, name: group.name, selection: group.selection, options: group.values.map(option => ({ code: option.code, name: option.name, count: option.code === 'regular' ? 0 : 1, selected: (prefixed ? body.filters?.coffee : body.filters)?.[group.code]?.includes(option.code) ?? false })) }));

@@ -37,7 +37,6 @@ Slug уникален внутри вида сущности. Переимено
 
 | GET | Данные ответа |
 | --- | --- |
-| `/api/CoffeeShops` | `ApiResponse<{coffeeShops: ShopSummary[], totalItems, totalPages, currentPage, pageSize}>` |
 | `/api/CoffeeShops/{slug}` | `ApiResponse<ShopDetails>`; данные лежат непосредственно в `data`, без `shopDto` |
 | `/api/Roasters/{slug}` | `ApiResponse<RoasterDetails>` |
 | `/api/Catalogs/cities/{slug}` | `{address: PublicAddress, name: string}` без `ApiResponse` |
@@ -50,24 +49,27 @@ Slug уникален внутри вида сущности. Переимено
 
 Для деталей также доступны `/api/CoffeeShops/by-slug/{slug}`, `/api/Roasters/by-slug/{slug}`, `/api/Catalogs/cities/by-slug/{slug}`, `/api/Catalogs/coffee-zones/by-slug/{slug}`. Формат ответа совпадает с коротким маршрутом. У пользователей краткий `/api/Users/{slug}` тоже доступен, но `me` и `exists` — специальные маршруты; для профиля используйте `by-slug`.
 
-У `ShopSummary` есть `address`, `city: PublicAddress | null`, `name`, `photos`, `rating`, `reviewCount`, `isVisited`, `isNew`, `isOpen`, `dataCompletenessScore`, `priceRange`, `type`, `location`, `beans`, `roasters`, `equipments`, `brewMethods`, `shopContact`. `ShopDetails` добавляет `description`, `reviews`, `userCheckIns`, `canCreateReview`, `existingReviewId`, `schedules`, `tags`, `menu`. В деталях зёрна также называются `beans`.
+Карточка результата `POST /api/v1/coffee-shops/search` содержит `address`, `city: PublicAddress | null`, `name`, `addressLine`, `coverPhoto`, `rating`, `checkInCount`, `isVisited`, `isOpen`, `isFavorite`, `distanceMeters`, `tags`, `matchingMenuItems`. Детали кофейни читаются отдельно по slug; содержат `location`, `photos`, `description`, `userCheckIns`, `schedules`, `tags`, `menu`. В деталях зёрна называются `beans`.
 
 У вложенного обжарщика: `{address, name, photoUrl, coverPhoto}`. У отзывов `author` и `shop` — адреса вместо `userId` и `coffeeShopId`. У check-in `shop` — адрес вместо `shopId`. У маркера карты `address` вместо `id`, `primaryZone` вместо `primaryZoneId`; у зоны карты `address` вместо `id`. В деталях обжарщика `shops[]` содержит `{address, name, coverPhoto}`.
 
 Недоступная историческая связь с удалённой/скрытой сущностью возвращается как `null` или исключается из массива связей. GUID fallback отсутствует. Фото и содержимое отзывов используют прежние поля.
 
-Пример части ответа списка:
+Пример части ответа `POST /api/v1/coffee-shops/search`:
 
 ```json
 {
   "isSuccess": true,
   "data": {
-    "coffeeShops": [
+    "items": [
       {
         "address": {"slug": "26-october-16", "canonicalPath": "/coffee-shops/26-october-16", "revision": 1, "isAlias": false},
         "city": {"slug": "minsk", "canonicalPath": "/cities/minsk", "revision": 1, "isAlias": false},
         "name": "26",
-        "beans": [{"slug": "arabica", "name": "Arabica"}]
+        "addressLine": "Минск, ул. Октябрьская, 16",
+        "coverPhoto": null,
+        "rating": 4.8,
+        "checkInCount": 12
       }
     ],
     "totalItems": 1,
@@ -91,13 +93,18 @@ Slug уникален внутри вида сущности. Переимено
 | `brew-methods` | `{slug, name, category}` |
 | `shop-tags` | `{slug, name, description, sortOrder}`; только активные теги |
 
-`GET /api/CoffeeShops` принимает `city` вместо `cityId`. `roasters`, `equipments`, `beans`, `brewMethods`, `tags` — массивы slug. Передавайте массив повторением параметра:
+С 26 октября 2026 все списки и поиск кофеен в веб-клиентах (чекин, автодополнение карты, каталог админки, SEO и sitemap) используют `POST /api/v1/coffee-shops/search`. Ответ: `ApiResponse<Page<ShopCard>>`, массив карточек находится в `data.items`.
 
 ```http
-GET /api/CoffeeShops?city=minsk&beans=arabica&equipments=la-marzocco-linea&brewMethods=v60&tags=dog-friendly&tags=laptop-friendly&page=1&pageSize=20
+POST /api/v1/coffee-shops/search
+Content-Type: application/json
+
+{"q":"coffee","filters":{"city":"minsk"},"sort":"relevance","page":1,"pageSize":20}
 ```
 
-Каждый массив — максимум 100 значений. Пустой массив не задаёт фильтр. Неизвестное значение возвращает 404; сервер не игнорирует его и не выдаёт все кофейни. Alias принимается и приводит к той же сущности. Остальные параметры (`q`, `isOpen`, `isNew`, `isVisited`, `priceRange`, `type`, `minRating`) сохраняют смысл. Enum в JSON сериализуются строками.
+Для непустого `q` используется `sort: "relevance"`, для списка без текста — `"name_asc"`. Режим «Рядом со мной» в выборе кофейни для чекина передаёт `filters.origin` и `sort: "distance_asc"`.
+
+`POST /api/v1/discovery/search` удалён вместе с маршрутом Gateway, DTO и схемами OpenAPI. Для поиска используются отдельные каталоги; веб-интерфейс загружает кофейни через `POST /api/v1/coffee-shops/search`, а список обжарщиков — через `GET /api/roasters`.
 
 Пагинация списка кофеен: `page`, `pageSize` (1–100). Для отзывов пользователя: `pageNumber`, `pageSize`. Для `/api/CheckIns`: заголовки `X-Page-Number`, `X-Page-Size`, опциональные `from`/`to` с часовым поясом, интервал `[from, to)`. Ответы также содержат `X-Total-Count`, `X-Total-Pages`, `X-Current-Page`, `X-Page-Size`.
 

@@ -36,8 +36,7 @@ export interface MapShop {
   title: string;
 }
 
-interface GetCoffeeShopsResponse {
-  coffeeShops?: Record<string, unknown>[];
+interface ShopSearchResponse {
   items?: Record<string, unknown>[];
   totalItems?: number;
   totalPages?: number;
@@ -141,7 +140,10 @@ function mapBrowseShop(raw: Record<string, unknown>): BrowseCoffeeShop {
   const location = asRecord(firstValue(shop, 'location', 'Location'));
   const city = asRecord(firstValue(shop, 'city', 'City'));
   const photos = normalizePhotos(shop);
-  const imageUrl = photos?.find((photo) => photo.fullUrl)?.fullUrl
+  const coverPhoto = asRecord(shop.coverPhoto);
+  const imageUrl = firstString(asRecord(coverPhoto?.urls) ?? {}, 'card')
+    ?? firstString(coverPhoto ?? {}, 'fullUrl')
+    ?? photos?.find((photo) => photo.fullUrl)?.fullUrl
     ?? firstString(shop, 'imageUrl', 'ImageUrl');
 
   return {
@@ -149,7 +151,7 @@ function mapBrowseShop(raw: Record<string, unknown>): BrowseCoffeeShop {
     canonicalPath: firstString(address ?? {}, 'canonicalPath') ?? `/coffee-shops/${encodeURIComponent(slug)}`,
     name: firstString(shop, 'name', 'Name', 'title', 'Title') ?? 'Кофейня',
     address:
-      (location ? firstString(location, 'address', 'Address') : undefined),
+      firstString(shop, 'addressLine') ?? (location ? firstString(location, 'address', 'Address') : undefined),
     description: firstString(shop, 'description', 'Description'),
     cityName:
       firstString(shop, 'cityName', 'CityName')
@@ -160,11 +162,11 @@ function mapBrowseShop(raw: Record<string, unknown>): BrowseCoffeeShop {
   };
 }
 
-function normalizeShopList(data: GetCoffeeShopsResponse | undefined): {
+function normalizeShopList(data: ShopSearchResponse | undefined): {
   items: BrowseCoffeeShop[];
   totalPages: number;
 } {
-  const rawList = data?.coffeeShops ?? data?.items ?? [];
+  const rawList = data?.items ?? [];
   return {
     items: rawList.map((item) => mapBrowseShop(item)),
     totalPages: data?.totalPages ?? 1,
@@ -176,12 +178,11 @@ export async function getBrowseCoffeeShops(
   pageSize = 20,
   search?: string
 ): Promise<ApiResponse<{ items: BrowseCoffeeShop[]; totalPages: number }>> {
-  const params: Record<string, unknown> = { page, pageSize };
-  if (search?.trim()) params.q = search.trim();
-
-  const response = await httpClient.get<GetCoffeeShopsResponse>(
-    API_ENDPOINTS.COFFEE_SHOP.BASE,
-    { params, requiresAuth: false }
+  const q = search?.trim() ?? '';
+  const response = await httpClient.post<ShopSearchResponse>(
+    API_ENDPOINTS.COFFEE_SHOP.SEARCH,
+    { q, filters: {}, sort: q ? 'relevance' : 'name_asc', page, pageSize },
+    { requiresAuth: false }
   );
 
   const normalized = normalizeShopList(response.data);

@@ -116,8 +116,8 @@ function renderHome() {
 
 function renderShopCards(shops) {
   return `<ul style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;padding:0;list-style:none">${shops.map((shop) => {
-    const address = shop.location?.address || 'Адрес уточняется';
-    const photo = shop.photos?.[0]?.urls?.card || shop.photos?.[0]?.fullUrl;
+    const address = shop.addressLine || 'Адрес уточняется';
+    const photo = shop.coverPhoto?.urls?.card || shop.coverPhoto?.fullUrl;
     return `<li style="border:1px solid #3D2F28;border-radius:16px;overflow:hidden;background:#2D241F">
       ${photo ? `<img src="${escapeHtml(photo)}" alt="${escapeHtml(shop.name)}" width="640" height="360" style="display:block;width:100%;height:180px;object-fit:cover">` : ''}
       <div style="padding:18px"><h2 style="font-size:20px;margin:0 0 8px">${shop.canonicalPath ? `<a href="${escapeHtml(shop.canonicalPath)}" style="color:#fff">${escapeHtml(shop.name)}</a>` : escapeHtml(shop.name)}</h2>
@@ -257,12 +257,12 @@ export async function renderPublicPage(request) {
   }
 
   if (page === 'shops') {
-    const result = await fetchJson('/api/CoffeeShops?page=1&pageSize=48');
+    const result = await fetchJson('/api/v1/coffee-shops/search', { body: { q: '', filters: {}, sort: 'name_asc', page: 1, pageSize: 48 } });
     if (!result.ok) {
       const html = injectContent(replaceMeta(shell, { title: 'CoffeePeek временно недоступен', description: 'Каталог кофеен временно недоступен.', canonical: `${SITE_URL}/shops` }), renderUnavailable());
       return { html, status: 503 };
     }
-    const shops = result.body?.data?.coffeeShops || [];
+    const shops = result.body?.data?.items || [];
     shops.forEach(shop => { shop.canonicalPath = shop.address?.canonicalPath; });
     const title = 'Кофейни Беларуси — CoffeePeek';
     const description = `Каталог кофеен CoffeePeek: ${shops.length} заведений с адресами, рейтингами, меню и фотографиями.`;
