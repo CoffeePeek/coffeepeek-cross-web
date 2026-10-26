@@ -15,8 +15,12 @@ jest.mock('../src/utils/errorHandler', () => ({ getErrorMessage: () => 'Ошиб
 
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import CheckInCard from '../src/components/CheckInCard';
 import type { CheckInDto } from '../src/api/coffeeshop';
+
+const render = (props: Parameters<typeof CheckInCard>[0]) =>
+  renderToStaticMarkup(createElement(MemoryRouter, null, createElement(CheckInCard, props)));
 
 const item = {
   id: 'check-in-id', shop: null, author: null, username: 'Анна', shopName: 'Кофейня',
@@ -26,7 +30,7 @@ const item = {
 } as CheckInDto;
 
 test('renders an unrated check-in without inventing stars or crashing', () => {
-  const html = renderToStaticMarkup(createElement(CheckInCard, { item, own: true }));
+  const html = render({ item, own: true });
   expect(html).toContain('Хороший кофе');
   expect(html).toContain('Без оценки');
   expect(html).not.toContain('Оценка NaN');
@@ -34,7 +38,26 @@ test('renders an unrated check-in without inventing stars or crashing', () => {
 });
 
 test('retains the rating display for rated check-ins', () => {
-  const html = renderToStaticMarkup(createElement(CheckInCard, { item: { ...item, rating: { coffee: 5, service: 4, place: 3 } } }));
+  const html = render({ item: { ...item, rating: { coffee: 5, service: 4, place: 3 } } });
   expect(html).toContain('Оценка 4.0 из 5');
   expect(html).not.toContain('Без оценки');
+});
+
+test('feed cards link their date to the post page', () => {
+  const published = { ...item, visibility: 'Public', moderationState: 'Approved' } as CheckInDto;
+  const html = render({ item: published, feed: true });
+  expect(html).toContain('href="/check-ins/check-in-id"');
+  expect(html).toContain('cursor-pointer');
+});
+
+test('cards outside the feed do not link to the post page', () => {
+  const html = render({ item, own: true });
+  expect(html).not.toContain('/check-ins/check-in-id"');
+  expect(html).not.toContain('cursor-pointer');
+});
+
+test('the like counter shown to guests is excluded from opening the post', () => {
+  const published = { ...item, visibility: 'Public', moderationState: 'Approved', helpfulCount: 3 } as CheckInDto;
+  const html = render({ item: published, feed: true });
+  expect(html).toMatch(/<div data-card-control="true" class="shrink-0"><span aria-label="Отметок «Нравится»: 3"/);
 });

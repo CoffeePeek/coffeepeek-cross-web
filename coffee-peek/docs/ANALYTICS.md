@@ -132,7 +132,7 @@ accepted by the SDK, not a delivery guarantee (network/ad blockers can still los
 | `check_in_cancelled` | Explicit close/back/map exit | Flow context, `step`, `reason`, elapsed duration |
 | `feed_viewed` | First feed page loaded | First-page `result_count`, `is_empty` |
 | `feed_action_clicked` | Refresh/load-more/retry | `action`, `trigger` |
-| `feed_item_interacted` | Author/shop/photo/like/home detail interaction | `action`, `check_in_kind` |
+| `feed_item_interacted` | Post open/author/shop/photo/like/home detail interaction | `action`, `check_in_kind` |
 | `api_request_completed` | Logical HTTP client request finishes | Controlled `category`, `method`, `outcome`, `duration_ms`, `status_code`, `auth_retried`, optional error category |
 | `app_download_clicked` | Visitor clicks a download/store button | `channel` |
 

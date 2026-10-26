@@ -7,7 +7,7 @@ export interface EngagementAnalyticsEvents {
   entity_content_interacted: { entity_type: 'coffee' | 'roaster'; section: 'photos' | 'description' | 'roaster' | 'similar_coffees' | 'assortment' | 'shops' | 'contacts'; action: 'open' | 'close' | 'select' | 'view_all' | 'website' | 'instagram' | 'share' };
   feed_viewed: { result_count: number; is_empty: boolean };
   feed_action_clicked: { action: 'refresh' | 'load_more' | 'retry'; trigger: 'button' | 'gesture' | 'scroll' };
-  feed_item_interacted: { action: 'author' | 'shop' | 'drink_photo' | 'photo' | 'like' | 'unlike' | 'home_detail'; check_in_kind: 'shop' | 'home' };
+  feed_item_interacted: { action: 'open' | 'author' | 'shop' | 'drink_photo' | 'photo' | 'like' | 'unlike' | 'home_detail'; check_in_kind: 'shop' | 'home' };
 }
 
 /** Router state is untrusted. Keep only known sources and our opaque search identifier. */

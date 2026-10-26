@@ -44,7 +44,7 @@ async function loadSpaShell(request) {
   return response.text();
 }
 
-function replaceMeta(html, { title, description, canonical, type = 'website', image = DEFAULT_IMAGE, structuredData }) {
+function replaceMeta(html, { title, description, canonical, type = 'website', image = DEFAULT_IMAGE, imageWidth, imageHeight, structuredData }) {
   const tags = [
     `<meta name="description" content="${escapeHtml(description)}">`,
     `<link rel="canonical" href="${escapeHtml(canonical)}">`,
@@ -60,6 +60,9 @@ function replaceMeta(html, { title, description, canonical, type = 'website', im
       '<meta property="og:image:type" content="image/png">',
       '<meta property="og:image:width" content="512">',
       '<meta property="og:image:height" content="512">',
+    ] : imageWidth && imageHeight ? [
+      `<meta property="og:image:width" content="${escapeHtml(imageWidth)}">`,
+      `<meta property="og:image:height" content="${escapeHtml(imageHeight)}">`,
     ] : []),
     '<meta name="twitter:card" content="summary_large_image">',
     `<meta name="twitter:title" content="${escapeHtml(title)}">`,
@@ -149,6 +152,10 @@ function renderNotFound() {
   return pageLayout('Страница не найдена', 'Возможно, страница была удалена или ссылка указана неверно.', '<p><a href="/shops" style="color:#EAB308">Вернуться в каталог</a></p>');
 }
 
+function renderCheckInNotFound() {
+  return pageLayout('Публикация недоступна', 'Возможно, автор скрыл или удалил её, или она ещё на модерации.', '<p><a href="/feed" style="color:#EAB308">Открыть ленту</a></p>');
+}
+
 function renderUnavailable() {
   return pageLayout('Страница временно недоступна', 'Не удалось загрузить данные CoffeePeek. Попробуйте ещё раз позже.', '<p><a href="/shops" style="color:#EAB308">Обновить каталог</a></p>');
 }
@@ -184,6 +191,55 @@ function pageImage(data) {
     if (image) return image;
   }
   return data.photoUrl || data.avatarUrl || DEFAULT_IMAGE;
+}
+
+const CHECK_IN_ID = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+function excerpt(text, limit = 200) {
+  const value = String(text || '').replace(/\s+/g, ' ').trim();
+  return value.length > limit ? `${value.slice(0, limit - 1).trimEnd()}…` : value;
+}
+
+function checkInTitle(checkIn) {
+  const author = checkIn.username || 'Пользователь';
+  return checkIn.kind === 'Home' ? `Кофе дома — ${author}` : `${author} в «${checkIn.shopName || 'кофейне'}»`;
+}
+
+function checkInDescription(checkIn, title) {
+  const text = excerpt(checkIn.text);
+  if (text) return text;
+  const score = checkIn.kind === 'Home' ? checkIn.home?.tasteScore
+    : checkIn.rating && (checkIn.rating.coffee + checkIn.rating.service + checkIn.rating.place) / 3;
+  const drink = checkIn.drinkNameRu || checkIn.customDrinkName;
+  return `${[
+    title,
+    checkIn.home?.beanName && `Зерно: ${checkIn.home.beanName}`,
+    drink && `Напиток: ${drink}`,
+    score && `Оценка: ${Number(score).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} из 5`,
+  ].filter(Boolean).join('. ')}.`;
+}
+
+// Check-in photo URLs are API-relative; crawlers need them absolute. JPEG is the most widely supported preview format.
+function checkInImage(checkIn) {
+  const photos = [...(checkIn.photos || [])].sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
+  for (const photo of [...photos, { url: checkIn.drinkPhotoUrl, variants: checkIn.drinkPhotoVariants }]) {
+    const variant = photo?.variants?.find(v => v.purpose === 'detail' && v.format === 'jpeg');
+    const url = variant?.url || photo?.url;
+    if (url) return { image: new URL(url, apiUrl('/')).href, imageWidth: variant?.width, imageHeight: variant?.height };
+  }
+  return { image: DEFAULT_IMAGE };
+}
+
+function renderCheckIn(checkIn, title, description, image) {
+  const links = [
+    checkIn.shop?.canonicalPath && `<a href="${escapeHtml(checkIn.shop.canonicalPath)}" style="color:#EAB308">${escapeHtml(checkIn.shopName || 'Кофейня')}</a>`,
+    checkIn.author?.canonicalPath && `<a href="${escapeHtml(checkIn.author.canonicalPath)}" style="color:#EAB308">${escapeHtml(checkIn.username || 'Профиль автора')}</a>`,
+  ].filter(Boolean);
+  return pageLayout(title, checkIn.text?.trim() || description, `<article>
+      ${image !== DEFAULT_IMAGE ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" style="display:block;max-width:100%;max-height:640px;border-radius:16px;margin:0 0 24px">` : ''}
+      ${links.length ? `<p>${links.join(' · ')}</p>` : ''}
+      <p><a href="/download/auto" style="color:#EAB308">Открыть в приложении CoffeePeek</a></p>
+    </article>`);
 }
 
 export async function renderPublicPage(request) {
@@ -225,6 +281,25 @@ export async function renderPublicPage(request) {
       html,
       pageLayout('Кофейни', 'Каталог кофеен с адресами, рейтингами и меню.', renderShopCards(shops)),
     );
+    return { html, status: 200 };
+  }
+
+  if (page === 'check-in') {
+    const id = url.searchParams.get('id') || '';
+    const canonical = `${SITE_URL}/check-ins/${encodeURIComponent(id)}`;
+    // Anonymous read: only public, approved check-ins come back; everything else is a 404 from the API.
+    const result = CHECK_IN_ID.test(id) ? await fetchJson(`/api/v1/check-ins/${id}`) : { ok: false, status: 404 };
+    const checkIn = result.body?.data;
+    if (!result.ok || !checkIn) {
+      const status = result.ok ? 503 : result.status;
+      const content = status === 404 ? renderCheckInNotFound() : renderUnavailable();
+      return { html: injectContent(replaceMeta(shell, { title: 'Публикация недоступна — CoffeePeek', description: 'Публикация CoffeePeek недоступна.', canonical }), content), status, retryAfter: result.retryAfter };
+    }
+    const title = checkInTitle(checkIn);
+    const description = checkInDescription(checkIn, title);
+    const image = checkInImage(checkIn);
+    let html = replaceMeta(shell, { title: `${title} — CoffeePeek`, description, canonical, type: 'article', ...image });
+    html = injectContent(html, renderCheckIn(checkIn, title, description, image.image));
     return { html, status: 200 };
   }
 
