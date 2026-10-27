@@ -28,6 +28,8 @@
     {"source": "/robots.txt", "destination": "/robots.txt"},
     {"source": "/sitemap.xml", "destination": "/api/sitemap"},
     {"source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json"},
+    {"source": "/.well-known/apple-app-site-association", "destination": "/.well-known/apple-app-site-association"},
+    {"source": "/apple-app-site-association", "destination": "/.well-known/apple-app-site-association"},
     {"source": "/api/support/:path*", "destination": "https://api.coffeepeek.by/api/support/:path*"},
     {"source": "/support", "destination": "/support.html"},
     {"source": "/coffee-shops/new", "destination": "/spa-shell.html"},
@@ -53,6 +55,14 @@
     { "source": "/:path*", "destination": "/api/public-page?page=not-found&path=/:path*" }
   ],
   "headers": [
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    },
+    {
+      "source": "/apple-app-site-association",
+      "headers": [{ "key": "Content-Type", "value": "application/json" }]
+    },
     {
       "source": "/.well-known/assetlinks.json",
       "headers": [

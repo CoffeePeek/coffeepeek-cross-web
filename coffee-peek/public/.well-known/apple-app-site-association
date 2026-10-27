@@ -1,0 +1,34 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "JJ7867S6PS.com.coffeepeek"
+        ],
+        "components": [
+          {
+            "/": "/"
+          },
+          {
+            "/": "/coffee-shops/*"
+          },
+          {
+            "/": "/shops/*"
+          },
+          {
+            "/": "/roasters/*"
+          },
+          {
+            "/": "/users/*"
+          },
+          {
+            "/": "/coffees/*"
+          },
+          {
+            "/": "/check-ins/*"
+          }
+        ]
+      }
+    ]
+  }
+}
