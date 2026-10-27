@@ -194,7 +194,7 @@ interface Events {
 ### 4.1. Значения, которые нельзя угадывать или расширять незаметно
 
 - `visibility` фактически принимает `Private` / `Public` с заглавной буквы. В web event map тип шире (`string`), но значения приходят из этого API-контракта.
-- `sort`: `name_asc`, `relevance`, `distance_asc`, `rating_desc`, `available_coffees_desc`, `price_asc`, `price_desc`, `newest`; неподдерживаемое значение преобразуется в `unknown`.
+- `sort`: `recommended`, `name_asc`, `relevance`, `distance_asc`, `rating_desc`, `available_coffees_desc`, `price_asc`, `price_desc`, `newest`; неподдерживаемое значение преобразуется в `unknown`. Обычный список кофеен отмечается как `recommended`, хотя в POST-запросе `sort` не передаётся; текстовый поиск отмечается как `relevance`.
 - `query_length`: длина строки после trim и схлопывания пробелов, ограничена сверху числом `100`. `has_query = query_length > 0`. Саму строку не отправлять. Для строгого совпадения с JS длиной на iOS считать UTF-16 code units, а не визуальные grapheme clusters.
 - `position`: позиция карточки в выдаче, начиная с `1`; отсутствует, если позиции нет. Не ID объекта.
 - `filter_count` сейчас **не отправляется web-кодом**. При необходимости вычислять из длины `filter_keys` в отчёте; добавление явного поля — отдельно документируемое расширение.

@@ -146,7 +146,7 @@ test.each(['', ' coffee '])('public search preserves identity, street address, p
     items: [{ id: 'coffee-slug', canonicalPath: address.canonicalPath, address: 'Street 1', imageUrl: '/card.jpg' }], totalPages: 3,
   });
   expect(httpClient.post).toHaveBeenCalledWith('/api/v1/coffee-shops/search', {
-    q: search.trim(), filters: {}, sort: search.trim() ? 'relevance' : 'name_asc', page: 2, pageSize: 20,
+    q: search.trim() || undefined, filters: {}, page: 2, pageSize: 20,
   }, { requiresAuth: false });
 });
 

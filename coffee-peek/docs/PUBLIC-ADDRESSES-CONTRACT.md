@@ -99,10 +99,12 @@ Slug уникален внутри вида сущности. Переимено
 POST /api/v1/coffee-shops/search
 Content-Type: application/json
 
-{"q":"coffee","filters":{"city":"minsk"},"sort":"relevance","page":1,"pageSize":20}
+{"q":"coffee","filters":{"city":"minsk"},"page":1,"pageSize":20}
 ```
 
-Для непустого `q` используется `sort: "relevance"`, для списка без текста — `"name_asc"`. Режим «Рядом со мной» в выборе кофейни для чекина передаёт `filters.origin` и `sort: "distance_asc"`.
+С 27 октября 2026 обычный список не передаёт `q` и `sort`: после выкладки backend вернёт рекомендации. Явный `sort: "recommended"` также поддерживается. Текстовый поиск передаёт `q` без `sort`, сервер выбирает релевантность. Только явный режим «Рядом» передаёт `filters.origin` и `sort: "distance_asc"`. Открытие обычного списка не запрашивает геолокацию и не ограничивает выдачу радиусом 3 км.
+
+Пример обычного списка: `{"filters":{"city":"minsk"},"page":1,"pageSize":20}`. Формат ответа и пагинация сохраняются.
 
 `POST /api/v1/discovery/search` удалён вместе с маршрутом Gateway, DTO и схемами OpenAPI. Для поиска используются отдельные каталоги; веб-интерфейс загружает кофейни через `POST /api/v1/coffee-shops/search`, а список обжарщиков — через `GET /api/roasters`.
 

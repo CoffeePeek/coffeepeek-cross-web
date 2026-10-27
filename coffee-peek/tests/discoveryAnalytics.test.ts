@@ -19,6 +19,7 @@ describe('discovery analytics privacy and funnel boundaries', () => {
     expect(discoverySearchProperties('coffees', { ...state, q: 'x'.repeat(200), sort: 'private-sort' }, 'list', 'search-2'))
       .toMatchObject({ query_length: 100, sort: 'unknown' });
     expect(discoverySearchProperties('shops', state, 'list', 'city', 'minsk').city_slug).toBe('minsk');
+    expect(discoverySearchProperties('shops', { q: '', filters: {}, sort: 'recommended' }, 'list', 'recommendations')).toMatchObject({ has_query: false, sort: 'recommended' });
     expect(discoverySearchProperties('shops', state, 'list', 'city', 'private@email.example').city_slug).toBeUndefined();
   });
 

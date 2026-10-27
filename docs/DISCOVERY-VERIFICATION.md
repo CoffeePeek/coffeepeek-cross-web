@@ -2,6 +2,8 @@
 
 Contract update — 2026-10-26: `POST /api/v1/discovery/search` has been removed along with its Gateway route, DTOs and OpenAPI schemas. All web shop lists, including the check-in picker, map autocomplete, admin browse, SEO and sitemap, use `POST /api/v1/coffee-shops/search` and its `data.items` response. The legacy GET list client and DTOs have been removed. The verification scripts no longer request either retired route. The live results below are historical results from October 6, not a verification of this contract update.
 
+Search defaults — 2026-10-27: ordinary shop lists omit `q` and `sort` to enable backend recommendations. Text search sends `q` without a forced sort. Explicit nearby search retains `distance_asc` and coordinates. The main list no longer switches automatically to a 3 km nearby search. Request/response envelopes and pagination are unchanged; these defaults have not been rechecked against the deployed API.
+
 Contracts: OpenAPI 3.1 supplied in this task, plus [backend PR #334](https://github.com/CoffeePeek/coffeepeek-backend/pull/334). Initially checked at `8a8bc274213404612e446fb46ae55fd45b8fa8a6`; after deployment, rechecked at merged PR head `09e383e890f3596942f44176d33be09f9511da41` (merge commit `ebbc0434e7cdc1d82a3b208b939b5a90f9c35e0c`). Admin content/status/public-address/import DTOs were checked against its controllers and DTOs. The API does not expose its deployed commit, so these identify the reviewed contract rather than independently prove the deployed binary revision.
 
 ## Live API

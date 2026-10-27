@@ -28,11 +28,11 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 
 Кнопка Google появляется при заданном `VITE_GOOGLE_CLIENT_ID` (OAuth client типа Web application). Для локальной разработки и production нужно добавить соответствующие origin админки в Authorized JavaScript origins этого клиента в Google Cloud; backend должен принимать его audience. Используется официальная кнопка Google с popup-входом, без автоматического входа и One Tap. Если Google недоступен, остаётся вход по паролю; загрузку кнопки можно повторить.
 
-## Изменения поиска — 26 октября 2026
+## Изменения поиска — 27 октября 2026
 
 `POST /api/v1/discovery/search` удалён вместе с маршрутом Gateway, DTO и схемами OpenAPI. Основной поиск кофеен использует `POST /api/v1/coffee-shops/search`.
 
-Каталог админки, выбор кофейни для чекина, поиск на карте, SEO и sitemap используют `POST /api/v1/coffee-shops/search`. Тело: `{q, filters: {}, sort, page, pageSize}`; `sort` — `relevance` при непустом `q`, иначе `name_asc`. В ответе `data.items` и пагинация; адрес карточки — `addressLine`, фото — `coverPhoto`, публичный адрес — `address`.
+Каталог админки, выбор кофейни для чекина, поиск на карте, SEO и sitemap используют `POST /api/v1/coffee-shops/search`. Обычный список передаёт `{filters, page, pageSize}` без `q` и `sort`, чтобы backend вернул рекомендации; также допустим явный `sort: "recommended"`. Текстовый поиск добавляет `q` без сортировки, сервер выбирает релевантность. Режим «Рядом» добавляет `filters.origin` и `sort: "distance_asc"`. В ответе `data.items` и пагинация; адрес карточки — `addressLine`, фото — `coverPhoto`, публичный адрес — `address`.
 
 ## Публичные адреса и административные ID
 
@@ -40,7 +40,7 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 
 | Метод | Путь | Данные / доступ |
 |---|---|---|
-| POST | `/api/v1/coffee-shops/search` | Публичный поиск; `{q, filters, sort, page, pageSize}` → `data.items`, `totalPages` |
+| POST | `/api/v1/coffee-shops/search` | Публичный поиск; `{q?, filters, sort?, page, pageSize}` → `data.items`, `totalPages` |
 | GET | `/api/CoffeeShops/{slug}` | Публичная карточка |
 | GET | `/api/Map` | Публичная карта; bounds + zoom, `shops`, `clusters`, `zones`, `isTruncated` |
 | GET | `/api/admin/users/{id}/profile` | Moderator: публичные сведения автора по UUID; без email/телефона |

@@ -29,7 +29,7 @@ try {
   assert.equal(values.length, 8);
   const tags = await check('roaster tags', '/api/v1/catalogs/roaster-tags');
   assert(tags.some(tag => tag.slug === 'online-order'));
-  const shops = await check('shop search', shopPath, { q: '', filters: { city: 'minsk' }, sort: 'name_asc', page: 1, pageSize: 5 });
+  const shops = await check('recommended shop search', shopPath, { filters: { city: 'minsk' }, page: 1, pageSize: 5 });
   for (const shop of shops.items) { assert.equal(shop.city.slug, 'minsk'); assert.equal(shop.isFavorite, null); assert.equal(shop.isVisited, null); }
   const roasters = await check('roaster search', roasterPath, { q: '', filters: {}, sort: 'name_asc', page: 1, pageSize: 5 });
   for (const roaster of roasters.items) assert.equal(roaster.isFavorite, null);

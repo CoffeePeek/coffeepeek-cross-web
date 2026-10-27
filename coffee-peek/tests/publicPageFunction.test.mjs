@@ -46,7 +46,7 @@ test('catalog uses inline addresses for links and SEO, in one request', async ()
     assert.equal(calls.length, 1);
     assert.equal(new URL(calls[0].url).pathname, '/api/v1/coffee-shops/search');
     assert.equal(calls[0].init.method, 'POST');
-    assert.deepEqual(JSON.parse(calls[0].init.body), { q: '', filters: {}, sort: 'name_asc', page: 1, pageSize: 48 });
+    assert.deepEqual(JSON.parse(calls[0].init.body), { filters: {}, page: 1, pageSize: 48 });
   });
 });
 test('shop details are directly in data; menu, photos and structured metadata render', async () => {

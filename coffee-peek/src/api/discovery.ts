@@ -44,7 +44,7 @@ export interface ShopCard {
   isFavorite: boolean | null; distanceMeters: number | null; tags: PublicTag[]; matchingMenuItems: MatchedMenuItem[];
 }
 export interface Page<T> { items: T[]; totalItems: number; totalPages: number; currentPage: number; pageSize: number }
-export interface SearchRequest<F> { q: string; filters: F; sort: string; page: number; pageSize: number }
+export interface SearchRequest<F> { q?: string; filters: F; sort?: string; page: number; pageSize: number }
 const read = async <T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> =>
   (await httpClient.post<T>(path, body, { requiresAuth: false, signal })).data;
 export const searchShops = (body: SearchRequest<ShopFilters>, signal?: AbortSignal) => read<Page<ShopCard>>('/api/v1/coffee-shops/search', body, signal);

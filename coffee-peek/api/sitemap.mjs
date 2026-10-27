@@ -22,7 +22,7 @@ export async function renderSitemap() {
     let totalPages = 1;
     do {
       const result = kind === 'roasters' ? await fetchJson('/api/Roasters')
-        : await fetchJson(`/api/v1/${kind === 'shops' ? 'coffee-shops' : 'coffees'}/search`, { body: { q: '', filters: {}, sort: 'name_asc', page, pageSize: 100 } });
+        : await fetchJson(`/api/v1/${kind === 'shops' ? 'coffee-shops' : 'coffees'}/search`, { body: { ...(kind === 'coffees' ? { q: '', sort: 'name_asc' } : {}), filters: {}, page, pageSize: 100 } });
       if (!result.ok) throw new Error('Public catalog unavailable');
       const data = result.body?.data;
       totalPages = kind === 'roasters' ? 1 : data?.totalPages;

@@ -31,7 +31,7 @@ test('map autocomplete requests the first three server search results without vi
   const signal = new AbortController().signal;
   expect(await request({ signal })).toBe(data);
   expect(httpClient.post).toHaveBeenCalledWith('/api/v1/coffee-shops/search', {
-    q: 'кофе', filters: {}, sort: 'relevance', page: 1, pageSize: 3,
+    q: 'кофе', filters: {}, page: 1, pageSize: 3,
   }, { requiresAuth: false, signal });
   useSearchCoffeeShops(' ');
   expect(jest.mocked(useQuery).mock.calls.at(-1)![0].enabled).toBe(false);

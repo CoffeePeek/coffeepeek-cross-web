@@ -54,7 +54,7 @@ export function useSearchCoffeeShops(
   const q = searchQuery.trim();
   return useQuery({
     queryKey: [...coffeeShopKeys.search(q, page, pageSize), getCatalogScope()],
-    queryFn: ({ signal }) => searchShops({ q, filters: {}, sort: q ? 'relevance' : 'name_asc', page, pageSize }, signal),
+    queryFn: ({ signal }) => searchShops({ q, filters: {}, page, pageSize }, signal),
     enabled: enabled && !!q,
   });
 }

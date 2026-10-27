@@ -257,7 +257,7 @@ export async function renderPublicPage(request) {
   }
 
   if (page === 'shops') {
-    const result = await fetchJson('/api/v1/coffee-shops/search', { body: { q: '', filters: {}, sort: 'name_asc', page: 1, pageSize: 48 } });
+    const result = await fetchJson('/api/v1/coffee-shops/search', { body: { filters: {}, page: 1, pageSize: 48 } });
     if (!result.ok) {
       const html = injectContent(replaceMeta(shell, { title: 'CoffeePeek временно недоступен', description: 'Каталог кофеен временно недоступен.', canonical: `${SITE_URL}/shops` }), renderUnavailable());
       return { html, status: 503 };

@@ -44,9 +44,9 @@ import CatalogSearchPage from '../src/pages/CatalogSearchPage';
 import CheckInCreateFlow from '../src/components/CheckInCreateFlow';
 import { searchShops } from '../src/api/discovery';
 
-test.each([false, true])('check-in picker renders search cards and requests the selected mode (nearby: %s)', async nearby => {
+test.each([[false, ''], [false, 'кофе'], [true, '']] as const)('check-in picker requests recommendations, text or nearby search (nearby: %s, query: %s)', async (nearby, text) => {
   const position = { latitude: 53.9, longitude: 27.6 };
-  const states = ['shops', null, 'shop', 'кофе', null, nearby, position, '', 'кофе'];
+  const states = ['shops', null, 'shop', text, null, nearby, position, '', text];
   const stateMock = jest.spyOn(React, 'useState').mockImplementation((() => [states.shift(), jest.fn()]) as typeof React.useState);
   const previous = mockRoasters;
   mockRoasters = { data: { items: [{ address: { slug: 'coffee' }, name: 'Кофейня для чекина', addressLine: 'Улица 1', coverPhoto: null }] } };
@@ -60,7 +60,9 @@ test.each([false, true])('check-in picker renders search cards and requests the 
     const request = options.queryFn as (context: { signal: AbortSignal }) => Promise<unknown>;
     const signal = new AbortController().signal;
     await request({ signal });
-    expect(searchShops).toHaveBeenLastCalledWith({ q: nearby ? '' : 'кофе', filters: nearby ? { origin: position } : {}, sort: nearby ? 'distance_asc' : 'relevance', page: 1, pageSize: 20 }, signal);
+    expect(searchShops).toHaveBeenLastCalledWith(nearby
+      ? { filters: { origin: position }, sort: 'distance_asc', page: 1, pageSize: 20 }
+      : { q: text || undefined, filters: {}, page: 1, pageSize: 20 }, signal);
   } finally {
     stateMock.mockRestore();
     mockRoasters = previous;
@@ -128,7 +130,7 @@ test.each(['shops', 'roasters'] as const)('the %s list has a back action and no 
   expect(jest.mocked(ShopSearchBar).mock.calls.at(-1)?.[0].onBack).toEqual(expect.any(Function));
 });
 
-test('the default shop request uses a known location, while explicit filters keep their values', async () => {
+test('shop recommendations do not wait for location; nearby and text searches retain their contracts', async () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   Object.defineProperty(globalThis, 'window', { configurable: true, value: { matchMedia: () => ({ matches: true }) } });
   const render = (url = '/search') => renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [url] }, React.createElement(CoffeeShopList)));
@@ -141,18 +143,25 @@ test('the default shop request uses a known location, while explicit filters kee
   try {
     mockLocation = { data: undefined, isPending: true, isFetching: true };
     render();
-    expect((mockInfiniteQuery.mock.calls.at(-1)?.[0] as { enabled: boolean }).enabled).toBe(false);
+    expect(await request()).toEqual({ filters: { city: 'minsk' }, page: 1, pageSize: 20 });
 
     mockLocation = { data: { coords: { latitude: 50.4501, longitude: 30.5234 }, timestamp: Date.now() }, isPending: false, isFetching: false };
     render();
-    expect(await request()).toEqual({ q: '', filters: { origin: { latitude: 50.4501, longitude: 30.5234 }, radiusKm: 3 }, sort: 'distance_asc', page: 1, pageSize: 20 });
+    expect(await request()).toEqual({ filters: { city: 'minsk' }, page: 1, pageSize: 20 });
 
     render(`/search?filters=${encodeURIComponent(JSON.stringify({ city: 'minsk' }))}`);
-    expect(await request()).toEqual({ q: '', filters: { city: 'minsk' }, sort: 'name_asc', page: 1, pageSize: 20 });
+    expect(await request()).toEqual({ filters: { city: 'minsk' }, page: 1, pageSize: 20 });
+
+    const origin = { latitude: 50.4501, longitude: 30.5234 };
+    render(`/search?filters=${encodeURIComponent(JSON.stringify({ origin }))}&sort=distance_asc`);
+    expect(await request()).toEqual({ filters: { origin }, sort: 'distance_asc', page: 1, pageSize: 20 });
+
+    render('/search?q=coffee');
+    expect(await request()).toEqual({ q: 'coffee', filters: { city: 'minsk' }, page: 1, pageSize: 20 });
 
     mockLocation = { data: null, isPending: false, isFetching: false };
     render();
-    expect(await request()).toEqual({ q: '', filters: { city: 'minsk' }, sort: 'name_asc', page: 1, pageSize: 20 });
+    expect(await request()).toEqual({ filters: { city: 'minsk' }, page: 1, pageSize: 20 });
   } finally {
     mockLocation = { data: null, isPending: false, isFetching: false };
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);

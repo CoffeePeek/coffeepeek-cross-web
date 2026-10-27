@@ -61,7 +61,7 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   useEffect(() => { if (kind === 'shops' && cityId && !params.has('filters') && !params.has('city') && !params.has('citySlug')) update(state, true); }, [kind, cityId, params]);
   useEffect(() => {
     if (input === state.q) return;
-    const timer = setTimeout(() => update(applyCriteria(state, { q: input.trim().replace(/\s+/g, ' '), sort: ['relevance', 'name_asc'].includes(state.sort) ? (input.trim() ? 'relevance' : 'name_asc') : state.sort })), 300);
+    const timer = setTimeout(() => update(applyCriteria(state, { q: input.trim().replace(/\s+/g, ' '), sort: ['recommended', 'relevance', 'name_asc'].includes(state.sort) ? (input.trim() ? 'relevance' : kind === 'shops' ? 'recommended' : 'name_asc') : state.sort })), 300);
     return () => clearTimeout(timer);
   }, [input, state, kind]);
   useEffect(() => {
@@ -82,7 +82,7 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
     initialPageParam: request.page,
     getNextPageParam: page => kind === 'coffees' && page.currentPage < page.totalPages ? page.currentPage + 1 : undefined,
     queryFn: ({ signal, pageParam }) => kind === 'coffees' ? searchCoffees({ ...request, page: Number(pageParam), filters: state.filters as CoffeeFilters }, signal)
-      : searchShops({ ...request, filters: state.filters as ShopFilters }, signal),
+      : searchShops({ ...request, q: state.q || undefined, sort: state.sort === 'distance_asc' ? state.sort : undefined, filters: state.filters as ShopFilters }, signal),
     enabled: enabled && kind !== 'roasters', retry: false, staleTime: 0,
     placeholderData: (previous, previousQuery) => previousQuery?.queryKey[1] === scope && previousQuery.queryKey[2] === kind ? previous : undefined,
   });
@@ -119,7 +119,7 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   const reset = () => {
     const filters = kind === 'coffees' ? { availableOnly: true } : {};
     captureAnalyticsEvent('filters_applied', { catalog: kind, filter_keys: analyticsFilterKeys(filters), changed_filter_keys: changedAnalyticsFilterKeys(state.filters, filters), action: 'reset' });
-    update(applyCriteria(state, { filters, q: '', sort: 'name_asc' }));
+    update(applyCriteria(state, { filters, q: '', sort: kind === 'shops' ? 'recommended' : 'name_asc' }));
   };
   const result = query.data?.pages[0];
   const rawPage = kind === 'roasters' ? roasters.data ? { items: localRoasters, totalItems: localRoasters.length, totalPages: 1, currentPage: 1, pageSize: localRoasters.length } : undefined

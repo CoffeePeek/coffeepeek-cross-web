@@ -181,7 +181,7 @@ export async function getBrowseCoffeeShops(
   const q = search?.trim() ?? '';
   const response = await httpClient.post<ShopSearchResponse>(
     API_ENDPOINTS.COFFEE_SHOP.SEARCH,
-    { q, filters: {}, sort: q ? 'relevance' : 'name_asc', page, pageSize },
+    { q: q || undefined, filters: {}, page, pageSize },
     { requiresAuth: false }
   );
 

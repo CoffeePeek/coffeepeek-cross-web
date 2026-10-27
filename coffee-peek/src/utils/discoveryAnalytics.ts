@@ -64,7 +64,7 @@ export function discoverySearchProperties(catalog: CatalogKind, state: Pick<Sear
   return { catalog, search_id: searchId, source, has_query: queryLength > 0, query_length: Math.min(queryLength, 100),
     filter_keys: analyticsFilterKeys(state.filters), nearby: !!state.filters.origin,
     ...(citySlug && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(citySlug) && citySlug.length <= 100 ? { city_slug: citySlug } : {}),
-    sort: ['name_asc', 'relevance', 'distance_asc', 'rating_desc', 'available_coffees_desc', 'price_asc', 'price_desc', 'newest'].includes(state.sort) ? state.sort : 'unknown' };
+    sort: ['recommended', 'name_asc', 'relevance', 'distance_asc', 'rating_desc', 'available_coffees_desc', 'price_asc', 'price_desc', 'newest'].includes(state.sort) ? state.sort : 'unknown' };
 }
 
 /** One logical criteria set, not one request: refetches and additional pages must not inflate funnels. */

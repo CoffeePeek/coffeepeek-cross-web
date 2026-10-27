@@ -10,7 +10,7 @@ const publicFetch = async (input, init) => {
   if (url.pathname === '/api/v1/coffee-shops/search' || url.pathname === '/api/v1/coffees/search') {
     assert.equal(init.method, 'POST');
     const body = JSON.parse(init.body);
-    assert.deepEqual(body, { q: '', filters: {}, sort: 'name_asc', page: body.page, pageSize: 100 });
+    assert.deepEqual(body, { ...(url.pathname.includes('coffee-shops') ? {} : { q: '', sort: 'name_asc' }), filters: {}, page: body.page, pageSize: 100 });
     const path = url.pathname.includes('coffee-shops') ? `/coffee-shops/shop-${body.page}` : `/coffees/coffee-${body.page}`;
     return Response.json({ isSuccess: true, data: { totalPages: 2, items: [item(path)] } });
   }

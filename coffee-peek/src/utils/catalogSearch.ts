@@ -56,7 +56,7 @@ export type DiscoveryFilters = z.infer<typeof discoveryFiltersSchema>;
 export type CatalogKind = 'discovery' | 'shops' | 'roasters' | 'coffees';
 export interface SearchState { q: string; filters: Record<string, unknown>; sort: string; page: number; coffeeShopsPage: number; roastersPage: number }
 const sorts: Record<CatalogKind, string[]> = {
-  discovery: ['name_asc', 'relevance'], shops: ['name_asc', 'relevance', 'distance_asc', 'rating_desc'],
+  discovery: ['name_asc', 'relevance'], shops: ['recommended', 'relevance', 'distance_asc'],
   roasters: ['name_asc', 'relevance', 'available_coffees_desc'], coffees: ['name_asc', 'relevance', 'price_asc', 'price_desc', 'newest'],
 };
 export const filterSchemas = { discovery: discoveryFiltersSchema, shops: shopFiltersSchema, roasters: roasterFiltersSchema, coffees: coffeeFiltersSchema };
@@ -103,7 +103,9 @@ export function readSearchState(params: URLSearchParams, kind: CatalogKind): Sea
     if (!Number.isInteger(value) || value < 1 || value > 100000) throw new Error('Некорректная страница в адресе');
     return value;
   };
-  const sort = params.get('sort') ?? (q ? 'relevance' : 'name_asc');
+  const defaultSort = kind === 'shops' && (filters as ShopFilters).origin ? 'distance_asc' : q ? 'relevance' : kind === 'shops' ? 'recommended' : 'name_asc';
+  const savedSort = params.get('sort');
+  const sort = kind === 'shops' && (savedSort === 'name_asc' || savedSort === 'rating_desc' || savedSort === 'recommended' && !!q) ? defaultSort : savedSort ?? defaultSort;
   if (!sorts[kind].includes(sort)) throw new Error('Некорректная сортировка в адресе');
   return { q, filters: normalizeFilters(filters as Record<string, unknown>), sort, page: page('page'), coffeeShopsPage: page('shopsPage'), roastersPage: page('roastersPage') };
 }
@@ -134,7 +136,7 @@ export function transferDiscovery(state: SearchState, kind: 'shops' | 'roasters'
   const { brew, budget } = state.filters as DiscoveryFilters;
   const shopCriteria = !!brew?.length || budget?.minDrinkPrice !== undefined || budget?.maxDrinkPrice !== undefined || budget?.drinkVolumeMl !== undefined;
   const menu = normalizeFilters({ brew, currency: budget?.currency, minPrice: budget?.minDrinkPrice, maxPrice: budget?.maxDrinkPrice, volumeMl: budget?.drinkVolumeMl });
-  return applyCriteria(state, { filters: kind === 'shops' && shopCriteria ? { menu } : {}, sort: state.q ? 'relevance' : 'name_asc' });
+  return applyCriteria(state, { filters: kind === 'shops' && shopCriteria ? { menu } : {}, sort: state.q ? 'relevance' : kind === 'shops' ? 'recommended' : 'name_asc' });
 }
 export function safePurchaseUrl(value: string): string | undefined {
   try { const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : undefined; } catch { return undefined; }

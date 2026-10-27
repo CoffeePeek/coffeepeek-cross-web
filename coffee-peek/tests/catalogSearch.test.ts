@@ -1,6 +1,24 @@
 import { applyCriteria, discoveryRoasters, isDiscoveryFiltering, filterRoasters, readSearchState, writeSearchState, validateSearch, transferDiscovery, normalizeFilters, safePurchaseUrl, countryFlagUrl, shareCoffee } from '../src/utils/catalogSearch';
 import type { RoasterCard } from '../src/api/discovery';
 
+test('shops default to recommendations, preserve nearby and text modes and migrate old saved sorts', () => {
+  const state = readSearchState(new URLSearchParams(), 'shops');
+  expect(state.sort).toBe('recommended');
+  expect(readSearchState(writeSearchState(state, 'shops'), 'shops')).toEqual(state);
+  expect(readSearchState(new URLSearchParams('q=coffee'), 'shops').sort).toBe('relevance');
+  for (const sort of ['name_asc', 'rating_desc', 'recommended']) {
+    expect(readSearchState(new URLSearchParams({ sort }), 'shops').sort).toBe('recommended');
+    expect(readSearchState(new URLSearchParams({ sort, q: 'coffee' }), 'shops').sort).toBe('relevance');
+  }
+  const filters = { origin: { latitude: 53.9, longitude: 27.6 } };
+  const nearby = readSearchState(new URLSearchParams({ filters: JSON.stringify(filters), sort: 'distance_asc' }), 'shops');
+  expect(nearby.sort).toBe('distance_asc');
+  expect(nearby.filters).toEqual(filters);
+  expect(validateSearch(nearby, 'shops')).toEqual({});
+  expect(validateSearch({ ...nearby, filters: {} }, 'shops')).toHaveProperty('sort');
+  expect(() => readSearchState(new URLSearchParams('sort=unknown'), 'shops')).toThrow();
+});
+
 test('coffee sharing uses the canonical URL, supports copying and ignores cancellation', async () => {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
   const share = jest.fn().mockResolvedValue(undefined);

@@ -33,7 +33,7 @@ export default function CheckInCreateFlow() {
   const visible = ['/search', '/coffees', '/feed', '/check-ins'].some(path => pathname === path);
   const createExposure = useFeatureExposure<HTMLButtonElement>('check_in', 'global_create', visible);
   const homeExposure = useFeatureExposure<HTMLLabelElement>('home_check_in', 'check_in_type_picker', step === 'choose');
-  const shops = useQuery({ queryKey: ['checkInPicker', debounced], queryFn: ({ signal }) => searchShops({ q: debounced, filters: {}, sort: debounced ? 'relevance' : 'name_asc', page: 1, pageSize: 20 }, signal), enabled: step === 'shops' && !nearby });
+  const shops = useQuery({ queryKey: ['checkInPicker', debounced], queryFn: ({ signal }) => searchShops({ q: debounced || undefined, filters: {}, page: 1, pageSize: 20 }, signal), enabled: step === 'shops' && !nearby });
   const close = () => { setStep(null); setSelected(null); };
   const cancel = (reason: 'close' | 'map' = 'close') => {
     analytics?.cancel(step === 'choose' ? 'type_picker' : 'shop_picker', reason);
@@ -70,7 +70,7 @@ export default function CheckInCreateFlow() {
       () => setGeoError('Не удалось определить местоположение'), { enableHighAccuracy: false, timeout: 10000 });
   };
   const nearbyShops = useQuery({ queryKey: ['checkInNearby', position], enabled: step === 'shops' && nearby && !!position,
-    queryFn: ({ signal }) => searchShops({ q: '', filters: { origin: position! }, sort: 'distance_asc', page: 1, pageSize: 20 }, signal) });
+    queryFn: ({ signal }) => searchShops({ filters: { origin: position! }, sort: 'distance_asc', page: 1, pageSize: 20 }, signal) });
   const searchError = nearby ? nearbyShops.error : shops.error;
   useEffect(() => { if (step === 'shops' && searchError) analytics?.failure(searchError, 'shop_search'); }, [analytics, step, searchError]);
   const list = (nearby ? nearbyShops.data : shops.data)?.items.map(item => ({ id: item.address.slug, publicAddress: item.address, name: item.name, location: { address: item.addressLine }, photos: item.coverPhoto ? [{ ...item.coverPhoto, fileName: '', storageKey: '' }] : [] })) ?? [];
