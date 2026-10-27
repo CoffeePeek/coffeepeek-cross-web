@@ -83,12 +83,12 @@ function serverContent(content) {
   return `<div id="server-rendered-content" style="min-height:100vh;background:#1A1412;color:#fff;font-family:'Manrope',sans-serif">
     <header style="border-bottom:1px solid #3D2F28;padding:16px clamp(20px,5vw,64px)"><a href="/" style="color:#fff;text-decoration:none;font-size:20px;font-weight:700">Coffee<span style="color:#EAB308">Peek</span></a></header>
     ${content}
-  </div>`;
+  </div><div id="app-startup"><span class="wobble-ring" role="status" aria-label="Загрузка" style="width:48px;height:48px;border-width:3px;border-top-color:#EAB308;border-right-color:#EAB308"></span></div>`;
 }
 
 function injectContent(html, content) {
   // Функции-замены: `$&` / `$'` / "$`" в названиях кофеен иначе раскрываются в куски шаблона.
-  // React replaces these children when it mounts. Without JavaScript the page stays readable.
+  // The shell shows a loader until React replaces these children; without JavaScript the content stays readable.
   return html.replace('<div id="root"></div>', () => `<div id="root">${serverContent(content)}</div>`);
 }
 
