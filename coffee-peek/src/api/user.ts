@@ -123,6 +123,12 @@ export function setProfileFollowing(slug: string, following: boolean): Promise<P
   return following ? httpClient.putRaw(endpoint) : httpClient.deleteRaw(endpoint);
 }
 
+export async function blockAuthor(authorId: string) {
+  return (await httpClient.put<{ authorId: string; isBlocked: boolean; revision: string }>(
+    `/api/v1/me/blocks/${encodeURIComponent(authorId)}`, undefined, { requiresAuth: true },
+  )).data;
+}
+
 export function getProfileConnections(slug: string, kind: ProfileConnectionKind, page: number, signal?: AbortSignal) {
   return httpClient.getRaw<ProfileConnectionsPage>(`/api/Users/${encodeURIComponent(slug)}/${kind}`, {
     params: { page, pageSize: 20 }, signal,

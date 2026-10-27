@@ -68,7 +68,7 @@ function ShopCheckInCard({ item, own = false, showShop = true, feed = false }: {
             : <p className={`mt-0.5 text-xs sm:text-sm ${classes.text.secondary}`}>{date}</p>}
         </div>
       </div>
-      {(isOwn || published) && <ReportCheckInButton checkInId={item.id} actions={isOwn ? close => <>
+      {(isOwn || published) && <ReportCheckInButton checkInId={item.id} authorId={item.authorId} authorName={username} canShare={published} actions={isOwn ? close => <>
         <Link to={`/check-ins/${encodeURIComponent(item.id)}/edit`} autoFocus onClick={close} className={menuActionClass}>Изменить</Link>
         <button type="button" disabled={visibility.isPending} className={menuActionClass} onClick={() => visibility.mutate({ id: item.id, visibility: item.visibility === 'Public' ? 'Private' : 'Public' }, { onSuccess: () => { close(); showToast(item.visibility === 'Public' ? 'Чекин стал личным' : 'Чекин отправлен на модерацию', 'success'); } })}>{item.visibility === 'Public' ? 'Сделать личным' : 'Сделать публичным'}</button>
         <button type="button" disabled={deletion.isPending} className={`${menuActionClass} text-red-500`} onClick={() => { if (window.confirm('Удалить этот чекин?')) deletion.mutate(item.id, { onSuccess: close }); }}>Удалить</button>

@@ -1,8 +1,8 @@
-jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), getRaw: jest.fn(), putRaw: jest.fn(), deleteRaw: jest.fn() } }));
+jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), put: jest.fn(), getRaw: jest.fn(), putRaw: jest.fn(), deleteRaw: jest.fn() } }));
 jest.mock('../src/api/core/interceptors', () => ({ normalizePublicDto: (value: unknown) => value }));
 jest.mock('../src/utils/logger', () => ({ logger: { warn: jest.fn(), error: jest.fn() } }));
 import { httpClient } from '../src/api/core/httpClient';
-import { getProfileActivity, getProfileConnections, getProfileFavorites, getUserPublicProfile, setProfileFollowing } from '../src/api/user';
+import { blockAuthor, getProfileActivity, getProfileConnections, getProfileFavorites, getUserPublicProfile, setProfileFollowing } from '../src/api/user';
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -26,6 +26,15 @@ test('connections send page parameters and preserve cancellation', async () => {
   const signal = new AbortController().signal;
   await getProfileConnections('maria', 'following', 2, signal);
   expect(httpClient.getRaw).toHaveBeenCalledWith('/api/Users/maria/following', { params: { page: 2, pageSize: 20 }, signal });
+});
+
+test('blocking uses the public author ID, requires authentication and preserves errors', async () => {
+  const state = { authorId: 'author-id', isBlocked: true, revision: '1' };
+  jest.mocked(httpClient.put).mockResolvedValueOnce({ data: state } as never);
+  expect(await blockAuthor('author /')).toEqual(state);
+  expect(httpClient.put).toHaveBeenCalledWith('/api/v1/me/blocks/author%20%2F', undefined, { requiresAuth: true });
+  jest.mocked(httpClient.put).mockRejectedValueOnce(new Error('Блокировка недоступна'));
+  await expect(blockAuthor('author-id')).rejects.toThrow('Блокировка недоступна');
 });
 
 test('activity and favorites belong to the viewed author and use public endpoints', async () => {

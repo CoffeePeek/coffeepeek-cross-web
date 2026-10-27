@@ -153,7 +153,7 @@ function renderNotFound() {
 }
 
 function renderCheckInNotFound() {
-  return pageLayout('Публикация недоступна', 'Возможно, автор скрыл или удалил её, или она ещё на модерации.', '<p><a href="/feed" style="color:#EAB308">Открыть ленту</a></p>');
+  return pageLayout('Публикация недоступна', 'Возможно, автор скрыл или удалил её, или она ещё на модерации.', '<p><a href="/feed" aria-label="Вернуться в ленту" style="color:#EAB308;font-size:24px">←</a></p>');
 }
 
 function renderUnavailable() {
@@ -238,7 +238,7 @@ function renderCheckIn(checkIn, title, description, image) {
   return pageLayout(title, checkIn.text?.trim() || description, `<article>
       ${image !== DEFAULT_IMAGE ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" style="display:block;max-width:100%;max-height:640px;border-radius:16px;margin:0 0 24px">` : ''}
       ${links.length ? `<p>${links.join(' · ')}</p>` : ''}
-      <p><a href="/download/auto" style="color:#EAB308">Открыть в приложении CoffeePeek</a></p>
+      <p><a href="/feed" aria-label="Вернуться в ленту" style="color:#EAB308;font-size:24px">←</a></p>
     </article>`);
 }
 

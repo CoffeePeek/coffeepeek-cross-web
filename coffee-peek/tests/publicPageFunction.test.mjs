@@ -227,7 +227,8 @@ test('shop check-in shares its text, absolute JPEG photo and links before JavaSc
     assert.match(head, /property="og:image:height" content="1600"/);
     assert.match(result.html, /href="\/coffee-shops\/memories"/);
     assert.match(result.html, /href="\/users\/maria"/);
-    assert.match(result.html, /href="\/download\/auto"/);
+    assert.doesNotMatch(result.html, /href="\/download\//);
+    assert.match(result.html, /href="\/feed" aria-label="Вернуться в ленту"/);
   });
 });
 

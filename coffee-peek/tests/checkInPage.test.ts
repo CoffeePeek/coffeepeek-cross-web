@@ -11,7 +11,7 @@ jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: jest.fn() }));
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
 jest.mock('../src/components/CheckInCard', () => ({ __esModule: true, default: ({ item }: { item: { text: string } }) => item.text }));
 jest.mock('../src/components/Mascot', () => ({ __esModule: true, default: () => null }));
-jest.mock('../src/components/mobile-app', () => ({ MobileAppDownload: () => null }));
+jest.mock('../src/components/mobile-app', () => ({ MobileAppDownload: () => 'Скачать приложение' }));
 
 import CheckInPage from '../src/pages/CheckInPage';
 import { usePageTitle } from '../src/hooks/usePageTitle';
@@ -23,7 +23,11 @@ const render = () => renderToStaticMarkup(createElement(MemoryRouter, { initialE
 beforeEach(() => { Object.assign(mockQuery, initial); jest.clearAllMocks(); });
 
 test('a loaded check-in remains readable with its page metadata', () => {
-  expect(render()).toContain('Текст публикации');
+  const html = render();
+  expect(html).toContain('Текст публикации');
+  expect(html).toContain('aria-label="Вернуться в ленту"');
+  expect(html).not.toContain('Открыть ленту');
+  expect(html).not.toContain('Скачать приложение');
   expect(usePageTitle).toHaveBeenLastCalledWith('Анна в «Кофейня»', {
     description: 'Текст публикации', canonicalPath: '/check-ins/post-id',
   });

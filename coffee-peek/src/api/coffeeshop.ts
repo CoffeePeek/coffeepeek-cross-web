@@ -366,6 +366,7 @@ export interface CheckInPhotoVariant {
 
 export interface CheckInDto extends SavedDrink {
   id: string;
+  authorId?: string | null;
   kind?: 'Shop' | 'Home';
   shop: PublicAddress | null;
   author: PublicAddress | null;
