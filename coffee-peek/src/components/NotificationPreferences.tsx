@@ -11,7 +11,7 @@ const categories = [
 export default function NotificationPreferences({ userId }: { userId: string }) {
   const qc = useQueryClient();
   const key = ['notification-preferences', userId];
-  const query = useQuery({ queryKey: key, queryFn: () => getNotificationPreferences().then(response => response.data) });
+  const query = useQuery({ queryKey: key, queryFn: getNotificationPreferences });
   const save = useMutation({ mutationFn: updateNotificationPreferences, onSuccess: (_, value) => qc.setQueryData(key, value) });
   return <div className="p-4 sm:p-5">
     <p className="mb-4 text-xs opacity-75">Для всех подключённых устройств вашего аккаунта. Разрешение на показ уведомлений включается отдельно в приложении.</p>

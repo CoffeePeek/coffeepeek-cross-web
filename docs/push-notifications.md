@@ -23,6 +23,11 @@ root; GET `/api/admin/notifications/templates`, PUT `/templates/{Moderation|Inac
 under that admin root, and PUT `/api/admin/notifications/{uuid}` for a custom message.
 The full backend contract is docs/api/push-notifications.md in CoffeePeek-NET.
 
+Preferences GET returns the plain `{moderation, inactivity, custom}` JSON object, without
+an `ApiResponse` envelope. The web client uses the shared raw JSON reader and caches
+that object directly. Preferences PUT and activity POST return 204; authentication
+and HTTP errors still go through the shared HTTP client.
+
 Verified: both production builds/type checks, template validation tests and a DOM test
 that edits/previews/saves a template, sends a custom message and retries without changing
 its ID or payload. The editor was also inspected in a local browser with isolated fixture
