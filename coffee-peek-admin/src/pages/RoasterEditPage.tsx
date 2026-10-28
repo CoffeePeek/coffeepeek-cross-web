@@ -16,6 +16,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
+import { BusinessOwnerPanel } from '../components/ownership/BusinessOwnerPanel';
 import { LoadError } from '../components/ui/LoadError';
 
 const tagsSchema = z.array(z.string().uuid()).max(100).refine(values => new Set(values).size === values.length, 'Теги должны быть уникальными');
@@ -397,6 +398,8 @@ const RoasterEditor: React.FC<{ id: string }> = ({ id }) => {
           </Button>
         </fieldset>
       </form>
+
+      {isAdmin && <BusinessOwnerPanel key={id} businessType="Roaster" businessId={id} />}
 
       {isAdmin && <Card className="p-6">
         <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-1">Удаление</h3>

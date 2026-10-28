@@ -38,6 +38,8 @@ const NAV_SECTIONS: NavSection[] = [
     { path: '/map', label: 'Карта', icon: Map, browseOnly: true },
   ] },
   { id: 'moderation', label: 'Модерация', collapsible: true, items: [
+    { path: '/ownership-claims', label: 'Заявки на владение', icon: Users, adminOnly: true },
+    { path: '/ownership-changes', label: 'История доступа', icon: History, adminOnly: true },
     { path: '/shop-change-requests', label: 'Правки кофеен', icon: History, moderatorOnly: true },
     { path: '/shops', label: 'Заявки на кофейни', icon: Coffee, moderatorOnly: true },
     { path: '/check-ins', label: 'Чекины на проверке', icon: MessageSquareText, moderatorOnly: true },

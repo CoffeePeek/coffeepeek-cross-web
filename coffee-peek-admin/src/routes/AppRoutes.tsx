@@ -4,6 +4,9 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { ProtectedRoute } from './ProtectedRoute';
 import { useUser } from '../contexts/UserContext';
 
+const OwnershipClaimsPage = lazy(() => import('../pages/OwnershipClaimsPage').then(m => ({ default: m.OwnershipClaimsPage })));
+const OwnershipClaimDetailPage = lazy(() => import('../pages/OwnershipClaimDetailPage').then(m => ({ default: m.OwnershipClaimDetailPage })));
+const OwnershipChangesPage = lazy(() => import('../pages/OwnershipChangesPage').then(m => ({ default: m.OwnershipChangesPage })));
 const LoginPage = lazy(() => import('../pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const DashboardPage = lazy(() => import('../pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const ShopsModerationPage = lazy(() => import('../pages/ShopsModerationPage').then((m) => ({ default: m.ShopsModerationPage })));
@@ -80,6 +83,9 @@ export const AppRoutes: React.FC = () => (
         </ProtectedRoute>
       }
     >
+        <Route path="/ownership-claims" element={<ProtectedRoute requireAdmin><OwnershipClaimsPage /></ProtectedRoute>} />
+        <Route path="/ownership-claims/:id" element={<ProtectedRoute requireAdmin><OwnershipClaimDetailPage /></ProtectedRoute>} />
+        <Route path="/ownership-changes" element={<ProtectedRoute requireAdmin><OwnershipChangesPage /></ProtectedRoute>} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/notifications" element={<ProtectedRoute requireAdmin><NotificationsPage /></ProtectedRoute>} />
         <Route path="/coffees" element={<ProtectedRoute requireModerator><CoffeesPage /></ProtectedRoute>} />

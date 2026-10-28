@@ -14,7 +14,6 @@ import {
   getPublishedShopById,
   getModerationShopById,
   updatePublishedShop,
-  assignPublishedShopOwner,
   reorderPublishedShopPhotos,
   patchPublishedShopFocus,
   assignShopTags,
@@ -28,6 +27,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { BusinessOwnerPanel } from '../components/ownership/BusinessOwnerPanel';
 import { PhotoOrderEditor } from '../components/PhotoOrderEditor';
 import { PriceRangePicker } from '../components/PriceRangePicker';
 import { ScheduleEditor, getDefaultSchedules } from '../components/moderation/ScheduleEditor';
@@ -67,7 +67,6 @@ const schema = z.object({
   description: z.string().optional(),
   priceRange: z.coerce.number<number>().min(1).max(4),
   status: z.enum(['Active', 'TemporarilyClosed', 'PermanentlyClosed']),
-  ownerUserId: z.string().optional(),
   cityId: z.string().optional(),
   address: z.string().optional(),
   latitude: latitudeField,
@@ -81,7 +80,6 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
   const navigate = useNavigate();
   const { showToast } = useToast();
   const qc = useQueryClient();
-  const [ownerInput, setOwnerInput] = useState('');
   const [focus, setFocus] = useState<CoffeeFocus | undefined>();
   const [tagSelection, setTagSelection] = useState<{ shopId: string; slugs: string[] } | null>(null);
   const [schedules, setSchedules] = useState<AdminShopSchedule[]>(getDefaultSchedules());
@@ -91,7 +89,7 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
   const [brewMethodIds, setBrewMethodIds] = useState<string[]>([]);
   const [schedulesTouched, setSchedulesTouched] = useState(false);
   const [hadSchedules, setHadSchedules] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'hide' | 'removeOwner' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'hide' | null>(null);
   const initializedShopId = useRef<string | null>(null);
 
   const { data: shop, isLoading, isError, refetch, isFetching } = useQuery({
@@ -164,7 +162,6 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
       description: shop.description ?? '',
       priceRange: parsePriceRange(shop.priceRange) ?? 2,
       status: shop.status,
-      ownerUserId: shop.ownerUserId ?? '',
       cityId: shop.location?.cityId ?? shop.cityId ?? '',
       address: shop.location?.address ?? '',
       latitude:
@@ -180,7 +177,6 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
       siteLink: shop.contacts?.siteLink ?? '',
       instagramLink: shop.contacts?.instagramLink ?? '',
     });
-    setOwnerInput(shop.ownerUserId ?? '');
     setHadSchedules(Boolean(shop.schedules?.length));
     setSchedules(shop.schedules?.length ? shop.schedules : getDefaultSchedules());
     setSchedulesTouched(false);
@@ -227,15 +223,6 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
       qc.setQueryData(['admin', 'published-shop', id], response.data);
       qc.invalidateQueries({ queryKey: ['admin', 'published-shop', id] });
       qc.invalidateQueries({ queryKey: ['admin', 'published-shops'] });
-    },
-    onError: (err: any) => showToast(err?.message ?? 'Ошибка', 'error'),
-  });
-
-  const ownerMutation = useMutation({
-    mutationFn: (ownerUserId: string | null) => assignPublishedShopOwner(id!, ownerUserId),
-    onSuccess: (_data, ownerUserId) => {
-      showToast(ownerUserId ? 'Владелец назначен' : 'Владелец снят', 'success');
-      qc.invalidateQueries({ queryKey: ['admin', 'published-shop', id] });
     },
     onError: (err: any) => showToast(err?.message ?? 'Ошибка', 'error'),
   });
@@ -664,33 +651,7 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
             </Button>
           </Card>
 
-          <Card className="p-6">
-            <h3 className="text-sm font-semibold text-text-main dark:text-white font-display mb-1">Владелец</h3>
-            <p className="text-xs text-text-muted dark:text-stone-400 font-body mb-3">
-              UUID пользователя с ролью Owner. Роль выдаётся в разделе «Пользователи».
-            </p>
-            <div className="flex flex-col gap-2">
-              <Input
-                value={ownerInput}
-                onChange={(e) => setOwnerInput(e.target.value)}
-                placeholder="owner-user-id (UUID)"
-                className="font-mono"
-              />
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={ownerMutation.isPending}
-                onClick={() =>
-                  !ownerInput.trim() && shop.ownerUserId
-                    ? setConfirmAction('removeOwner')
-                    : ownerMutation.mutate(ownerInput.trim() || null)
-                }
-                className="w-full sm:w-auto min-h-[44px] sm:min-h-0 self-start"
-              >
-                Назначить
-              </Button>
-            </div>
-          </Card>
+          <BusinessOwnerPanel key={id} businessType="CoffeeShop" businessId={id} currentOwnerUserId={shop.ownerUserId} />
         </div>
       </div>
 
@@ -744,19 +705,6 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
         variant="danger"
         onConfirm={async () => {
           await visibilityMutation.mutateAsync(true).catch(() => undefined);
-          setConfirmAction(null);
-        }}
-        onCancel={() => setConfirmAction(null)}
-      />
-
-      <ConfirmDialog
-        isOpen={confirmAction === 'removeOwner'}
-        title="Снять владельца?"
-        message="Текущий владелец потеряет доступ к управлению этой кофейней."
-        confirmLabel="Снять"
-        variant="danger"
-        onConfirm={async () => {
-          await ownerMutation.mutateAsync(null).catch(() => undefined);
           setConfirmAction(null);
         }}
         onCancel={() => setConfirmAction(null)}

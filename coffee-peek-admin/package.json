@@ -11,6 +11,7 @@
     "test": "jest --runInBand",
     "test:coffee-catalog": "node scripts/verify-coffee-catalog.mjs",
     "test:check-ins": "node scripts/verify-check-ins.mjs",
+    "test:business-ownership": "node scripts/verify-business-ownership.mjs",
     "test:leaderboard": "node scripts/verify-leaderboard.mjs",
     "test:discovery-live": "node scripts/verify-live-discovery.mjs",
     "extension:build": "node scripts/build-link-import-extension.mjs",
