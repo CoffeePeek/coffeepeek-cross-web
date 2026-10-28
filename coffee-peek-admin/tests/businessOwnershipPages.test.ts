@@ -134,3 +134,14 @@ test.each(['detail', 'list', 'panel'])('non-admin never fetches or renders owner
   expect(api.getOwnershipChanges).not.toHaveBeenCalled(); expect(document.body.textContent).not.toContain(claim.contact);
   expect(api.reviewOwnershipClaim).not.toHaveBeenCalled(); expect(api.assignBusinessOwner).not.toHaveBeenCalled();
 });
+
+
+test.each(['CoffeeShop', 'Roaster'] as const)('a decision invalidates a previously cached %s profile immediately', async businessType => {
+  const key = ['admin', businessType === 'CoffeeShop' ? 'published-shop' : 'roaster', claim.businessId];
+  client.setQueryData(key, { id: claim.businessId, ownerUserId: null });
+  jest.mocked(api.getOwnershipClaim).mockResolvedValue({ ...claim, businessType });
+  jest.mocked(api.reviewOwnershipClaim).mockResolvedValue({ ...claim, businessType, status: 'Approved', currentOwnerUserId: claim.applicantUserId, hasCurrentAccess: true });
+  await mount();
+  await click('Одобрить'); await click('Одобрить заявку');
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+});

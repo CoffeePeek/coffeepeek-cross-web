@@ -38,11 +38,17 @@ function ClaimDetail({ id }: { id: string }) {
       setActionError('');
       form.reset();
       showToast(updated.status === 'Approved' ? 'Заявка одобрена' : 'Заявка отклонена', 'success');
-      await client.invalidateQueries({ queryKey: ownershipKeys.all });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ownershipKeys.all }),
+        client.invalidateQueries({ queryKey: ['admin', updated.businessType === 'CoffeeShop' ? 'published-shop' : 'roaster', updated.businessId] }),
+      ]);
     },
     onError: async error => {
       setActionError(ownershipError(error));
-      await client.invalidateQueries({ queryKey: ownershipKeys.all });
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ownershipKeys.all }),
+        ...(claim ? [client.invalidateQueries({ queryKey: ['admin', claim.businessType === 'CoffeeShop' ? 'published-shop' : 'roaster', claim.businessId] })] : []),
+      ]);
     },
   });
   const openDecision = async (action: 'approve' | 'reject') => {
