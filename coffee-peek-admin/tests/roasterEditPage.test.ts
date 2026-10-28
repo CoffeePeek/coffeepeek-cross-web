@@ -1,3 +1,5 @@
+jest.mock('../src/api/core/httpClient', () => ({ httpClient: { patch: jest.fn() } }));
+jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: {} }));
 jest.mock('../src/api/roasters', () => ({ getRoasterById: jest.fn(), updateRoaster: jest.fn(), deleteRoaster: jest.fn() }));
 jest.mock('../src/api/coffeeCatalog', () => ({ getDictionary: jest.fn(), getAssignedTags: jest.fn(), setAssignedTags: jest.fn() }));
 jest.mock('../src/api/photos', () => ({ uploadRoasterPhotoFiles: jest.fn() }));

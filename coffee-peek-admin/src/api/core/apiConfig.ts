@@ -21,6 +21,11 @@ export const API_ENDPOINTS = {
   },
 
   ADMIN: {
+    OWNERSHIP_CLAIMS: '/api/admin/ownership-claims',
+    OWNERSHIP_CLAIM: (id: string) => `/api/admin/ownership-claims/${encodeURIComponent(id)}`,
+    OWNERSHIP_DECISION: (id: string, decision: 'approve' | 'reject') => `/api/admin/ownership-claims/${encodeURIComponent(id)}/${decision}`,
+    OWNERSHIP_CHANGES: '/api/admin/ownership-changes',
+    ROASTER_OWNER: (id: string) => `/api/admin/roasters/${encodeURIComponent(id)}/owner`,
     STATS_OVERVIEW: '/api/admin/stats/overview',
     STATS_USERS_TIMESERIES: '/api/admin/stats/users/timeseries',
     STATS_SHOPS_TIMESERIES: '/api/admin/stats/shops/timeseries',

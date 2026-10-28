@@ -5,6 +5,8 @@ import { Header } from './Header';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 
 const ROUTE_TITLES: Record<string, string> = {
+  '/ownership-claims': 'Заявки на владение',
+  '/ownership-changes': 'История доступа',
   '/coffees': 'Кофе',
   '/coffee-import': 'Импорт кофе',
   '/roaster-tags': 'Теги обжарщиков',
