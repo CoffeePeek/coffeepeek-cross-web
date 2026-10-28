@@ -61,7 +61,19 @@ beforeEach(() => {
     totalUsers: 42, registeredToday: 2, activeUsers: 40, blockedUsers: 1, usersByRole: { User: 40 },
   } } as never);
   jest.mocked(api.getOverviewStats).mockResolvedValue({ data: overview } as never);
-  jest.mocked(api.getUsersTimeseries).mockResolvedValue({ data: { days: 30, newUsers: [{ date: '2026-10-24', count: 2 }] } } as never);
+  jest.mocked(api.getUsersTimeseries).mockImplementation(async days => {
+    const dates = Array.from({ length: days }, (_, index) => {
+      const date = new Date();
+      date.setUTCDate(date.getUTCDate() - (days - index - 1));
+      return date.toISOString().slice(0, 10);
+    });
+    const data: api.AdminUsersTimeseries = {
+      days,
+      newUsers: dates.map(date => ({ date, count: 2 })),
+      dailyActiveUsers: dates.map((date, index) => ({ date, count: index === 0 ? 8 : index === days - 1 ? 4 : 0 })),
+    };
+    return { data } as never;
+  });
   jest.mocked(api.getShopsTimeseries).mockResolvedValue({ data: { days: 30, newShops: [], newCheckIns: [] } } as never);
   jest.mocked(api.getShopsInsights).mockResolvedValue({ data: {
     ratings: { totalCheckIns: 100, averageRating: 4.5, averagePlace: 4, averageService: 5, averageCoffee: 4.5, distribution: [] },
@@ -124,11 +136,42 @@ test.each(['Moderator', 'Admin'])('%s can navigate to the complete dashboard and
     expect(document.querySelector('main')!.textContent).toContain(text);
   }
   expect(document.querySelector('nav a[href="/shops"]')!.textContent).toContain('3');
-  await act(async () => button('7 дн').click());
-  await settle();
-  expect(api.getUsersTimeseries).toHaveBeenLastCalledWith(7);
-  expect(api.getShopsTimeseries).toHaveBeenLastCalledWith(7);
+  for (const days of [7, 90]) {
+    await act(async () => button(`${days} дн`).click());
+    await settle();
+    expect(api.getUsersTimeseries).toHaveBeenLastCalledWith(days);
+    expect(api.getShopsTimeseries).toHaveBeenLastCalledWith(days);
+    const dau = document.querySelector('[role="img"][aria-label^="DAU по дням"]');
+    expect(dau?.children).toHaveLength(days);
+  }
   expectNoPrivilegedRequests();
+});
+
+test('dashboard plots calendar DAU separately, includes zero days and marks today as incomplete without summing users', async () => {
+  await mount('/dashboard');
+  const dau = document.querySelector<HTMLElement>('[role="img"][aria-label^="DAU по дням"]');
+  expect(dau).not.toBeNull();
+  expect(dau!.children).toHaveLength(30);
+  expect((dau!.children[0] as HTMLElement).style.height).toBe('100%');
+  expect((dau!.children[1] as HTMLElement).style.height).toBe('0%');
+  expect((dau!.children[29] as HTMLElement).style.height).toBe('50%');
+  const today = new Date().toISOString().slice(0, 10);
+  expect(dau!.getAttribute('aria-label')).toContain(`${today}: 4`);
+  expect(dau!.children[1].textContent).toContain('0');
+  expect(dau!.parentElement!.textContent).not.toContain('за период');
+  expect(document.querySelector('[role="img"][aria-label^="Новые пользователи"]')).not.toBeNull();
+  expect(document.querySelector('main')!.textContent).toContain('Дни по UTC. Сегодня — неполный день.');
+  const dateLabel = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${today}T00:00:00Z`));
+  expect(dau!.lastElementChild!.textContent).toContain(dateLabel);
+});
+
+test('a failed users timeseries request leaves shop charts available and does not display zero DAU', async () => {
+  jest.mocked(api.getUsersTimeseries).mockRejectedValue(new Error('Service unavailable'));
+  await mount('/dashboard');
+  expect(document.querySelector('[role="img"][aria-label^="DAU по дням"]')).toBeNull();
+  expect(document.querySelector('[role="img"][aria-label^="Новые пользователи"]')).toBeNull();
+  expect(document.querySelector('[role="img"][aria-label^="Новые кофейни"]')).not.toBeNull();
+  expect(document.querySelector('main')!.textContent).toContain('Данные недоступны');
 });
 
 test('moderator opens the users route, searches, filters and paginates without any privileged controls or requests', async () => {

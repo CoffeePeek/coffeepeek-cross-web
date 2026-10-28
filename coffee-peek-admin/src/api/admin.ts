@@ -300,6 +300,8 @@ export interface AdminDailyCount {
 export interface AdminUsersTimeseries {
   days: number;
   newUsers: AdminDailyCount[];
+  /** Unique users per UTC day; today's count is incomplete. */
+  dailyActiveUsers: AdminDailyCount[];
 }
 
 export interface AdminShopsTimeseries {

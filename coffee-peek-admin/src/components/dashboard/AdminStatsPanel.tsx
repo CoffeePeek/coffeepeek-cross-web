@@ -43,7 +43,7 @@ const queueColumns: ColumnDef<ModerationQueue>[] = [
 ];
 
 const sum = (points: AdminDailyCount[]) => points.reduce((acc, p) => acc + p.count, 0);
-const CHART_DATE_FORMATTER = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
+const CHART_DATE_FORMATTER = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
 const formatChartDate = (date: string) => {
   const [year, month, day] = date.split('-').map(Number);
@@ -123,30 +123,29 @@ const Unavailable: React.FC = () => (
   <p className="text-sm text-text-muted dark:text-stone-400 font-body">Данные недоступны</p>
 );
 
-const Bars: React.FC<{ label: string; points: AdminDailyCount[] }> = ({ label, points }) => {
+const Bars: React.FC<{ label: string; points: AdminDailyCount[]; showTotal?: boolean }> = ({ label, points, showTotal = true }) => {
   const max = Math.max(1, ...points.map((p) => p.count));
-  const total = sum(points);
   return (
     <div>
       <div className="flex items-baseline justify-between">
         <p className="text-xs text-text-muted dark:text-stone-400 font-body uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-semibold font-display text-text-main dark:text-white">
-          {total} <span className="text-[10px] font-normal text-text-muted dark:text-stone-500">за период</span>
-        </p>
+        {showTotal && (
+          <p className="text-sm font-semibold font-display text-text-main dark:text-white">
+            {sum(points)} <span className="text-[10px] font-normal text-text-muted dark:text-stone-500">за период</span>
+          </p>
+        )}
       </div>
-      <div className="flex items-end gap-px h-20 mt-2 border-b border-border-light dark:border-border-dark" role="img" aria-label={`${label}: ${total} за ${points.length} дн.`}>
+      <div className="flex items-end gap-px h-20 mt-2 border-b border-border-light dark:border-border-dark" role="img" aria-label={`${label}: ${points.map((p) => `${p.date}: ${p.count}`).join(', ')}`}>
         {points.map((p) => (
           <div
             key={p.date}
             className="group/bar relative flex-1 bg-primary/70 hover:bg-primary rounded-t-sm min-h-px transition-colors"
             style={{ height: `${(p.count / max) * 100}%` }}
           >
-            {p.count > 0 && (
-              <span className="pointer-events-none absolute bottom-[calc(100%+0.35rem)] left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[#1d1714] px-2 py-1 text-center text-white shadow-lg group-hover/bar:block">
-                <strong className="block text-xs font-semibold tabular-nums">{p.count}</strong>
-                <span className="block text-[9px] text-stone-300">{formatChartDate(p.date)}</span>
-              </span>
-            )}
+            <span className="pointer-events-none absolute bottom-[calc(100%+0.35rem)] left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[#1d1714] px-2 py-1 text-center text-white shadow-lg group-hover/bar:block">
+              <strong className="block text-xs font-semibold tabular-nums">{p.count}</strong>
+              <span className="block text-[9px] text-stone-300">{formatChartDate(p.date)}</span>
+            </span>
           </div>
         ))}
       </div>
@@ -335,8 +334,14 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
         >
           Динамика
         </SectionTitle>
+        <p className="mb-3 text-[11px] text-text-muted dark:text-stone-500">Дни по UTC. Сегодня — неполный день. DAU — уникальные пользователи с входом или обновлением сессии за день.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          {usersTs.data ? <Bars label="Новые пользователи" points={usersTs.data.newUsers} /> : usersTs.isError ? <Unavailable /> : null}
+          {usersTs.data ? (
+            <>
+              <Bars label="DAU по дням" points={usersTs.data.dailyActiveUsers} showTotal={false} />
+              <Bars label="Новые пользователи" points={usersTs.data.newUsers} />
+            </>
+          ) : usersTs.isError ? <Unavailable /> : null}
           {!overview.shopsAvailable || shopsTs.isError ? (
             <Unavailable />
           ) : shopsTs.data ? (

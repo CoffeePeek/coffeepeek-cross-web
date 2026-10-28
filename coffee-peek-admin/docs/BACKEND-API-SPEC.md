@@ -82,6 +82,12 @@ Moderator и Admin доступны все GET `/api/admin/stats/overview`, `/ap
 
 Только Admin доступны PATCH `/api/admin/users/{id}/role`, PATCH `/api/admin/users/{id}/block`, DELETE `/api/admin/users/{id}`, GET `/api/admin/users/{id}/sessions`, DELETE `/api/admin/users/{id}/sessions/{sessionId}` и DELETE `/api/admin/users/{id}/sessions`. Интерфейс показывает действия с пользователями и раздел сессий только администратору. URL, HTTP-методы, JSON-поля, параметры запросов и заголовки пагинации прежние. Bearer-авторизация: отсутствующий или недействительный токен — 401; недостаточные права — 403.
 
+### DAU по дням
+
+GET `/api/admin/stats/users/timeseries?days=30` возвращает `data: { days, newUsers, dailyActiveUsers }`. Обе серии содержат `{ date: "YYYY-MM-DD", count: number }` за одинаковые последовательные дни UTC по возрастанию, включая сегодня. `days` по умолчанию 30, сервер ограничивает значение диапазоном 1–90; пустые дни заполнены нулями.
+
+`dailyActiveUsers` — уникальные пользователи с входом или обновлением сессии за календарный день UTC. Повторные входы, устройства и обновления одного пользователя за день считаются один раз. Сегодняшняя точка неполная. Этот ряд отличается от `overview.dailyActiveUsers`, который считает последние 24 часа; админка показывает его отдельно от регистраций, без суммы за период. История зависит от сохранённых токенов и может уменьшаться при удалении токенов или аккаунтов. При ошибке запроса данные недоступны, а не равны нулю.
+
 ## Ссылки магазинов приложений
 
 Сверено 7 октября 2026 с [UpdateStoreDownloadChannelRequest](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.Contract/Dtos/AppDownloads/UpdateStoreDownloadChannelRequest.cs) и [AdminAppDownloadsController](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.ShopsService/Controllers/AdminAppDownloadsController.cs).
