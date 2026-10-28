@@ -1,5 +1,6 @@
 import {
   getCurrentStatus,
+  isShopOpenNow,
   localTimeToUtc,
   toLocalSchedules,
   uiDayToDotNetName,
@@ -8,6 +9,12 @@ import {
 
 // offsetMinutes follows Date.getTimezoneOffset(): negative = ahead of UTC (e.g. Minsk UTC+3 = -180).
 const MINSK = -180;
+
+test('unknown API hours stay unknown and known API status is used without a schedule', () => {
+  expect(isShopOpenNow({ schedules: [], isOpen: null })).toBeUndefined();
+  expect(isShopOpenNow({ schedules: [], isOpen: true })).toBe(true);
+  expect(isShopOpenNow({ schedules: [], isOpen: false })).toBe(false);
+});
 
 test('converts local time to UTC without crossing midnight', () => {
   expect(localTimeToUtc(0, '08:00', MINSK)).toEqual({ dayOfWeek: 0, time: '05:00' });

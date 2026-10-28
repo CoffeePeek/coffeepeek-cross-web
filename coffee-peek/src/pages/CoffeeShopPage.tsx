@@ -29,7 +29,7 @@ import { createCheckInFlow } from '../lib/checkInAnalytics';
 import { distanceKm, formatDistance } from '../utils/distance';
 import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { getPriceRangeTier } from '../utils/priceRange';
-import { formatDayOfWeekShort, getCurrentDayOfWeek, getCurrentStatus, toLocalSchedules } from '../utils/shopUtils';
+import { formatDayOfWeekShort, getCurrentDayOfWeek, isShopOpenNow, toLocalSchedules } from '../utils/shopUtils';
 import { getThemeClasses } from '../utils/theme';
 import {
   ArrowLeft, CaretDown, Check, Clock, Heart, MapPin,
@@ -120,10 +120,10 @@ const CoffeeShopPage: React.FC = () => {
 
   const checkInsTotalCount = shop.checkInCount ?? checkIns.length;
   const shopIsFavorite = favorite === true;
-  const status = getCurrentStatus(shop);
+  const openNow = isShopOpenNow(shop);
   const localSchedules = toLocalSchedules(shop.schedules);
   const todaySchedule = localSchedules.find(schedule => schedule.dayOfWeek === getCurrentDayOfWeek());
-  const statusTime = status?.isOpen ? todaySchedule?.closeTime : todaySchedule?.openTime;
+  const statusTime = openNow === undefined ? undefined : openNow ? todaySchedule?.closeTime : todaySchedule?.openTime;
   const priceTier = getPriceRangeTier(shop.priceRange);
   const latitude = shop.location?.latitude;
   const longitude = shop.location?.longitude;
@@ -198,7 +198,7 @@ const CoffeeShopPage: React.FC = () => {
           <ShopHeader shop={shop} avgRating={shop.rating || 0} checkInsTotalCount={checkInsTotalCount} isFavorite={shopIsFavorite} isCheckingFavorite={favoritePending} onToggleFavorite={handleToggleFavorite} onCheckIn={handleCheckIn} onReportIssue={() => { captureAnalyticsEvent('shop_action_clicked', { action: 'report_issue', entry_point: 'shop_header' }); setShowReportModal(true); }} textMuted={textMuted} borderColor={borderColor} />
           <div className="grid grid-cols-3 gap-2.5">
             <div className="rounded-[22px] p-4" style={{ background: isDark ? '#382F1E' : '#FFF9E8', color: colors.text }}><div className="flex items-center gap-2"><Star size={23} weight="fill" color={colors.gold} /><strong className="text-lg sm:text-xl">{(shop.rating || 0).toFixed(1)}</strong></div><p className="mt-1 text-xs" style={{ color: colors.muted }}>{checkInsTotalCount} чекинов</p></div>
-            <div className="rounded-[22px] p-4" style={{ background: status?.isOpen ? (isDark ? '#183B2A' : '#DCF7E7') : (isDark ? '#442727' : '#FEE2E2'), color: status?.isOpen ? '#22C55E' : '#EF4444' }}><strong className="block text-sm sm:text-xl">● {status?.isOpen ? 'Открыта' : 'Закрыта'}</strong>{statusTime && <p className="mt-1 text-xs opacity-75">{status?.isOpen ? 'до' : 'с'} {statusTime}</p>}</div>
+            <div className="rounded-[22px] p-4" style={{ background: openNow === undefined ? colors.surface : openNow ? (isDark ? '#183B2A' : '#DCF7E7') : (isDark ? '#442727' : '#FEE2E2'), color: openNow === undefined ? colors.muted : openNow ? '#22C55E' : '#EF4444' }}><strong className="block text-sm sm:text-xl">● {openNow === undefined ? 'Часы неизвестны' : openNow ? 'Открыта' : 'Закрыта'}</strong>{statusTime && <p className="mt-1 text-xs opacity-75">{openNow ? 'до' : 'с'} {statusTime}</p>}</div>
             <div className="rounded-[22px] border p-4" style={{ background: colors.surface, borderColor: colors.border, color: colors.text }}>{priceTier ? <BeanPriceMarks count={priceTier} size={17} color={colors.gold} /> : <strong className="text-lg">—</strong>}<p className="mt-1 text-xs" style={{ color: colors.muted }}>Стоимость</p></div>
           </div>
           {!!shop.tags?.length && <div className="mt-4 flex flex-wrap gap-2">{shop.tags.map(tag => <span key={tag.id} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold" style={{ borderColor: colors.border, color: colors.muted, background: colors.surface }}><AppIcon name={`tag:${tag.slug}`} size={18} />{tag.name}</span>)}</div>}

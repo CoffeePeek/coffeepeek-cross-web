@@ -173,10 +173,10 @@ export function getCurrentStatus(shop: { schedules?: Array<{ dayOfWeek: number |
 export function isShopOpenNow(
   shop: {
     schedules?: Array<{ dayOfWeek: number | string; openTime?: string; closeTime?: string }>;
-    isOpen?: boolean;
+    isOpen?: boolean | null;
   } | null
 ): boolean | undefined {
-  return getCurrentStatus(shop)?.isOpen ?? shop?.isOpen;
+  return getCurrentStatus(shop)?.isOpen ?? shop?.isOpen ?? undefined;
 }
 
 /**
