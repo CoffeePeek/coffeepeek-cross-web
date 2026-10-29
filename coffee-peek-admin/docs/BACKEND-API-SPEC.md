@@ -106,6 +106,17 @@ Policy `Moderator` включает Moderator и Admin. Policy `Admin` разр�
 
 ### Доступ к дашборду и пользователям
 
+Контракт полей перепроверен 2026-10-29 по актуальной основной ветке backend:
+[AdminUserResponse](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.Account.Application/Features/Admin/Users/AdminUserResponse.cs),
+[GetAdminUsersHandler](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.Account.Application/Features/Admin/Users/GetAdminUsersHandler.cs) и
+[GetAdminUsersStatsResponse](https://github.com/CoffeePeek/coffeepeek-backend/blob/main/CoffeePeek.Account.Application/Features/Admin/Users/GetAdminUsersStatsResponse.cs).
+
+GET `/api/admin/users` возвращает `data: {items,totalItems,totalPages,currentPage,pageSize}`. Каждая запись содержит ровно 10 полей: `id`, `userName`, `email`, `createdAtUtc`, `about` (nullable), `avatarUrl` (nullable), `checkInCount`, `addedShopsCount`, `roles`, `isBlocked`. Текущий адаптер сохраняет все эти поля. Телефон, подтверждение email, способ регистрации и последний вход в этом DTO отсутствуют. `isBlocked` вычисляется как `IsBlocked || IsSoftDelete`, поэтому список не позволяет отличить блокировку от мягкого удаления. «Активен» в списке означает отсутствие этого флага, а не присутствие онлайн.
+
+GET `/api/admin/users/stats` возвращает `totalUsers`, `activeUsers`, `blockedUsers`, `registeredToday`, `usersByRole`. Последнее поле — словарь количества пользователей по ролям; UI показывает его в фильтре ролей. Эти числа относятся ко всей базе и не меняются от поиска. Расширенная статистика дашборда не входит в этот ответ.
+
+Страница показывает имя, email, роли, статус, счётчики, дату регистрации и первые две строки заполненного «О себе» на любой ширине; нажатие на имя открывает профиль с полным текстом, ID и точным временем регистрации. Действия Admin собраны в меню «⋯». Сессии загружаются отдельно по `/{id}/sessions` только при открытии диалога; список пользователей сам их не содержит. Подтверждение удаления описывает мягкое удаление аккаунта, как в `AdminUsersController`, без обещания полного физического удаления.
+
 Moderator и Admin доступны все GET `/api/admin/stats/overview`, `/api/admin/stats/users/timeseries`, `/api/admin/stats/shops/timeseries`, `/api/admin/stats/shops/insights`, `/api/admin/stats/moderation/insights`, `/api/admin/users` и `/api/admin/users/stats`. Для модератора список пользователей доступен только для чтения: поиск, фильтры, пагинация и статистика.
 
 Только Admin доступны PATCH `/api/admin/users/{id}/role`, PATCH `/api/admin/users/{id}/block`, DELETE `/api/admin/users/{id}`, GET `/api/admin/users/{id}/sessions`, DELETE `/api/admin/users/{id}/sessions/{sessionId}` и DELETE `/api/admin/users/{id}/sessions`. Интерфейс показывает действия с пользователями и раздел сессий только администратору. URL, HTTP-методы, JSON-поля, параметры запросов и заголовки пагинации прежние. Bearer-авторизация: отсутствующий или недействительный токен — 401; недостаточные права — 403.

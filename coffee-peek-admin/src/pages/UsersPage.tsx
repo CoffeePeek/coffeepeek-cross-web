@@ -1,9 +1,8 @@
-import { DataTable } from '@/src/components/ui/DataTable';
 import { Input } from '@/src/components/ui/Input';
-import type { ColumnDef } from '@tanstack/react-table';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Ban, Bell, LogOut, Monitor, Search, ShieldCheck, Trash2 } from 'lucide-react';
 import {
   getAdminUsers,
   getUserStats,
@@ -22,7 +21,9 @@ import { useUser } from '../contexts/UserContext';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { MetricCard } from '../components/dashboard/MetricCard';
+import { NativeSelect } from '../components/ui/NativeSelect';
+import { LoadError } from '../components/ui/LoadError';
+import { UserActionsMenu } from '../components/users/UserActionsMenu';
 import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/Dialog';
@@ -46,11 +47,24 @@ const UserRoleBadge: React.FC<{ role: UserRole }> = ({ role }) => (
   </span>
 );
 
-const IconUsers = () => (
-  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-  </svg>
-);
+function formatUserDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('ru');
+}
+
+function UserAvatar({ user }: { user: AdminUser }) {
+  return user.avatarUrl ? (
+    <img src={user.avatarUrl} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+  ) : (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-amber-700 dark:text-primary">
+      {(user.userName || user.email || '?')[0].toUpperCase()}
+    </span>
+  );
+}
+
+function UserRoles({ user }: { user: AdminUser }) {
+  return <div className="flex flex-wrap items-center gap-1">{user.roles.length ? user.roles.map((role) => <UserRoleBadge key={role} role={role} />) : <span className="text-xs text-text-muted">Без роли</span>}</div>;
+}
 
 function formatSessionDate(value: string): string {
   try {
@@ -253,28 +267,33 @@ function getRoleDescription(role: UserRole): string {
 }
 
 export const UsersPage: React.FC = () => {
+  const navigate = useNavigate();
   const { isAdmin } = useUser();
   const { showToast } = useToast();
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const page = parseInt(searchParams.get('page') ?? '1');
+  const requestedPage = Number(searchParams.get('page') ?? '1');
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const search = searchParams.get('search') ?? '';
   const roleFilter = (searchParams.get('role') ?? '') as UserRole | '';
   const [localSearch, setLocalSearch] = useState(search);
+  const [detailsUser, setDetailsUser] = useState<AdminUser | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [sessionsUser, setSessionsUser] = useState<AdminUser | null>(null);
   const [kickingUser, setKickingUser] = useState<AdminUser | null>(null);
   const [blockingUser, setBlockingUser] = useState<AdminUser | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
-  const { data: stats } = useQuery({
+  useEffect(() => setLocalSearch(search), [search]);
+
+  const { data: stats, isError: statsError, refetch: refetchStats, isFetching: fetchingStats } = useQuery({
     queryKey: ['admin', 'users', 'stats'],
     queryFn: () => getUserStats().then((r) => r.data),
     staleTime: 1000 * 60,
   });
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'users', { page, search, roleFilter }],
     queryFn: () =>
       getAdminUsers({
@@ -320,7 +339,7 @@ export const UsersPage: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteAdminUser(id),
     onSuccess: () => {
-      showToast('Пользователь полностью удалён', 'success');
+      showToast('Пользователь удалён', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       setDeletingUserId(null);
     },
@@ -335,117 +354,135 @@ export const UsersPage: React.FC = () => {
     setSearchParams(next);
   };
 
-  const columns: ColumnDef<AdminUser>[] = [
-    {
-      header: 'Пользователь',
-      cell: ({ row }) => {
-        const user = row.original;
-        return <div className="flex items-center gap-3">{user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" /> : <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 font-display text-xs font-bold text-primary">{user.userName?.[0]?.toUpperCase() ?? user.email[0].toUpperCase()}</div>}<div className="min-w-0"><p className="flex max-w-[160px] items-center gap-1.5 truncate font-body text-xs font-medium text-text-main dark:text-white">{user.userName ?? user.email}{user.isBlocked && <Badge variant="rejected">Заблокирован</Badge>}</p>{user.userName && <p className="max-w-[160px] truncate font-body text-xs text-stone-400">{user.email}</p>}</div></div>;
-      },
-    },
-    { header: 'Роли', cell: ({ row }) => <div className="flex flex-wrap gap-1">{row.original.roles.length ? row.original.roles.map((role) => <UserRoleBadge key={role} role={role as UserRole} />) : <Badge>—</Badge>}</div> },
-    { accessorKey: 'checkInCount', header: 'Чекинов', meta: { className: 'hidden md:table-cell', headerClassName: 'hidden md:table-cell' }, cell: ({ row }) => row.original.checkInCount ?? 0 },
-    { accessorKey: 'addedShopsCount', header: 'Кофеен', meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' }, cell: ({ row }) => row.original.addedShopsCount ?? 0 },
-    { accessorKey: 'createdAtUtc', header: 'Дата', meta: { className: 'hidden lg:table-cell', headerClassName: 'hidden lg:table-cell' }, cell: ({ row }) => new Date(row.original.createdAtUtc).toLocaleDateString('ru') },
+  const metrics = [
+    { label: 'Всего', value: stats?.totalUsers, color: '' },
+    { label: 'Сегодня', value: stats?.registeredToday, color: 'text-emerald-700 dark:text-emerald-400' },
+    { label: 'Активных', value: stats?.activeUsers, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Заблокировано', value: stats?.blockedUsers, color: 'text-red-600 dark:text-red-400' },
   ];
-
-  if (isAdmin) {
-    columns.push({
-      id: 'actions',
-      cell: ({ row }) => {
-        const user = row.original;
-        const sessionsExpanded = sessionsUser?.id === user.id;
-        return (
-          <div className="flex min-w-[220px] flex-wrap gap-2">
-            <Button asChild variant="ghost" size="sm"><Link to={`/notifications?userId=${encodeURIComponent(user.id)}`}>Уведомление</Link></Button>
-            <Button variant="ghost" size="sm" className="text-amber-500" onClick={() => setKickingUser(user)}>Оборвать</Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-expanded={sessionsExpanded}
-              aria-controls={sessionsExpanded ? `user-sessions-${user.id}` : undefined}
-              onClick={() => setSessionsUser((current) => current?.id === user.id ? null : user)}
-            >
-              {sessionsExpanded ? 'Скрыть сессии' : 'Сессии'}
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setEditingUser(user)}>Роль</Button>
-            <Button variant="ghost" size="sm" className={user.isBlocked ? 'text-green-500' : 'text-amber-500'} onClick={() => setBlockingUser(user)}>{user.isBlocked ? 'Разблок.' : 'Блок'}</Button>
-            <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-500" aria-label="Удалить" onClick={() => setDeletingUserId(user.id)}>
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </Button>
-          </div>
-        );
-      },
-    });
-  }
+  const roleCount = (role: UserRole | '') => role ? stats?.usersByRole?.[role] : stats?.totalUsers;
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-3 sm:space-y-4">
       <div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">
-          Пользователи
-        </h2>
-        <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          {isAdmin ? 'Управление пользователями, ролями и статистика' : 'Просмотр пользователей и статистики · Только чтение'}
+        <h2 className="font-display text-xl font-bold tracking-tight text-text-main dark:text-white sm:text-2xl">Пользователи</h2>
+        <p className="mt-0.5 font-body text-xs text-text-muted dark:text-stone-400 sm:text-sm">
+          {isAdmin ? 'Управление пользователями и ролями' : 'Пользователи и статистика · Только чтение'}
         </p>
       </div>
 
-      {/* Stats row */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <MetricCard label="Всего" value={stats.totalUsers} icon={<IconUsers />} />
-          <MetricCard label="Сегодня" value={stats.registeredToday} icon={<IconUsers />} color="text-green-500" />
-          <MetricCard label="Активных" value={stats.activeUsers} icon={<IconUsers />} color="text-blue-500" />
-          <MetricCard label="Заблокированных" value={stats.blockedUsers} icon={<IconUsers />} color="text-red-500" />
-        </div>
+      {statsError ? (
+        <LoadError message="Не удалось загрузить статистику" onRetry={() => void refetchStats()} retrying={fetchingStats} />
+      ) : (
+        <Card>
+          <dl className="grid grid-cols-2 sm:grid-cols-4">
+            {metrics.map(({ label, value, color }, index) => (
+              <div key={label} className={`flex min-w-0 items-center justify-between gap-2 px-3 py-2.5 sm:block sm:px-4 ${index % 2 ? 'border-l border-border-light dark:border-border-dark' : ''} ${index > 1 ? 'border-t border-border-light dark:border-border-dark sm:border-t-0 sm:border-l' : ''}`}>
+                <dt className="text-xs text-text-muted dark:text-stone-400">{label}</dt>
+                <dd className={`font-display text-xl font-semibold tabular-nums sm:mt-1 sm:text-2xl ${color}`}>{value?.toLocaleString('ru') ?? '—'}</dd>
+              </div>
+            ))}
+          </dl>
+        </Card>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-white p-3 shadow-sm dark:border-border-dark dark:bg-surface-dark sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
-          {(['', ...ROLES] as (UserRole | '')[]).map((r) => (
-            <Button
-              type="button"
-              size="sm"
-              key={r || 'all'}
-              onClick={() => setParam('role', r)}
-              variant={roleFilter === r ? 'primary' : 'secondary'}
-            >
-              {r || 'Все'}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <form onSubmit={(event) => { event.preventDefault(); setParam('search', localSearch.trim()); }} className="flex min-w-0 flex-1 gap-1.5">
+            <Input type="search" aria-label="Email или имя" value={localSearch} onChange={(event) => setLocalSearch(event.target.value)} placeholder="Email или имя" className="h-11 min-w-0 sm:h-9" />
+            <Button type="submit" variant="secondary" size="icon" className="h-11 w-11 shrink-0 sm:h-9 sm:w-9" aria-label="Найти пользователей"><Search className="h-4 w-4" aria-hidden="true" /></Button>
+          </form>
+          <div className="w-full sm:w-52 lg:hidden">
+            <NativeSelect aria-label="Фильтр по роли" value={roleFilter} onChange={(event) => setParam('role', event.target.value)} className="h-11 sm:h-9">
+              {(['', ...ROLES] as const).map((role) => <option key={role || 'all'} value={role}>{role || 'Все роли'}{roleCount(role) !== undefined ? ` · ${roleCount(role)}` : ''}</option>)}
+            </NativeSelect>
+          </div>
+          <span className="hidden text-xs tabular-nums text-text-muted dark:text-stone-400 sm:block" role="status">{data ? `Найдено: ${data.totalCount.toLocaleString('ru')}` : 'Загрузка…'}</span>
+        </div>
+        <div className="hidden flex-wrap gap-1.5 lg:flex" aria-label="Фильтр по роли">
+          {(['', ...ROLES] as const).map((role) => (
+            <Button key={role || 'all'} size="sm" variant={roleFilter === role ? 'primary' : 'secondary'} aria-pressed={roleFilter === role} onClick={() => setParam('role', role)}>
+              {role || 'Все'}{roleCount(role) !== undefined && <span className="tabular-nums opacity-70">{roleCount(role)}</span>}
             </Button>
           ))}
         </div>
-        <form
-          onSubmit={(e) => { e.preventDefault(); setParam('search', localSearch); }}
-          className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row"
-        >
-          <Input
-            type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Email или имя..."
-            className="w-full sm:w-72"
-          />
-          <Button type="submit" variant="secondary" size="sm" className="w-full sm:w-auto min-h-[44px] sm:min-h-0">Найти</Button>
-        </form>
       </div>
 
-      <Card className="p-6">
-        <DataTable
-          columns={columns}
-          data={data?.items ?? []}
-          loading={isLoading}
-          emptyText="Пользователи не найдены"
-          getRowId={(user) => user.id}
-          expandedRowId={isAdmin ? sessionsUser?.id : undefined}
-          renderExpandedRow={isAdmin ? (user) => <UserSessionsPanel user={user} /> : undefined}
-        />
-        {data && data.totalPages > 1 && (
-          <div className="border-t border-border-light px-5 py-3 dark:border-border-dark">
-            <Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} />
+      {isError ? <LoadError message={getErrorMessage(error, 'Не удалось загрузить пользователей')} onRetry={() => void refetch()} retrying={isFetching} /> : (
+        <Card className="overflow-hidden">
+          <div aria-hidden="true" className={`hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)] items-center gap-4 border-b border-border-light bg-stone-50 px-4 py-2 text-xs text-text-muted dark:border-border-dark dark:bg-white/[0.03] dark:text-stone-400 xl:grid ${isAdmin ? 'pr-[76px]' : ''}`}>
+            <span>Пользователь</span><span>Роли и статус</span><span>Активность и регистрация</span>
           </div>
-        )}
-      </Card>
+          {isLoading ? (
+            <div className="space-y-3 p-3" role="status" aria-label="Загрузка пользователей">{Array.from({ length: 6 }, (_, index) => <div key={index} className="h-24 animate-pulse rounded-lg bg-stone-100 dark:bg-white/5" />)}</div>
+          ) : !data?.items.length ? (
+            <p className="p-8 text-center text-sm text-text-muted dark:text-stone-400">Пользователи не найдены</p>
+          ) : (
+            <ul aria-label="Пользователи" className="divide-y divide-border-light dark:divide-border-dark">
+              {data.items.map((user) => (
+                <li key={user.id} className="px-3 py-2.5 sm:px-4">
+                  <div className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2 xl:items-center xl:gap-x-4 ${isAdmin ? 'xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_44px]' : 'xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)]'}`}>
+                    <div className="flex min-w-0 items-start gap-2.5">
+                      <UserAvatar user={user} />
+                      <div className="min-w-0">
+                        <button type="button" onClick={() => setDetailsUser(user)} className="block max-w-full rounded text-left text-sm font-semibold text-text-main underline-offset-2 [overflow-wrap:anywhere] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-white" aria-label={`Профиль: ${user.userName || user.email}`}>{user.userName || user.email}</button>
+                        {user.userName && <p className="text-xs text-text-muted [overflow-wrap:anywhere] dark:text-stone-400">{user.email}</p>}
+                      </div>
+                    </div>
+                    {isAdmin && <div className="col-start-2 row-start-1 -my-1 xl:col-start-4"><UserActionsMenu name={user.userName || user.email} actions={[
+                      { label: 'Отправить уведомление', icon: Bell, onSelect: () => navigate(`/notifications?userId=${encodeURIComponent(user.id)}`) },
+                      { label: 'Сессии', icon: Monitor, onSelect: () => setSessionsUser(user) },
+                      { label: 'Изменить роль', icon: ShieldCheck, onSelect: () => setEditingUser(user) },
+                      { label: 'Оборвать все сессии', icon: LogOut, onSelect: () => setKickingUser(user) },
+                      { label: user.isBlocked ? 'Разблокировать' : 'Заблокировать', icon: Ban, onSelect: () => setBlockingUser(user) },
+                      { label: 'Удалить пользователя', icon: Trash2, danger: true, onSelect: () => setDeletingUserId(user.id) },
+                    ]} /></div>}
+                    <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5 xl:col-span-1 xl:col-start-2 xl:row-start-1">
+                      <UserRoles user={user} />
+                      <span className={`inline-flex items-center gap-1 text-[11px] ${user.isBlocked ? 'text-red-600 dark:text-red-400' : 'text-text-muted dark:text-stone-400'}`}><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${user.isBlocked ? 'bg-red-500' : 'bg-emerald-500'}`} />{user.isBlocked ? 'Заблокирован' : 'Активен'}</span>
+                    </div>
+                    <dl className="col-span-2 grid min-w-0 grid-cols-[1fr_1fr_1.4fr] gap-2 text-xs xl:col-span-1 xl:col-start-3 xl:row-start-1">
+                      <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Чекины</dt><dd className="mt-0.5 font-medium tabular-nums">{user.checkInCount?.toLocaleString('ru') ?? '—'}</dd></div>
+                      <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Кофейни</dt><dd className="mt-0.5 font-medium tabular-nums">{user.addedShopsCount?.toLocaleString('ru') ?? '—'}</dd></div>
+                      <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Регистрация</dt><dd className="mt-0.5 tabular-nums">{formatUserDate(user.createdAtUtc)}</dd></div>
+                    </dl>
+                    {user.about && <p className="col-span-full line-clamp-2 whitespace-pre-wrap text-xs text-text-muted [overflow-wrap:anywhere] dark:text-stone-400"><span className="font-medium">О себе: </span>{user.about}</p>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {data && <div className="border-t border-border-light px-3 py-2 dark:border-border-dark">
+            <p className="text-center text-xs tabular-nums text-text-muted dark:text-stone-400">{data.totalCount ? `${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + data.items.length} из ${data.totalCount}` : '0 пользователей'}</p>
+            <Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} />
+          </div>}
+        </Card>
+      )}
+
+      <Dialog open={Boolean(detailsUser)} onOpenChange={(open) => !open && setDetailsUser(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Профиль пользователя</DialogTitle><DialogDescription>Данные учётной записи</DialogDescription></DialogHeader>
+          {detailsUser && <div className="space-y-4 text-sm">
+            <div className="flex items-start gap-3"><UserAvatar user={detailsUser} /><div className="min-w-0"><p className="font-semibold [overflow-wrap:anywhere]">{detailsUser.userName || 'Без имени'}</p><p className="text-text-muted [overflow-wrap:anywhere] dark:text-stone-400">{detailsUser.email}</p></div></div>
+            <UserRoles user={detailsUser} />
+            <dl className="grid grid-cols-2 gap-3">
+              <div><dt className="text-xs text-text-muted">Статус</dt><dd>{detailsUser.isBlocked ? 'Заблокирован' : 'Активен'}</dd></div>
+              <div><dt className="text-xs text-text-muted">Регистрация</dt><dd>{formatSessionDate(detailsUser.createdAtUtc)}</dd></div>
+              <div><dt className="text-xs text-text-muted">Чекины</dt><dd>{detailsUser.checkInCount ?? '—'}</dd></div>
+              <div><dt className="text-xs text-text-muted">Добавленные кофейни</dt><dd>{detailsUser.addedShopsCount ?? '—'}</dd></div>
+              <div className="col-span-2"><dt className="text-xs text-text-muted">О себе</dt><dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">{detailsUser.about || 'Не указано'}</dd></div>
+              <div className="col-span-2"><dt className="text-xs text-text-muted">ID</dt><dd className="select-all break-all font-mono text-xs">{detailsUser.id}</dd></div>
+            </dl>
+          </div>}
+        </DialogContent>
+      </Dialog>
+
+      {isAdmin && <Dialog open={Boolean(sessionsUser)} onOpenChange={(open) => !open && setSessionsUser(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader><DialogTitle>Устройства и сессии</DialogTitle><DialogDescription>Управление входами пользователя</DialogDescription></DialogHeader>
+          {sessionsUser && <UserSessionsPanel user={sessionsUser} />}
+        </DialogContent>
+      </Dialog>}
 
       {isAdmin && editingUser && (
         <EditRoleModal
@@ -495,8 +532,8 @@ export const UsersPage: React.FC = () => {
 
           <ConfirmDialog
             isOpen={!!deletingUserId}
-            title="Удалить пользователя навсегда?"
-            message="Учётная запись будет полностью удалена, все сессии отозваны. Это действие необратимо."
+            title="Удалить пользователя?"
+            message="Учётная запись будет помечена как удалённая, все сессии отозваны. Вход в систему станет недоступен."
             confirmLabel="Удалить"
             variant="danger"
             onConfirm={async () => {
