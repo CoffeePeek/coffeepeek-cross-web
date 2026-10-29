@@ -278,6 +278,10 @@ export interface OverviewStats {
   monthlyActiveUsers: number;
   emailConfirmedUsers: number;
   googleUsers: number;
+  appleUsers?: number;
+  emailUsers?: number;
+  otherAuthUsers?: number;
+  retention?: AdminUserRetentionStats | null;
   totalCoffeeShops: number;
   totalCheckIns: number;
   pendingModerationShops: number;
@@ -289,6 +293,27 @@ export interface OverviewStats {
   shopsAvailable: boolean;
   /** false → moderation-service numbers are placeholders. */
   moderationAvailable: boolean;
+}
+
+export interface AdminRetentionMetric {
+  eligibleUsers: number;
+  returnedUsers: number;
+  ratePercent: number | null;
+}
+
+export interface AdminUserRetentionStats {
+  asOfDateUtc: string;
+  d1: AdminRetentionMetric;
+  d7: AdminRetentionMetric;
+  d30: AdminRetentionMetric;
+  afterRegistration: AdminRetentionMetric;
+}
+
+export interface AdminShopCoverage {
+  totalShops: number;
+  averageCompletenessPercent: number | null;
+  shopsWithCheckIns: number;
+  shopsWithoutCheckIns: number;
 }
 
 export interface AdminDailyCount {
@@ -317,6 +342,7 @@ export interface AdminTopShop {
 }
 
 export interface AdminShopsInsights {
+  coverage?: AdminShopCoverage | null;
   ratings: {
     totalCheckIns: number;
     averageRating: number;
