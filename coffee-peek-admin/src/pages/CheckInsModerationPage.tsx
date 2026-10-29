@@ -1,21 +1,16 @@
-import ModerationPhotos from '../components/ModerationPhotos';
-import { PublishedShopLink } from '../components/PublishedShopLink';
-import { CheckInLeaderboard } from '../components/CheckInLeaderboard';
+import { CheckInModerationCard } from '../components/CheckInModerationCard';
 import { Input } from '@/src/components/ui/Input';
-import { DataTable } from '@/src/components/ui/DataTable';
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ColumnDef } from '@tanstack/react-table';
 import { useSearchParams } from 'react-router-dom';
-import { getModerationCheckIns, approveCheckIn, rejectCheckIn, ModerationStatus, ModerationCheckIn } from '../api/admin';
+import { getModerationCheckIns, approveCheckIn, rejectCheckIn, ModerationStatus } from '../api/admin';
 import { useToast } from '../contexts/ToastContext';
-import { Badge, statusToBadgeVariant, statusLabels } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
-import { checkInDate, checkInKind, homeRecipe } from '../utils/checkInKind';
+import { LoadError } from '../components/ui/LoadError';
 
 const PAGE_SIZE = 15;
 
@@ -26,33 +21,6 @@ const STATUS_OPTIONS: { value: ModerationStatus | ''; label: string }[] = [
   { value: 'Rejected', label: 'Отклонённые' },
 ];
 
-function displayDrinkName(checkIn: ModerationCheckIn): string {
-  if (checkIn.drinkSlug === 'other' && checkIn.customDrinkName) return checkIn.customDrinkName;
-  const isEnglish = typeof document !== 'undefined' && document.documentElement.lang.toLowerCase().startsWith('en');
-  return (isEnglish ? checkIn.drinkNameEn || checkIn.drinkNameRu : checkIn.drinkNameRu || checkIn.drinkNameEn)
-    || checkIn.customDrinkName
-    || (isEnglish ? 'Not specified' : 'Не указан');
-}
-
-function displayRating(checkIn: ModerationCheckIn): string {
-  const kind = checkInKind(checkIn);
-  if (kind === 'Home') {
-    const score = homeRecipe(checkIn).tasteScore;
-    return score == null ? 'Без оценки' : `Вкус ${score}/5`;
-  }
-  if (kind !== 'Shop') return '—';
-  const rating = checkIn.rating;
-  if (rating?.coffee == null || rating.service == null || rating.place == null) return 'Без оценки';
-  return `К ${rating.coffee} · С ${rating.service} · М ${rating.place}`;
-}
-
-function displayRecipe(checkIn: ModerationCheckIn): string {
-  const recipe = homeRecipe(checkIn);
-  return [recipe.beanName, recipe.brewMethodCode,
-    recipe.doseGrams != null ? `${recipe.doseGrams} г` : '',
-    recipe.brewDurationSeconds != null ? `${recipe.brewDurationSeconds} с` : ''].filter(Boolean).join(' · ') || 'Без деталей рецепта';
-}
-
 export const CheckInsModerationPage: React.FC = () => {
   const { showToast } = useToast();
   const qc = useQueryClient();
@@ -62,9 +30,10 @@ export const CheckInsModerationPage: React.FC = () => {
   const page = parseInt(searchParams.get('page') ?? '1');
   const search = searchParams.get('search') ?? '';
   const [localSearch, setLocalSearch] = useState(search);
+  useEffect(() => setLocalSearch(search), [search]);
   const [pendingAction, setPendingAction] = useState<{ id: string; type: 'approve' | 'reject' } | null>(null);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['admin', 'moderation', 'checkIns', { status, page, search }],
     queryFn: () =>
       getModerationCheckIns({
@@ -114,17 +83,6 @@ export const CheckInsModerationPage: React.FC = () => {
     setPendingAction({ id, type });
   };
 
-  const columns: ColumnDef<ModerationCheckIn>[] = [
-    { accessorKey: 'text', header: 'Чекин', cell: ({ row }) => <div className="min-w-[280px] max-w-[360px]"><p className="whitespace-pre-wrap text-text-main dark:text-white">{row.original.text || 'Без заметки'}</p>{checkInKind(row.original) === 'Home' && <p className="mt-1 text-xs text-text-muted">{displayRecipe(row.original)}</p>}<p className="mt-1 text-xs text-text-muted">Напиток: {displayDrinkName(row.original)} · Ревизия {row.original.contentRevision}</p><ModerationPhotos photos={row.original.photos || []} /><CheckInLeaderboard checkIn={row.original} /></div> },
-    { id: 'kind', header: 'Тип', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Дома' : checkInKind(row.original) === 'Shop' ? 'В кофейне' : 'Не указан' },
-    { id: 'place', header: 'Место', cell: ({ row }) => checkInKind(row.original) === 'Home' ? 'Кофе дома' : row.original.shopId ? <PublishedShopLink shopId={row.original.shopId} className="font-medium text-blue-600 hover:underline dark:text-blue-400" /> : 'Кофейня недоступна' },
-    { id: 'author', header: 'Автор', cell: ({ row }) => row.original.userName },
-    { id: 'ratings', header: 'Оценки', cell: ({ row }) => displayRating(row.original) },
-    { accessorKey: 'moderationStatus', header: 'Статус', cell: ({ row }) => <Badge variant={statusToBadgeVariant(row.original.moderationStatus)}>{statusLabels[row.original.moderationStatus]}</Badge> },
-    { id: 'checkInDate', header: 'Дата', cell: ({ row }) => checkInDate(row.original) },
-    { id: 'actions', cell: ({ row }) => row.original.moderationStatus === 'Pending' ? <div className="flex gap-2"><Button variant="success" size="sm" onClick={() => openAction(row.original.id, 'approve')}>Одобрить</Button><Button variant="danger" size="sm" onClick={() => openAction(row.original.id, 'reject')}>Отклонить</Button></div> : null },
-  ];
-
   // After acting on the last item of page N>1 the page becomes empty — step back instead of stranding the user.
   useEffect(() => {
     if (data && page > 1 && !data.items.length) {
@@ -135,24 +93,26 @@ export const CheckInsModerationPage: React.FC = () => {
   }, [data, page, searchParams, setSearchParams]);
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-3 sm:space-y-4">
       <div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">
+        <h2 className="font-display text-xl font-bold sm:text-2xl tracking-tight text-text-main dark:text-white">
           Чекины на проверке
         </h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          {data ? `Чекины пользователей, ожидающие решения · Всего: ${data.totalCount}` : 'Загрузка...'}
+          {data ? `${status === 'Pending' ? 'Ожидают решения' : status === 'Approved' ? 'Одобренные чекины' : status === 'Rejected' ? 'Отклонённые чекины' : 'Все чекины'} · ${data.totalCount}` : 'Загрузка...'}
         </p>
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-white p-3 shadow-sm dark:border-border-dark dark:bg-surface-dark sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+        <div className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
           {STATUS_OPTIONS.map((opt) => (
             <Button
               type="button"
               size="sm"
               key={opt.value}
               onClick={() => setParam('status', opt.value)}
+              aria-pressed={status === opt.value}
+              className="min-h-11 sm:min-h-8"
               variant={status === opt.value ? 'primary' : 'secondary'}
             >
               {opt.label}
@@ -160,28 +120,42 @@ export const CheckInsModerationPage: React.FC = () => {
           ))}
         </div>
         <form
-          onSubmit={(e) => { e.preventDefault(); setParam('search', localSearch); }}
-          className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row"
+          onSubmit={(e) => { e.preventDefault(); setParam('search', localSearch.trim()); }}
+          className="flex w-full min-w-0 gap-2 sm:ml-auto sm:w-auto"
         >
           <Input
-            type="text"
+            type="search"
+            aria-label="Поиск по тексту"
             maxLength={100}
             value={localSearch}
             onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Поиск по тексту..."
-            className="w-full sm:w-72"
+            className="h-11 min-w-0 sm:h-9 sm:w-64"
           />
-          <Button type="submit" variant="secondary" size="sm" className="w-full sm:w-auto min-h-[44px] sm:min-h-0">
+          <Button type="submit" variant="secondary" size="sm" className="h-11 shrink-0 sm:h-9">
             Найти
           </Button>
         </form>
       </div>
 
-      {error && <p role="alert" className="text-red-500">{getErrorMessage(error, "Не удалось загрузить чекины")} <button type="button" onClick={() => void refetch()}>Повторить</button></p>}
-      <Card>
-        <DataTable columns={columns} data={data?.items ?? []} loading={isLoading} emptyText="Чекины не найдены" getRowId={(checkIn) => checkIn.id} />
-        {data && <div className="border-t border-border-light px-5 py-3 dark:border-border-dark"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}
-      </Card>
+      {error ? <LoadError message={getErrorMessage(error, 'Не удалось загрузить чекины')} onRetry={() => void refetch()} retrying={isFetching} /> : (
+        <Card className="overflow-hidden">
+          {isLoading ? (
+            <div role="status" aria-label="Загрузка чекинов" className="space-y-3 p-3">
+              {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg bg-stone-100 dark:bg-white/5" />)}
+            </div>
+          ) : data?.items.length ? (
+            <ul aria-label="Чекины на проверке" className="divide-y divide-border-light dark:divide-border-dark">
+              {data.items.map((checkIn) => (
+                <li key={checkIn.id}>
+                  <CheckInModerationCard checkIn={checkIn} onApprove={() => openAction(checkIn.id, 'approve')} onReject={() => openAction(checkIn.id, 'reject')} />
+                </li>
+              ))}
+            </ul>
+          ) : <p className="p-8 text-center text-sm text-text-muted dark:text-stone-400">Чекины не найдены</p>}
+          {data && data.totalPages > 1 && <div className="border-t border-border-light px-3 py-2 dark:border-border-dark"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}
+        </Card>
+      )}
 
       <ConfirmDialog
         isOpen={pendingAction?.type === 'approve'}

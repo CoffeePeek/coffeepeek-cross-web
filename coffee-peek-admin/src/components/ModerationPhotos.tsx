@@ -3,7 +3,7 @@ import type { PhotoMetadataDto } from '../api/admin';
 import { httpClient } from '../api/core/httpClient';
 import { Dialog, DialogContent, DialogTitle } from './ui/Dialog';
 
-export default function ModerationPhotos({ photos }: { photos: PhotoMetadataDto[] }) {
+export default function ModerationPhotos({ photos, compact = false }: { photos: PhotoMetadataDto[]; compact?: boolean }) {
   const [images, setImages] = useState<string[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -28,8 +28,10 @@ export default function ModerationPhotos({ photos }: { photos: PhotoMetadataDto[
     });
     return () => { controller.abort(); loaded.forEach(URL.revokeObjectURL); };
   }, [urls, retry]);
-  return <div className="mt-2">
-    <div className="flex flex-wrap gap-2">{images.map((src, index) => <button key={src} type="button" aria-label={`Открыть фотографию ${index + 1}`} onClick={() => setSelected(src)}><img src={src} alt="" className="h-20 w-20 rounded-lg object-cover" /></button>)}</div>
+  if (!photos.length) return null;
+
+  return <div className={compact ? 'shrink-0 sm:max-w-52' : 'mt-2'}>
+    <div className="flex flex-wrap gap-1.5">{images.map((src, index) => <button key={src} type="button" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" aria-label={`Открыть фотографию ${index + 1}`} onClick={() => setSelected(src)}><img src={src} alt="" className={`${compact ? 'h-16 w-16' : 'h-20 w-20'} rounded-lg object-cover`} /></button>)}</div>
     {failed && <button type="button" className="mt-2 min-h-11 text-xs underline" onClick={() => setRetry(value => value + 1)}>Фото недоступны. Повторить</button>}
     <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}><DialogContent><DialogTitle>Фотография чекина</DialogTitle>{selected && <img src={selected} alt="Фотография посещения" className="max-h-[70vh] w-full object-contain" />}</DialogContent></Dialog>
   </div>;

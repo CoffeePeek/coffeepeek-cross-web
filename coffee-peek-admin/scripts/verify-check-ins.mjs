@@ -155,7 +155,7 @@ try {
   await mod.goto(`${admin}/check-ins`);
   await mod.getByText(submission.text, { exact: true }).waitFor();
   await mod.getByText('Без оценки', { exact: true }).waitFor();
-  await mod.locator('td img').waitFor();
+  await mod.getByRole('list', { name: 'Чекины на проверке' }).locator('article img').waitFor();
   await screenshot(mod, 'moderation-desktop');
   await mod.getByRole('button', { name: 'Отклонить', exact: true }).click();
   const dialog = mod.getByRole('alertdialog');

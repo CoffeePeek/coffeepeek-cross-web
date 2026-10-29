@@ -83,6 +83,7 @@ try {
   await admin.goto(origin + '/check-ins?status=Approved');
   const block = admin.getByRole('region', { name: 'Участие в рейтинге' });
   await block.getByText('Геопроверка: Дальше 50 м от кофейни').waitFor();
+  await block.locator('summary').click();
   await block.getByText('85,4 м', { exact: true }).waitFor();
   await block.getByText('12 м', { exact: true }).waitFor();
   await block.getByRole('button', { name: 'Засчитать', exact: true }).click();
@@ -120,11 +121,13 @@ try {
 
   checkIn = { ...original, contentRevision: 2, moderationStatus: 'Pending' };
   await admin.goto(origin + '/check-ins');
+  await block.locator('summary').click();
   await block.getByText('Ручное решение: Нет', { exact: true }).waitFor();
   assert(await block.getByRole('button', { name: 'Засчитать', exact: true }).isDisabled());
   checkIn = { ...original, kind: 'Home', shopId: null, home: { beanName: 'Эфиопия', preparedOn: '2026-10-26' } };
   await admin.goto(origin + '/check-ins?status=Approved');
   await block.getByText('Домашние чекины не участвуют в рейтинге').waitFor();
+  await block.locator('summary').click();
   assert(await block.getByRole('button', { name: 'Засчитать', exact: true }).isDisabled());
 
   await admin.goto(origin + '/audit?entityType=CheckIn');
