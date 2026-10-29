@@ -34,6 +34,14 @@ const listedUser: api.AdminUser = {
 const overview: api.OverviewStats = {
   totalUsers: 42, usersRegisteredToday: 2, activeUsers: 40, blockedUsers: 1, deletedUsers: 1,
   dailyActiveUsers: 10, weeklyActiveUsers: 20, monthlyActiveUsers: 30, emailConfirmedUsers: 35, googleUsers: 10,
+  appleUsers: 7, emailUsers: 25, otherAuthUsers: 0,
+  retention: {
+    asOfDateUtc: '2026-10-29',
+    d1: { eligibleUsers: 40, returnedUsers: 10, ratePercent: 25 },
+    d7: { eligibleUsers: 30, returnedUsers: 3, ratePercent: 10 },
+    d30: { eligibleUsers: 20, returnedUsers: 1, ratePercent: 5 },
+    afterRegistration: { eligibleUsers: 40, returnedUsers: 15, ratePercent: 37.5 },
+  },
   totalCoffeeShops: 12, totalCheckIns: 100, pendingModerationShops: 3, pendingModerationCheckIns: 2,
   newCoffeeShopsToday: 1, newCheckInsToday: 4,
   import: { pending: 0, published: 0, rejected: 0, skipped: 0, inFeed: 0 },
@@ -78,6 +86,7 @@ beforeEach(() => {
   jest.mocked(api.getShopsInsights).mockResolvedValue({ data: {
     ratings: { totalCheckIns: 100, averageRating: 4.5, averagePlace: 4, averageService: 5, averageCoffee: 4.5, distribution: [] },
     topShopsByCheckIns30Days: [{ shopId: 'shop-id', name: 'Test Coffee', count: 10 }],
+    coverage: { totalShops: 12, averageCompletenessPercent: 65.25, shopsWithCheckIns: 5, shopsWithoutCheckIns: 7 },
     downloads: { total: 100, last30Days: 20, byChannel: [], topCountries30Days: [] },
   } } as never);
   jest.mocked(api.getModerationInsights).mockResolvedValue({ data: {
@@ -132,7 +141,9 @@ test.each(['Moderator', 'Admin'])('%s can navigate to the complete dashboard and
   expect(api.getShopsTimeseries).toHaveBeenCalledWith(30);
   expect(api.getShopsInsights).toHaveBeenCalled();
   expect(api.getModerationInsights).toHaveBeenCalled();
-  for (const text of ['Аудитория', 'Динамика', 'Кофейни и чекины', 'Средний рейтинг', 'Test Coffee', 'Загрузки приложения: 100', 'Test Moderator']) {
+  for (const text of ['Аудитория', 'Динамика', 'Кофейни и чекины', 'Средний рейтинг', 'Test Coffee', 'Загрузки приложения: 100', 'Test Moderator',
+    'Способы регистрации', 'Google', 'Apple', 'Почта и пароль', 'Retention D1', 'Retention D7', 'Retention D30',
+    '15 из 40 пользователей', 'Заполненность и охват кофеен', '65,25%', 'С чекинами', 'Без чекинов']) {
     expect(document.querySelector('main')!.textContent).toContain(text);
   }
   expect(document.querySelector('nav a[href="/shops"]')!.textContent).toContain('3');

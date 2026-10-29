@@ -18,6 +18,8 @@ import { getUserPublicProfile } from '../../api/users';
 import { Card } from '../ui/Card';
 import { DataTable } from '../ui/DataTable';
 import { Button } from '../ui/Button';
+import { AudienceGrowthStats } from './AudienceGrowthStats';
+import { ShopCoverageStats } from './ShopCoverageStats';
 
 const QUEUE_LABELS: Record<AdminModerationQueueName, string> = {
   shops: 'Кофейни',
@@ -301,16 +303,12 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
                 total={overview.totalUsers}
                 hint="контакт подтверждён пользователем"
               />
-              <AccountProgress
-                label="Вход через Google"
-                value={overview.googleUsers}
-                total={overview.totalUsers}
-                hint="аккаунты с Google-авторизацией"
-              />
             </div>
           </div>
         </div>
       </Card>
+
+      <AudienceGrowthStats overview={overview} />
 
       {/* Timeseries */}
       <Card className="p-4">
@@ -360,6 +358,7 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats }> = ({ overvie
           <Unavailable />
         ) : shops.data && ratings ? (
           <div className="space-y-4">
+            <ShopCoverageStats coverage={shops.data.coverage} />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Metric label="Средний рейтинг" value={ratings.averageRating.toFixed(2)} hint={`${ratings.totalCheckIns} чекинов`} />
               <Metric label="Место" value={ratings.averagePlace.toFixed(2)} />
