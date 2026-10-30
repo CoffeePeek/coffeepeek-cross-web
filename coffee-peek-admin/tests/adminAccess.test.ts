@@ -57,13 +57,16 @@ beforeEach(() => {
   dom = new JSDOM('<div id="root"></div>', { url: 'http://localhost', pretendToBeVisual: true });
   Object.assign(globalThis, {
     window: dom.window, document: dom.window.document, HTMLElement: dom.window.HTMLElement,
-    IS_REACT_ACT_ENVIRONMENT: true,
+    HTMLInputElement: dom.window.HTMLInputElement,
+    Element: dom.window.Element, Node: dom.window.Node, NodeFilter: dom.window.NodeFilter, Event: dom.window.Event,
+    CustomEvent: dom.window.CustomEvent, MutationObserver: dom.window.MutationObserver,
+    getComputedStyle: dom.window.getComputedStyle.bind(dom.window), IS_REACT_ACT_ENVIRONMENT: true,
   });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } } });
   const { createRoot } = require('react-dom/client');
   root = createRoot(document.getElementById('root')!);
   jest.mocked(api.getAdminUsers).mockImplementation(async (params) => ({
-    data: { items: [listedUser], totalItems: 21, totalPages: 2, currentPage: params?.page ?? 1, pageSize: 20 },
+    data: { items: [listedUser], totalCount: 21, totalPages: 2, page: params?.page ?? 1, pageSize: 20 },
   } as never));
   jest.mocked(api.getUserStats).mockResolvedValue({ data: {
     totalUsers: 42, registeredToday: 2, activeUsers: 40, blockedUsers: 1, usersByRole: { User: 40 },
@@ -98,6 +101,8 @@ beforeEach(() => {
   jest.mocked(api.getUserSessions).mockResolvedValue({ data: [{
     id: 'session-id', deviceName: 'Test Browser', isRevoked: false,
   }] } as never);
+  // JSDOM does not implement the browser Popover API used by the actions menu.
+  (dom.window.HTMLElement.prototype as HTMLElement).hidePopover = () => {};
 });
 
 afterEach(async () => {
@@ -135,6 +140,8 @@ test.each(['Moderator', 'Admin'])('%s can navigate to the complete dashboard and
   mockRole = role;
   await mount('/dashboard');
   expect(document.querySelector('nav a[href="/dashboard"]')).not.toBeNull();
+  expect(document.querySelector('nav a[href="/shops"]')!.textContent).toContain('3');
+  await act(async () => button('Пользователи и доступ').click());
   expect(document.querySelector('nav a[href="/users"]')).not.toBeNull();
   expect(api.getOverviewStats).toHaveBeenCalled();
   expect(api.getUsersTimeseries).toHaveBeenCalledWith(30);
@@ -146,7 +153,6 @@ test.each(['Moderator', 'Admin'])('%s can navigate to the complete dashboard and
     '15 из 40 пользователей', 'Заполненность и охват кофеен', '65,25%', 'С чекинами', 'Без чекинов']) {
     expect(document.querySelector('main')!.textContent).toContain(text);
   }
-  expect(document.querySelector('nav a[href="/shops"]')!.textContent).toContain('3');
   for (const days of [7, 90]) {
     await act(async () => button(`${days} дн`).click());
     await settle();
@@ -187,15 +193,15 @@ test('a failed users timeseries request leaves shop charts available and does no
 
 test('moderator opens the users route, searches, filters and paginates without any privileged controls or requests', async () => {
   await mount('/dashboard');
+  await act(async () => button('Пользователи и доступ').click());
   await act(async () => (document.querySelector('nav a[href="/users"]') as HTMLAnchorElement).click());
   await settle();
   await settle();
   expect(document.querySelector('main h2')!.textContent).toContain('Пользователи');
   expect(api.getUserStats).toHaveBeenCalled();
   expect(document.querySelector('main')!.textContent).toContain('Только чтение');
-  expect(document.querySelector('tbody')!.textContent).toContain('Coffee Lover');
-  expect(document.querySelectorAll('tbody button, tbody a')).toHaveLength(0);
-  expect(document.querySelectorAll('thead th')).toHaveLength(5);
+  expect(document.querySelector('ul[aria-label="Пользователи"]')!.textContent).toContain('Coffee Lover');
+  expect(document.querySelector('ul[aria-label="Пользователи"] [aria-label^="Действия:"]')).toBeNull();
   await act(async () => (document.querySelector('[aria-label="Следующая страница"]') as HTMLButtonElement).click());
   await settle();
   expect(api.getAdminUsers).toHaveBeenLastCalledWith({ page: 2, pageSize: 20, search: undefined, role: undefined });
@@ -203,7 +209,7 @@ test('moderator opens the users route, searches, filters and paginates without a
   await settle();
   expect(api.getAdminUsers).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: undefined, role: 'Admin' });
   await act(async () => {
-    const input = document.querySelector('input[placeholder="Email или имя..."]')!;
+    const input = document.querySelector('input[placeholder="Email или имя"]')!;
     Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value')!.set!.call(input, 'coffee');
     input.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
   });
@@ -216,22 +222,24 @@ test('moderator opens the users route, searches, filters and paginates without a
 test('admin retains all user controls and session access; changing to moderator unmounts the sessions panel', async () => {
   mockRole = 'Admin';
   await mount('/users');
-  const row = document.querySelector('tbody tr')!;
-  for (const label of ['Роль', 'Блок', 'Оборвать', 'Сессии']) expect(button(label, row)).toBeDefined();
-  expect(row.querySelector('button[aria-label="Удалить"]')).not.toBeNull();
-  expect(row.querySelector('a[href="/notifications?userId=listed-user"]')).not.toBeNull();
+  const row = document.querySelector('ul[aria-label="Пользователи"] > li')!;
+  expect(row.querySelector('button[aria-label="Действия: Coffee Lover"]')).not.toBeNull();
+  const actions = row.querySelector('[role="menu"]')!;
+  for (const label of ['Отправить уведомление', 'Сессии', 'Изменить роль', 'Оборвать все сессии', 'Заблокировать', 'Удалить пользователя']) {
+    expect(button(label, actions)).toBeDefined();
+  }
   expect(api.getUserSessions).not.toHaveBeenCalled();
-  await act(async () => button('Сессии', row).click());
+  await act(async () => button('Сессии', actions).click());
   await settle();
   expect(api.getUserSessions).toHaveBeenCalledWith(listedUser.id);
-  expect(document.querySelector('main')!.textContent).toContain('Test Browser');
+  expect(document.body.textContent).toContain('Test Browser');
   expect(button('Отозвать все')).toBeDefined();
   mockRole = 'Moderator';
   const { AppRoutes } = require('../src/routes/AppRoutes');
   await act(async () => root.render(createElement(QueryClientProvider, { client },
     createElement(MemoryRouter, { initialEntries: ['/users'] }, createElement(AppRoutes)))));
   expect(document.querySelector('#user-sessions-listed-user')).toBeNull();
-  expect(document.querySelectorAll('tbody button, tbody a')).toHaveLength(0);
+  expect(document.querySelector('ul[aria-label="Пользователи"] [aria-label^="Действия:"]')).toBeNull();
   jest.mocked(api.getUserSessions).mockClear();
   await act(async () => { await client.invalidateQueries({ queryKey: ['admin', 'users'] }); });
   await settle();
