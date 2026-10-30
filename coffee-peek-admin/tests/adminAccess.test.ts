@@ -100,6 +100,7 @@ beforeEach(() => {
   jest.mocked(getImportStats).mockResolvedValue({ data: { pending: 0, pendingDuplicates: 0 } } as never);
   jest.mocked(api.getUserSessions).mockResolvedValue({ data: [{
     id: 'session-id', deviceName: 'Test Browser', isRevoked: false,
+    expiryDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   }] } as never);
   // JSDOM does not implement the browser Popover API used by the actions menu.
   (dom.window.HTMLElement.prototype as HTMLElement).hidePopover = () => {};
@@ -233,6 +234,7 @@ test('admin retains all user controls and session access; changing to moderator 
   await settle();
   expect(api.getUserSessions).toHaveBeenCalledWith(listedUser.id);
   expect(document.body.textContent).toContain('Test Browser');
+  expect(document.querySelector('#user-sessions-listed-user')!.textContent).toContain('Действует');
   expect(button('Отозвать все')).toBeDefined();
   mockRole = 'Moderator';
   const { AppRoutes } = require('../src/routes/AppRoutes');
@@ -244,6 +246,23 @@ test('admin retains all user controls and session access; changing to moderator 
   await act(async () => { await client.invalidateQueries({ queryKey: ['admin', 'users'] }); });
   await settle();
   expectNoPrivilegedRequests();
+});
+
+test('an expired session is not shown as active, while the account remains available for login', async () => {
+  mockRole = 'Admin';
+  jest.mocked(api.getUserSessions).mockResolvedValue({ data: [{
+    id: 'expired-session', deviceName: 'Old Browser', isRevoked: false,
+    expiryDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+  }] } as never);
+  await mount('/users');
+  const row = document.querySelector('ul[aria-label="Пользователи"] > li')!;
+  expect(row.textContent).toContain('Доступен');
+  await act(async () => button('Сессии', row.querySelector('[role="menu"]')!).click());
+  await settle();
+  const panel = document.querySelector('#user-sessions-listed-user')!;
+  expect(panel.textContent).toContain('Истекла');
+  expect(button('Отозвать все', panel).disabled).toBe(true);
+  expect([...panel.querySelectorAll('button')].some((action) => action.textContent === 'Отозвать')).toBe(false);
 });
 
 test.each(['Owner', 'User'])('%s cannot open users or load dashboard statistics', async role => {

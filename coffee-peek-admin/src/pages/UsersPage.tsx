@@ -67,11 +67,22 @@ function UserRoles({ user }: { user: AdminUser }) {
 }
 
 function formatSessionDate(value: string): string {
-  try {
-    return new Date(value).toLocaleString('ru');
-  } catch {
-    return value;
-  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('ru');
+}
+
+const SESSION_BADGES = {
+  revoked: { label: 'Отозвана', variant: 'rejected' },
+  expired: { label: 'Истекла', variant: 'default' },
+  valid: { label: 'Действует', variant: 'approved' },
+  unknown: { label: 'Срок неизвестен', variant: 'pending' },
+} as const;
+
+function sessionStatus(session: UserSession, now: number): keyof typeof SESSION_BADGES {
+  if (session.isRevoked) return 'revoked';
+  const expiresAt = Date.parse(session.expiryDate);
+  if (Number.isNaN(expiresAt)) return 'unknown';
+  return expiresAt <= now ? 'expired' : 'valid';
 }
 
 const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
@@ -80,6 +91,12 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
   const [confirmRevokeAll, setConfirmRevokeAll] = useState(false);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [confirmSessionId, setConfirmSessionId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const { data: sessions, isLoading, isError, error } = useQuery({
     queryKey: ['admin', 'users', user.id, 'sessions'],
@@ -110,6 +127,10 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
   });
 
   const list: UserSession[] = sessions ?? [];
+  const canRevoke = (session: UserSession) => {
+    const status = sessionStatus(session, now);
+    return status === 'valid' || status === 'unknown';
+  };
 
   return (
     <>
@@ -122,7 +143,7 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
           <Button
             variant="danger"
             size="sm"
-            disabled={!list.some((session) => !session.isRevoked) || revokeAllMutation.isPending}
+            disabled={!list.some(canRevoke) || revokeAllMutation.isPending}
             onClick={() => setConfirmRevokeAll(true)}
           >
             Отозвать все
@@ -137,8 +158,9 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
           <p className="py-4 text-sm text-text-muted">Сессий нет</p>
         ) : (
           <div className="space-y-2">
-            {list.map((session) => (
-              <div key={session.id} className="grid min-w-0 gap-3 rounded-lg border border-border-light bg-white p-3 font-body text-sm dark:border-border-dark dark:bg-surface-dark sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
+            {list.map((session) => {
+              const status = sessionStatus(session, now);
+              return <div key={session.id} className="grid min-w-0 gap-3 rounded-lg border border-border-light bg-white p-3 font-body text-sm dark:border-border-dark dark:bg-surface-dark sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
                 <div className="min-w-0 sm:col-span-2 xl:col-span-1">
                   <p className="mb-1 text-xs text-text-muted dark:text-stone-400">Устройство</p>
                   <p className="break-all text-text-main dark:text-white">{session.deviceName || 'Неизвестное устройство'}</p>
@@ -156,15 +178,15 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
                   <p className="text-text-main dark:text-white">{session.expiryDate ? formatSessionDate(session.expiryDate) : '—'}</p>
                 </div>
                 <div className="flex items-start justify-between gap-2 sm:col-span-2 xl:col-span-1 xl:flex-col xl:items-end">
-                  <Badge variant={session.isRevoked ? 'rejected' : 'approved'}>{session.isRevoked ? 'Отозвана' : 'Активна'}</Badge>
-                  {!session.isRevoked && (
+                  <Badge variant={SESSION_BADGES[status].variant}>{SESSION_BADGES[status].label}</Badge>
+                  {canRevoke(session) && (
                     <Button variant="ghost" size="sm" className="text-red-500" loading={revokingSessionId === session.id && revokeOneMutation.isPending} onClick={() => setConfirmSessionId(session.id)}>
                       Отозвать
                     </Button>
                   )}
                 </div>
-              </div>
-            ))}
+              </div>;
+            })}
           </div>
         )}
       </div>
@@ -357,7 +379,7 @@ export const UsersPage: React.FC = () => {
   const metrics = [
     { label: 'Всего', value: stats?.totalUsers, color: '' },
     { label: 'Сегодня', value: stats?.registeredToday, color: 'text-emerald-700 dark:text-emerald-400' },
-    { label: 'Активных', value: stats?.activeUsers, color: 'text-blue-600 dark:text-blue-400' },
+    { label: 'С доступом', value: stats?.activeUsers, color: 'text-blue-600 dark:text-blue-400' },
     { label: 'Заблокировано', value: stats?.blockedUsers, color: 'text-red-600 dark:text-red-400' },
   ];
   const roleCount = (role: UserRole | '') => role ? stats?.usersByRole?.[role] : stats?.totalUsers;
@@ -369,6 +391,7 @@ export const UsersPage: React.FC = () => {
         <p className="mt-0.5 font-body text-xs text-text-muted dark:text-stone-400 sm:text-sm">
           {isAdmin ? 'Управление пользователями и ролями' : 'Пользователи и статистика · Только чтение'}
         </p>
+        <p className="mt-1 text-xs text-text-muted dark:text-stone-400">Статус показывает, разрешён ли вход в аккаунт.</p>
       </div>
 
       {statsError ? (
@@ -439,7 +462,7 @@ export const UsersPage: React.FC = () => {
                     ]} /></div>}
                     <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5 xl:col-span-1 xl:col-start-2 xl:row-start-1">
                       <UserRoles user={user} />
-                      <span className={`inline-flex items-center gap-1 text-[11px] ${user.isBlocked ? 'text-red-600 dark:text-red-400' : 'text-text-muted dark:text-stone-400'}`}><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${user.isBlocked ? 'bg-red-500' : 'bg-emerald-500'}`} />{user.isBlocked ? 'Заблокирован' : 'Активен'}</span>
+                      <span className={`inline-flex items-center gap-1 text-[11px] ${user.isBlocked ? 'text-red-600 dark:text-red-400' : 'text-text-muted dark:text-stone-400'}`}><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${user.isBlocked ? 'bg-red-500' : 'bg-emerald-500'}`} />{user.isBlocked ? 'Заблокирован' : 'Доступен'}</span>
                     </div>
                     <dl className="col-span-2 grid min-w-0 grid-cols-[1fr_1fr_1.4fr] gap-2 text-xs xl:col-span-1 xl:col-start-3 xl:row-start-1">
                       <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Чекины</dt><dd className="mt-0.5 font-medium tabular-nums">{user.checkInCount?.toLocaleString('ru') ?? '—'}</dd></div>
@@ -466,7 +489,7 @@ export const UsersPage: React.FC = () => {
             <div className="flex items-start gap-3"><UserAvatar user={detailsUser} /><div className="min-w-0"><p className="font-semibold [overflow-wrap:anywhere]">{detailsUser.userName || 'Без имени'}</p><p className="text-text-muted [overflow-wrap:anywhere] dark:text-stone-400">{detailsUser.email}</p></div></div>
             <UserRoles user={detailsUser} />
             <dl className="grid grid-cols-2 gap-3">
-              <div><dt className="text-xs text-text-muted">Статус</dt><dd>{detailsUser.isBlocked ? 'Заблокирован' : 'Активен'}</dd></div>
+              <div><dt className="text-xs text-text-muted">Статус</dt><dd>{detailsUser.isBlocked ? 'Заблокирован' : 'Доступен'}</dd></div>
               <div><dt className="text-xs text-text-muted">Регистрация</dt><dd>{formatSessionDate(detailsUser.createdAtUtc)}</dd></div>
               <div><dt className="text-xs text-text-muted">Чекины</dt><dd>{detailsUser.checkInCount ?? '—'}</dd></div>
               <div><dt className="text-xs text-text-muted">Добавленные кофейни</dt><dd>{detailsUser.addedShopsCount ?? '—'}</dd></div>
