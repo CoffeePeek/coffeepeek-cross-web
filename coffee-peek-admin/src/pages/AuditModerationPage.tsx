@@ -86,7 +86,7 @@ export const AuditModerationPage: React.FC = () => {
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Audit log модерации</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Журнал модерации</h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
           История публикации и решений об участии чекинов в рейтинге
         </p>

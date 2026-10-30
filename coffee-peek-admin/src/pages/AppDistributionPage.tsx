@@ -304,7 +304,7 @@ export const AppDistributionPage: React.FC = () => {
   return (
     <div className="mx-auto w-full max-w-[1600px] space-y-6">
       <div>
-        <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Приложения</h2>
+        <h2 className="font-display text-2xl font-bold tracking-tight text-text-main dark:text-white">Релизы приложений</h2>
         <p className="mt-0.5 text-sm text-text-muted dark:text-stone-400 font-body">
           Каналы скачивания и production APK для CoffeePeek
         </p>

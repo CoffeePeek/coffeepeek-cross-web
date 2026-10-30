@@ -427,7 +427,7 @@ export const ImportQueuePage: React.FC = () => {
         )}
         <LogoMark size={22} className="hidden sm:inline-flex shrink-0" />
         <span className="hidden sm:inline text-sm font-semibold font-display text-text-main dark:text-white">
-          Импорт данных
+          Импорт кофеен
         </span>
         <div className="flex items-center gap-0.5 rounded-full bg-background-light dark:bg-white/5 border border-border-light dark:border-border-dark p-1">
           {PANEL_TABS.map((item) => (

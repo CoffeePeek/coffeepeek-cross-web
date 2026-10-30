@@ -32,9 +32,9 @@ export const DashboardPage = () => {
   const workLinks = [
     ...(!isAdmin && isModerator ? [
       { to: '/shops', label: 'Заявки на кофейни', detail: 'Проверить новые кофейни' },
-      { to: '/check-ins', label: 'Чекины на проверке', detail: 'Принять решение по публикациям' },
+      { to: '/check-ins', label: 'Проверка чекинов', detail: 'Принять решение по публикациям' },
       { to: '/shop-change-requests', label: 'Правки кофеен', detail: 'Рассмотреть изменения данных' },
-      { to: '/import', label: 'Импорт данных', detail: 'Разобрать очередь импорта' },
+      { to: '/import', label: 'Импорт кофеен', detail: 'Разобрать очередь импорта' },
     ] : []),
     ...(isOwner ? [
       { to: '/my-shops', label: 'Мои кофейни', detail: 'Открыть и обновить свои кофейни' },

@@ -31,40 +31,46 @@ interface NavSection {
   items: NavItem[];
 }
 
-const DASHBOARD: NavItem = { path: '/dashboard', label: 'Дашборд', icon: CircleGauge };
+const DASHBOARD: NavItem = { path: '/dashboard', label: 'Обзор', icon: CircleGauge };
 const NAV_SECTIONS: NavSection[] = [
-  { id: 'browse', label: 'Обзор', items: [
+  { id: 'browse', label: 'Поиск', items: [
     { path: '/coffee-shops', label: 'Кофейни', icon: Coffee, browseOnly: true },
     { path: '/map', label: 'Карта', icon: Map, browseOnly: true },
   ] },
   { id: 'moderation', label: 'Модерация', collapsible: true, items: [
-    { path: '/ownership-claims', label: 'Заявки на владение', icon: Users, adminOnly: true },
-    { path: '/ownership-changes', label: 'История доступа', icon: History, adminOnly: true },
-    { path: '/shop-change-requests', label: 'Правки кофеен', icon: History, moderatorOnly: true },
     { path: '/shops', label: 'Заявки на кофейни', icon: Coffee, moderatorOnly: true },
-    { path: '/check-ins', label: 'Чекины на проверке', icon: MessageSquareText, moderatorOnly: true },
-    { path: '/check-in-reports', label: 'Жалобы на чекины', icon: Flag, adminOnly: true },
-    { path: '/shop-reports', label: 'Жалобы на данные', icon: Flag, moderatorOnly: true },
+    { path: '/shop-change-requests', label: 'Правки кофеен', icon: History, moderatorOnly: true },
     { path: '/roasters', label: 'Заявки на обжарщиков', icon: Coffee, moderatorOnly: true },
+    { path: '/check-ins', label: 'Проверка чекинов', icon: MessageSquareText, moderatorOnly: true },
+    { path: '/check-in-reports', label: 'Жалобы на чекины', icon: Flag, adminOnly: true },
+    { path: '/shop-reports', label: 'Ошибки в данных', icon: Flag, moderatorOnly: true },
   ] },
-  { id: 'data', label: 'Данные и каталог', collapsible: true, items: [
+  { id: 'catalog', label: 'Каталог', collapsible: true, items: [
+    { path: '/published-shops', label: 'Кофейни', icon: Coffee, adminOnly: true },
     { path: '/coffees', label: 'Кофе', icon: Coffee, moderatorOnly: true },
-    { path: '/coffee-import', label: 'Импорт кофе', icon: Upload, moderatorOnly: true },
-    { path: '/roaster-tags', label: 'Теги обжарщиков', icon: Tags, moderatorOnly: true },
-    { path: '/coffee-filter-values', label: 'Характеристики кофе', icon: Tags, moderatorOnly: true },
-    { path: '/published-shops', label: 'Все кофейни', icon: Coffee, adminOnly: true },
-    { path: '/import', label: 'Импорт данных', icon: Upload, moderatorOnly: true },
     { path: '/coffee-zones', label: 'Кофейные зоны', icon: Map, moderatorOnly: true },
-    { path: '/catalogs', label: 'Справочники', icon: BookOpen, adminOnly: true },
-    { path: '/shop-tags', label: 'Теги кофеен', icon: Tags, adminOnly: true },
     { path: '/my-shops', label: 'Мои кофейни', icon: Coffee, ownerOnly: true },
   ] },
-  { id: 'system', label: 'Система', items: [
-    { path: '/leaderboard', label: 'Рейтинг активности', icon: Trophy, moderatorOnly: true },
-    { path: '/audit', label: 'Audit log', icon: History, adminOnly: true },
+  { id: 'catalog-settings', label: 'Настройки каталога', collapsible: true, items: [
+    { path: '/catalogs', label: 'Справочники', icon: BookOpen, adminOnly: true },
+    { path: '/shop-tags', label: 'Теги кофеен', icon: Tags, adminOnly: true },
+    { path: '/roaster-tags', label: 'Теги обжарщиков', icon: Tags, moderatorOnly: true },
+    { path: '/coffee-filter-values', label: 'Характеристики кофе', icon: Tags, moderatorOnly: true },
+  ] },
+  { id: 'import', label: 'Импорт', collapsible: true, items: [
+    { path: '/import', label: 'Импорт кофеен', icon: Upload, moderatorOnly: true },
+    { path: '/coffee-import', label: 'Импорт кофе', icon: Upload, moderatorOnly: true },
+  ] },
+  { id: 'people', label: 'Пользователи и доступ', collapsible: true, items: [
     { path: '/users', label: 'Пользователи', icon: Users, moderatorOnly: true },
+    { path: '/ownership-claims', label: 'Заявки на владение', icon: Users, adminOnly: true },
+    { path: '/ownership-changes', label: 'История доступа', icon: History, adminOnly: true },
+    { path: '/leaderboard', label: 'Рейтинг активности', icon: Trophy, moderatorOnly: true },
+  ] },
+  { id: 'system', label: 'Система', collapsible: true, items: [
     { path: '/notifications', label: 'Уведомления', icon: MessageSquareText, adminOnly: true },
-    { path: '/app-distribution', label: 'Приложения', icon: AppWindow, adminOnly: true },
+    { path: '/app-distribution', label: 'Релизы приложений', icon: AppWindow, adminOnly: true },
+    { path: '/audit', label: 'Журнал модерации', icon: History, adminOnly: true },
   ] },
 ];
 
@@ -137,7 +143,7 @@ export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [loggingOut, setLoggingOut] = useState(false);
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({ moderation: true, data: true });
+  const [openSection, setOpenSection] = useState<string | null>('moderation');
   const showLabels = !collapsed || mobileOpen;
   const roles = useMemo(() => ({ isAdmin, isModerator, isOwner }), [isAdmin, isModerator, isOwner]);
   const badges = useNavBadges(isModerator);
@@ -149,7 +155,7 @@ export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle
 
   useEffect(() => {
     const active = visibleSections.find((section) => section.items.some((item) => pathActive(pathname, item.path)));
-    if (active) setOpenSections((current) => ({ ...current, [active.id]: true }));
+    if (active) setOpenSection(active.id);
   }, [pathname, visibleSections]);
 
   const handleLogout = async () => {
@@ -165,7 +171,7 @@ export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle
         key={item.path}
         to={item.path}
         onClick={onNavigate}
-        title={showLabels ? undefined : count > 0 ? `${item.label} (${count})` : item.label}
+        title={count > 0 ? `${item.label} (${count})` : item.label}
         className={({ isActive }) => cn(
           'group relative flex h-9 items-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
           showLabels ? 'gap-3 px-3' : 'mx-auto w-9 justify-center',
@@ -198,13 +204,13 @@ export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle
       <nav className={cn('flex-1 space-y-4 overflow-y-auto py-4', showLabels ? 'px-3' : 'px-2')} aria-label="Основная навигация">
         {renderLink(DASHBOARD)}
         {visibleSections.map((section) => {
-          const open = !section.collapsible || !showLabels || Boolean(openSections[section.id]);
+          const open = !section.collapsible || !showLabels || openSection === section.id;
           // Collapsed section hides its items, so surface their total on the header.
           const hiddenCount = open ? 0 : section.items.reduce((sum, item) => sum + (badges[item.path] ?? 0), 0);
           return (
             <section key={section.id}>
               {showLabels && (section.collapsible ? (
-                <button type="button" className="mb-1 flex h-8 w-full items-center justify-between gap-2 rounded-md px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-400 hover:text-stone-200" onClick={() => setOpenSections((current) => ({ ...current, [section.id]: !open }))} aria-expanded={open}>
+                <button type="button" className="mb-1 flex h-8 w-full items-center justify-between gap-2 rounded-md px-3 text-[11px] font-semibold uppercase tracking-wider text-stone-400 hover:text-stone-200" onClick={() => setOpenSection(open ? null : section.id)} aria-expanded={open}>
                   {section.label}
                   {hiddenCount > 0 && <CountBadge count={hiddenCount} />}
                   <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-180')} />
