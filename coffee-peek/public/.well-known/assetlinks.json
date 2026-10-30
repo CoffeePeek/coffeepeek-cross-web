@@ -1,13 +1,17 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.coffeepeek",
       "sha256_cert_fingerprints": [
         "76:77:6E:CE:06:B2:60:D2:CC:C4:E0:F6:46:03:1A:8C:E4:92:4F:CA:2F:5F:28:E2:C6:78:18:DE:07:0E:39:25",
         "22:68:05:7D:96:F5:12:EA:2C:45:AE:1A:3B:E8:42:55:B8:CC:23:7B:1D:1C:9F:C2:0C:58:01:AF:D4:12:D2:60",
-        "83:3C:93:D3:87:EA:8F:A1:06:93:A2:BB:97:90:F3:94:F6:A6:90:F1:59:60:1F:A8:B3:3D:7A:98:4A:32:11:EC"
+        "83:3C:93:D3:87:EA:8F:A1:06:93:A2:BB:97:90:F3:94:F6:A6:90:F1:59:60:1F:A8:B3:3D:7A:98:4A:32:11:EC",
+        "3F:96:D5:FE:33:BC:8C:25:5D:4E:6F:59:0D:73:8A:42:69:16:E0:C1:25:0E:E4:50:50:32:66:E4:02:43:A3:54"
       ]
     }
   }
