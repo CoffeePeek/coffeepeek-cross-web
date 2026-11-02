@@ -4,6 +4,8 @@ import { getAnalyticsError } from '../src/lib/analyticsError';
 test('route and API categories never contain IDs, slugs, queries or form input', () => {
   expect(analyticsPageType('/shops/private-shop/check-ins/secret/edit?token=secret')).toBe('check_in_edit');
   expect(analyticsPageType('/users/private-user')).toBe('user_profile');
+  expect(analyticsPageType('/collections/private-collection')).toBe('shared_collection');
+  expect(analyticsApiCategory('/api/v1/favorite-collections/private-collection')).toBe('collections');
   expect(analyticsPageType('/unknown/private')).toBe('other');
   expect(analyticsApiCategory('/api/v1/check-ins/private-id?token=secret')).toBe('check_ins');
   expect(analyticsApiCategory('/api/tokens/refresh')).toBe('authentication');

@@ -6,6 +6,7 @@
           "JJ7867S6PS.com.coffeepeek"
         ],
         "components": [
+          { "/": "/collections/*" },
           {
             "/": "/"
           },

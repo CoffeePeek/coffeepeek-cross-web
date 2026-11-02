@@ -242,10 +242,54 @@ function renderCheckIn(checkIn, title, description, image) {
     </article>`);
 }
 
+function collectionPlacePath(place) {
+  const slug = place.address?.slug;
+  if (typeof slug !== 'string' || !slug || /[\\/\u0000-\u001f]/.test(slug) || ['.', '..'].includes(slug)) return null;
+  const kind = place.kind === 'coffee_shop' ? 'coffee-shops' : place.kind === 'roaster' ? 'roasters' : null;
+  return kind ? `/${kind}/${encodeURIComponent(slug)}` : null;
+}
+
+function collectionImage(place) {
+  try {
+    const value = place?.coverPhoto?.urls?.card || place?.coverPhoto?.fullUrl;
+    if (!value) return DEFAULT_IMAGE;
+    const image = new URL(value, apiUrl('/'));
+    return image.protocol === 'https:' && !image.username && !image.password ? image.href : DEFAULT_IMAGE;
+  } catch { return DEFAULT_IMAGE; }
+}
+
+async function renderCollectionPage(shell, rawId) {
+  const valid = /^(?:[a-f0-9]{32}|[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12})$/i.test(rawId);
+  const id = rawId.replaceAll('-', '').toLowerCase();
+  const result = valid ? await fetchJson(`/api/v1/favorite-collections/${id}`) : { ok: false, status: 404 };
+  const canonical = `${SITE_URL}/collections/${valid ? id : ''}`;
+  if (!result.ok || !result.body?.data) {
+    const status = [400, 404, 410].includes(result.status) ? 404 : 503;
+    const html = replaceMeta(shell, { title: 'Подборка недоступна — CoffeePeek',
+      description: 'Ссылка на подборку недоступна или отключена владельцем.', canonical });
+    return { html: injectContent(html, status === 404
+      ? pageLayout('Подборка недоступна', 'Ссылка могла быть отключена владельцем.', '<p><a href="/search">Найти кофейни</a></p>')
+      : renderUnavailable()), status };
+  }
+  const collection = result.body.data;
+  const places = (collection.items || []).filter(place => collectionPlacePath(place));
+  const title = `${collection.title} — CoffeePeek`;
+  const description = excerpt(`Мест в подборке: ${places.length}. ${places.map(place => place.name).join(', ')}.`);
+  const cards = places.map(place => `<a href="${escapeHtml(collectionPlacePath(place))}" style="display:block;color:#fff;text-decoration:none;border:1px solid #3D2F28;border-radius:20px;padding:20px">
+    <h2>${escapeHtml(place.name)}</h2><p>${escapeHtml([place.cityName, place.streetAddress].filter(Boolean).join(' · ') || (place.kind === 'roaster' ? 'Обжарщик' : 'Кофейня'))}</p>
+    </a>`).join('');
+  let html = replaceMeta(shell, { title, description, canonical, image: collectionImage(places[0]) });
+  html = html.replace('</head>', '<meta name="robots" content="noindex, nofollow"></head>');
+  return { html: injectContent(html, pageLayout(collection.title, `Мест в подборке: ${places.length}`,
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">${cards || '<p>Места из этой подборки больше недоступны.</p>'}</div>`)), status: 200 };
+}
+
 export async function renderPublicPage(request) {
   const url = new URL(request.url);
   const page = url.searchParams.get('page') || 'home';
   const shell = await loadSpaShell(request);
+
+  if (page === 'collection') return renderCollectionPage(shell, url.searchParams.get('id') || '');
 
   if (page === 'home') {
     return { html: renderHomePage(shell), status: 200 };

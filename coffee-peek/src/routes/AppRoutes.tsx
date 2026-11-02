@@ -39,6 +39,7 @@ const CheckInsPage = lazyWithRetry(() => import('../pages/CheckInsPage'));
 const CheckInPage = lazyWithRetry(() => import('../pages/CheckInPage'));
 const EditCoffeeShopPage = lazyWithRetry(() => import('../pages/EditCoffeeShopPage'));
 const MyContributionsPage = lazyWithRetry(() => import('../pages/MyContributionsPage'));
+const SharedCollectionPage = lazyWithRetry(() => import('../pages/SharedCollectionPage'));
 
 const LegacyDashboardRedirect = () => {
   const { search } = useLocation();
@@ -95,6 +96,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/coffees/:slug" element={<AuthenticatedLayout><CoffeeDetailPage /></AuthenticatedLayout>} />
         {/* Public routes */}
         <Route path="/" element={<LandingPage />} />
+        <Route path="/collections/:id" element={<SharedCollectionPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/logout" element={<LogoutRoute />} />
         <Route path="/register" element={<RegisterPage />} />

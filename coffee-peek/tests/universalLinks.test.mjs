@@ -10,7 +10,7 @@ test('all public content links belong to the signed CoffeePeek iOS app', () => {
   const [details] = association.applinks.details;
   assert.deepEqual(details.appIDs, ['JJ7867S6PS.com.coffeepeek']);
   const paths = details.components.map(component => component['/']);
-  for (const path of ['/', '/coffee-shops/*', '/shops/*', '/roasters/*', '/users/*', '/coffees/*', '/check-ins/*']) {
+  for (const path of ['/', '/coffee-shops/*', '/shops/*', '/roasters/*', '/users/*', '/coffees/*', '/check-ins/*', '/collections/*']) {
     assert.ok(paths.includes(path), path);
   }
   assert.ok(!paths.includes('/*'), 'account confirmation and password recovery must keep their website handlers');

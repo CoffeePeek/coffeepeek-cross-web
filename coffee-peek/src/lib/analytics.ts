@@ -60,11 +60,11 @@ function commonProperties() {
 }
 
 export function analyticsUrl(value: string): string {
-  return value.split(/[?#]/, 1)[0];
+  return value.split(/[?#]/, 1)[0].replace(/(\/(?:collections|api\/v1\/favorite-collections)\/)[^/]+/gi, '$1shared');
 }
 
 // The SDK adds entry URLs and person properties as well as the explicit page URL.
-// Strip query/hash from all of them: auth links contain tokens; search URLs can contain coordinates.
+// Strip query/hash and unlisted collection IDs from every URL property.
 function sanitizeProperties(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeProperties);
   if (!value || typeof value !== 'object') return value;

@@ -168,6 +168,21 @@ describe('product analytics', () => {
     expect(event.properties.$current_url).toContain('?token=secret');
   });
 
+  test('unlisted collection identifiers never leave in pageviews or nested URL properties', async () => {
+    const id = '123456781234123412341234567890ab';
+    await analytics.syncAnalytics({ ...context, pathname: `/collections/${id}` });
+    expect(sdk.capture).toHaveBeenLastCalledWith('$pageview', expect.objectContaining({
+      $pathname: '/collections/shared', $current_url: 'https://coffeepeek.by/collections/shared',
+    }));
+    const beforeSend = sdk.init.mock.calls[0][1].before_send as BeforeSendFn;
+    const sanitized = beforeSend({ uuid: 'collection-view', event: '$pageview', properties: {
+      $referrer: `https://coffeepeek.by/collections/${id}?token=private`,
+      $set: { $initial_current_url: `https://coffeepeek.by/collections/${id}` },
+    } });
+    expect(JSON.stringify(sanitized)).not.toContain(id);
+    expect(analytics.analyticsUrl(`/api/v1/favorite-collections/${id}`)).toBe('/api/v1/favorite-collections/shared');
+  });
+
   test('revoking consent stops business events and rejects further SDK captures', async () => {
     await analytics.syncAnalytics({ ...context, userId: 'user-123' });
     const beforeSend = sdk.init.mock.calls[0][1].before_send as BeforeSendFn;

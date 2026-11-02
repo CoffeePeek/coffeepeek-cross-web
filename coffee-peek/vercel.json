@@ -25,6 +25,7 @@
     }
   ],
   "rewrites": [
+    {"source": "/collections/:id", "destination": "/api/public-page?page=collection&id=:id"},
     {"source": "/robots.txt", "destination": "/robots.txt"},
     {"source": "/sitemap.xml", "destination": "/api/sitemap"},
     {"source": "/.well-known/assetlinks.json", "destination": "/.well-known/assetlinks.json"},
