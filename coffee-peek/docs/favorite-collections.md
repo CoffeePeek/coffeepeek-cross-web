@@ -5,6 +5,9 @@
 comes from the backend snapshot; it never imports or changes a viewer's
 favorites. Cards open existing public shop/roaster details. Browser sharing uses
 the canonical CoffeePeek link, with clipboard fallback and normal cancellation.
+Shops precede a separate roaster block. Shop cards show current public rating and
+check-in count when supplied; roaster logos use a compact white frame with contain
+scaling. Sorting does not mutate the API cache input or alternate the two kinds.
 
 The existing public-page server renderer supplies readable cards and Open Graph
 metadata before JavaScript. It escapes server text, constructs local navigation
@@ -28,6 +31,10 @@ colors and responsive cards.
 - Fixtures cover anonymous requests, invalid IDs, revoked links, escaped text,
   safe navigation/images and collection identifier removal from analytics. No
   production account, backend write or analytics event was used.
+
+Reference-design update, 2026-11-03: 5 collection API/order tests and all 54
+server-rendered/link tests passed. TypeScript and production build passed; no
+browser/device visual review is implied by those checks.
 
 Manual browser review of the new page (both themes, narrow/large windows, error
 and empty states, keyboard navigation), browser share/cancel, messenger previews

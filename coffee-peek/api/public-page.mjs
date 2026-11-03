@@ -272,7 +272,8 @@ async function renderCollectionPage(shell, rawId) {
       : renderUnavailable()), status };
   }
   const collection = result.body.data;
-  const places = (collection.items || []).filter(place => collectionPlacePath(place));
+  const places = (collection.items || []).filter(place => collectionPlacePath(place))
+    .sort((left, right) => Number(left.kind === 'roaster') - Number(right.kind === 'roaster'));
   const title = `${collection.title} — CoffeePeek`;
   const description = excerpt(`Мест в подборке: ${places.length}. ${places.map(place => place.name).join(', ')}.`);
   const cards = places.map(place => `<a href="${escapeHtml(collectionPlacePath(place))}" style="display:block;color:#fff;text-decoration:none;border:1px solid #3D2F28;border-radius:20px;padding:20px">

@@ -1,9 +1,18 @@
 jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn() } }));
 import { httpClient } from '../src/api/core/httpClient';
-import { collectionId, collectionPlacePath, getCollection } from '../src/api/collections';
+import { collectionId, collectionPlacePath, getCollection, orderCollectionPlaces, type CollectionPlace } from '../src/api/collections';
 
 beforeEach(() => jest.clearAllMocks());
 const id = '123456781234123412341234567890ab';
+
+test('all shops precede roasters and each group keeps its chosen order', () => {
+  const input = [
+    { kind: 'roaster', name: 'Roaster one' }, { kind: 'coffee_shop', name: 'Shop one' },
+    { kind: 'roaster', name: 'Roaster two' }, { kind: 'coffee_shop', name: 'Shop two' },
+  ] as CollectionPlace[];
+  expect(orderCollectionPlaces(input).map(place => place.name)).toEqual(['Shop one', 'Shop two', 'Roaster one', 'Roaster two']);
+  expect(input[0].name).toBe('Roaster one');
+});
 
 test('normalizes supported IDs and rejects paths and malformed UUIDs', () => {
   expect(collectionId('12345678-1234-1234-1234-1234567890AB')).toBe(id);

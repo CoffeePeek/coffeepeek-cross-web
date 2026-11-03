@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Coffee, Factory, ShareNetwork } from '@phosphor-icons/react';
+import { Coffee, Factory, ShareNetwork, Star } from '@phosphor-icons/react';
 import { getCollection, collectionPlacePath, type CollectionPlace } from '../api/collections';
 import { ProfileError, ProfileLoading } from '../components/profile/ProfileUI';
 import '../pages/UserProfilePage.css';
@@ -44,24 +44,38 @@ export default function SharedCollectionPage() {
             <ShareNetwork size={22} aria-hidden="true" />Поделиться</button>
         </div>
         {collection.data.items.length === 0 ? <p>Места из этой подборки больше недоступны.</p>
-          : <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{collection.data.items.map(place => <CollectionPlaceCard key={`${place.kind}:${place.address?.slug}`} place={place} />)}</div>}
+          : <CollectionPlaceGroups places={collection.data.items} />}
       </>}
     {message && <p className="mt-4" role="status">{message}</p>}
   </main>;
 }
 
+function CollectionPlaceGroups({ places }: { places: CollectionPlace[] }) {
+  return <div className="space-y-4">{(['coffee_shop', 'roaster'] as const).map(kind => {
+    const group = places.filter(place => place.kind === kind);
+    return group.length > 0 && <div key={kind} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {group.map(place => <CollectionPlaceCard key={`${place.kind}:${place.address?.slug}`} place={place} />)}
+    </div>;
+  })}</div>;
+}
+
 function CollectionPlaceCard({ place }: { place: CollectionPlace }) {
   const path = collectionPlacePath(place);
   if (!path) return null;
-  const label = place.kind === 'coffee_shop' ? 'Кофейня' : 'Обжарщик';
-  const Icon = place.kind === 'coffee_shop' ? Coffee : Factory;
+  const isShop = place.kind === 'coffee_shop';
+  const label = isShop ? 'Кофейня' : 'Обжарщик';
+  const Icon = isShop ? Coffee : Factory;
   const image = place.coverPhoto?.urls?.card || place.coverPhoto?.fullUrl;
   return <Link to={path} className="profile-panel flex min-w-0 items-center gap-4 rounded-3xl border p-4 transition-opacity hover:opacity-80">
-    <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#EAB308]/10 text-[#CA8A04]">
-      <Icon size={32} aria-hidden="true" />{image && <img src={image} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover"
+    <div className={`relative flex shrink-0 items-center justify-center overflow-hidden rounded-2xl text-[#CA8A04] ${isShop ? 'h-28 w-32 bg-[#EAB308]/10' : 'h-20 w-20 bg-white'}`}>
+      <Icon size={32} aria-hidden="true" />{image && <img src={image} alt="" loading="lazy" className={`absolute inset-0 h-full w-full ${isShop ? 'object-cover' : 'object-contain p-2'}`}
         onError={event => { event.currentTarget.style.display = 'none'; }} />}
     </div>
     <div className="min-w-0"><h2 className="break-words text-lg font-bold">{place.name || label}</h2>
+      <p className="profile-muted mt-1 text-xs">{label}</p>
+      {isShop && typeof place.rating === 'number' && place.rating > 0 && place.rating <= 5 && <p className="mt-1 inline-flex items-center gap-1 font-bold">
+        <Star size={18} weight="fill" className="text-[#EAB308]" aria-hidden="true" />{place.rating.toFixed(1)}</p>}
+      {isShop && typeof place.checkInCount === 'number' && place.checkInCount >= 0 && <p className="profile-muted text-xs">Чекинов: {place.checkInCount}</p>}
       <p className="profile-muted mt-1 text-sm">{[place.cityName, place.streetAddress].filter(Boolean).join(' · ') || label}</p></div>
   </Link>;
 }

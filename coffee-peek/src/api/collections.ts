@@ -8,6 +8,8 @@ export interface CollectionPlace {
   coverPhoto?: { fullUrl?: string; urls?: { card?: string } } | null;
   cityName?: string | null;
   streetAddress?: string | null;
+  rating?: number | null;
+  checkInCount?: number | null;
 }
 
 export interface SharedCollection {
@@ -29,7 +31,11 @@ export async function getCollection(id: string, signal?: AbortSignal): Promise<S
     signal, requiresAuth: false, skipAuthHeader: true,
   });
   if (result.data.canonicalPath !== `/collections/${normalized}`) throw new Error('Invalid collection address');
-  return result.data;
+  return { ...result.data, items: orderCollectionPlaces(result.data.items) };
+}
+
+export function orderCollectionPlaces(places: CollectionPlace[]): CollectionPlace[] {
+  return [...places].sort((left, right) => Number(left.kind === 'roaster') - Number(right.kind === 'roaster'));
 }
 
 export function collectionPlacePath(place: CollectionPlace): string | null {

@@ -46,6 +46,13 @@ test('revocation is read afresh and the HTTP response never caches the collectio
   }, 404);
 });
 
+test('server-rendered collection groups all shops before roasters as well', async () => {
+  await mockRead({ ...collection, items: [...collection.items].reverse() }, async () => {
+    const { html } = await renderPublicPage(request());
+    assert.ok(html.indexOf('href="/coffee-shops/place"') < html.indexOf('href="/roasters/roaster"'));
+  });
+});
+
 test('malformed collection addresses do not reach the backend', async () => {
   await mockRead(null, async calls => {
     assert.equal((await renderPublicPage(request('../admin'))).status, 404);
