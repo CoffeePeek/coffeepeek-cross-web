@@ -2,6 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { getProfileActivity, getProfileConnections, getProfileFavorites, setProfileFollowing, type ProfileConnectionKind } from '../../api/user';
 import { useUser } from '../../contexts/UserContext';
 import { getCatalogScope } from '../../lib/catalogSession';
+import { getProfileCollection } from '../../api/collections';
 
 export const publicProfileKey = (slug: string) => ['userProfile', getCatalogScope(), slug] as const;
 
@@ -22,6 +23,16 @@ export function useProfileFavorites(slug: string) {
     queryKey: [...publicProfileKey(slug), 'favorites'],
     queryFn: ({ signal }) => getProfileFavorites(slug, signal),
     enabled: !isLoading, gcTime: 0,
+  });
+}
+
+export function useProfileCollection(slug: string) {
+  const { isLoading } = useUser();
+  return useQuery({
+    queryKey: [...publicProfileKey(slug), 'collection'],
+    queryFn: ({ signal }) => getProfileCollection(slug, signal),
+    enabled: !isLoading, gcTime: 0, staleTime: 0, retry: false,
+    refetchOnMount: 'always', refetchOnWindowFocus: true,
   });
 }
 

@@ -7,7 +7,7 @@ import { getUserPublicProfile, type PublicUserProfile } from '../api/user';
 import { publicProfileKey, useProfileFollow } from '../hooks/queries/usePublicProfile';
 import PhotoLightbox from '../components/PhotoLightbox';
 import PublicProfileActivity from '../components/profile/PublicProfileActivity';
-import PublicProfileFavorites from '../components/profile/PublicProfileFavorites';
+import PublicProfileCollection from '../components/profile/PublicProfileCollection';
 import PublicProfileCheckIns from '../components/profile/PublicProfileCheckIns';
 import ProfileConnections from '../components/profile/ProfileConnections';
 import { ProfileAvatar, ProfileDialog, ProfileError, ProfileLoading } from '../components/profile/ProfileUI';
@@ -127,7 +127,7 @@ function PublicProfileContent({ profile }: { profile: PublicUserProfile }) {
           {follow.isError && <div className="mt-3"><ProfileError message="Не удалось изменить подписку" onRetry={() => follow.mutate(!isFollowing)} /></div>}
         </section>
         <PublicProfileActivity slug={profile.id} />
-        <PublicProfileFavorites slug={profile.id} />
+        <PublicProfileCollection slug={profile.id} />
       </div>
       <PublicProfileCheckIns slug={profile.id} />
     </div>}

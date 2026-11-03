@@ -71,3 +71,35 @@ test('shared names are escaped and arbitrary navigation or image protocols are n
     assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   });
 });
+
+test('editable public list renders its description and cover before JavaScript', async () => {
+  const list = { ...collection, mode: 'list', visibility: 'public', description: 'Places <with> friends',
+    coverPhoto: { id: 'photo', url: `/api/v1/favorite-collections/${id}/cover/photo` } };
+  await mockRead(list, async () => {
+    const { status, html } = await renderPublicPage(request());
+    assert.equal(status, 200);
+    assert.match(html, /Places &lt;with&gt; friends/);
+    assert.match(html, /property="og:image" content="https:\/\/api.coffeepeek.by\/api\/v1\/favorite-collections\//);
+    assert.match(html, /<img src="https:\/\/api.coffeepeek.by\/api\/v1\/favorite-collections\//);
+  });
+});
+
+test('anonymous HTML rejects private or unspecified-visibility lists without exposing their metadata', async () => {
+  for (const visibility of ['private', undefined, 'Private']) {
+    await mockRead({ ...collection, mode: 'list', visibility, title: 'Hidden title', description: 'Hidden description' }, async () => {
+      const { status, html } = await renderPublicPage(request());
+      assert.equal(status, 404);
+      assert.doesNotMatch(html, /Hidden title|Hidden description|Любимая кофейня/);
+    });
+  }
+});
+
+test('empty public lists remain valid pages and unsafe cover schemes are omitted', async () => {
+  await mockRead({ ...collection, mode: 'list', visibility: 'public', items: [],
+    coverPhoto: { fullUrl: 'javascript:bad()' } }, async () => {
+    const { status, html } = await renderPublicPage(request());
+    assert.equal(status, 200);
+    assert.match(html, /В подборке пока нет мест/);
+    assert.doesNotMatch(html, /javascript:bad/);
+  });
+});
