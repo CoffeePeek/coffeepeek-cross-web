@@ -60,3 +60,21 @@ in-app browser could not reach localhost, and Windows browser automation stopped
 because URL policy enforcement is unsupported. No visual review is claimed.
 Use HTTP/SSR/contract checks for this rollout; device/browser share, typography
 and installed-app acceptance remain separate gates.
+
+The release audit found that `HttpClient.get` discarded `skipAuthHeader`.
+Two transport regressions reproduced unwanted refresh calls with a stored token.
+GET now forwards the explicit anonymous flag, and collection reads set
+`credentials: omit`; existing personalized requests retain their bearer/cookie
+policy. The regressions exercise the actual client and interceptor, including a
+401 that must never refresh or clear the viewer's session.
+
+On the release working patch based on `c2af7538`, all 448 Jest cases and 55
+SSR/link cases passed, with both TypeScript projects checked. The original two
+transport failures passed after the fix; the normal personalized GET regression
+remains green. No browser UI tests or production account mutations were used.
+
+Backend deployment run `41611423606` applied `20261102130458_AddFavoriteCollections`
+successfully. Its revision `31efbde7` is healthy. External anonymous reads return
+an uncached 404 for an unknown collection; private listing returns 401, and CORS
+allows the website origin. A successful real collection read still needs a link
+created by an updated normal app; Sandbox collections are local fixtures.

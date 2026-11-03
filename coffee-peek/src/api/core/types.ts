@@ -19,6 +19,8 @@ export interface ApiConfig {
   requiresAuth?: boolean;
   /** Do not attach the stored access token (e.g. Google ID-token login). */
   skipAuthHeader?: boolean;
+  /** Fetch credential policy; anonymous shared pages omit browser cookies. */
+  credentials?: RequestCredentials;
   signal?: AbortSignal;
 }
 

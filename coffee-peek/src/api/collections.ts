@@ -28,7 +28,7 @@ export function collectionId(value: string): string {
 export async function getCollection(id: string, signal?: AbortSignal): Promise<SharedCollection> {
   const normalized = collectionId(id);
   const result = await httpClient.get<SharedCollection>(`/api/v1/favorite-collections/${normalized}`, {
-    signal, requiresAuth: false, skipAuthHeader: true,
+    signal, requiresAuth: false, skipAuthHeader: true, credentials: 'omit',
   });
   if (result.data.canonicalPath !== `/collections/${normalized}`) throw new Error('Invalid collection address');
   return { ...result.data, items: orderCollectionPlaces(result.data.items) };

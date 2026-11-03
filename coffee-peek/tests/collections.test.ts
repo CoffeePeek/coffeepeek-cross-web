@@ -24,7 +24,7 @@ test('anonymous reads do not attach viewer credentials and preserve cancellation
   const data = { id, title: 'Places', canonicalPath: `/collections/${id}`, items: [], createdAtUtc: '' };
   jest.mocked(httpClient.get).mockResolvedValueOnce({ data } as never);
   expect(await getCollection(id, signal)).toEqual(data);
-  expect(httpClient.get).toHaveBeenCalledWith(`/api/v1/favorite-collections/${id}`, { signal, requiresAuth: false, skipAuthHeader: true });
+  expect(httpClient.get).toHaveBeenCalledWith(`/api/v1/favorite-collections/${id}`, { signal, requiresAuth: false, skipAuthHeader: true, credentials: 'omit' });
 });
 
 test('does not accept an unexpected canonical address from a response', async () => {
