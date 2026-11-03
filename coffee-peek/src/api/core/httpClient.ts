@@ -252,6 +252,8 @@ class HttpClient {
       params: config?.params,
       headers: config?.headers,
       requiresAuth: config?.requiresAuth,
+      skipAuthHeader: config?.skipAuthHeader,
+      credentials: config?.credentials,
       signal: config?.signal,
     });
   }
@@ -260,6 +262,7 @@ class HttpClient {
   async getRaw<T>(endpoint: string, config?: ApiConfig): Promise<T> {
     return (await this.request<T>(endpoint, {
       method: 'GET', raw: true, cache: 'no-store', requiresAuth: false,
+      credentials: config?.credentials,
       signal: config?.signal, headers: config?.headers, params: config?.params,
     })).data;
   }
@@ -297,6 +300,7 @@ class HttpClient {
       headers: config?.headers,
       requiresAuth: config?.requiresAuth,
       skipAuthHeader: config?.skipAuthHeader,
+      credentials: config?.credentials,
       signal: config?.signal,
     });
   }
@@ -316,6 +320,7 @@ class HttpClient {
       headers: config?.headers,
       requiresAuth: config?.requiresAuth,
       skipAuthHeader: config?.skipAuthHeader,
+      credentials: config?.credentials,
       signal: config?.signal,
     });
   }
@@ -329,6 +334,7 @@ class HttpClient {
       params: config?.params,
       headers: config?.headers,
       requiresAuth: config?.requiresAuth,
+      credentials: config?.credentials,
       signal: config?.signal,
     });
   }
@@ -347,6 +353,7 @@ class HttpClient {
       params: config?.params,
       headers: config?.headers,
       requiresAuth: config?.requiresAuth,
+      credentials: config?.credentials,
       signal: config?.signal,
     });
   }

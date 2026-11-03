@@ -6,7 +6,7 @@ const endpoint = '/.well-known/apple-app-site-association';
 const association = JSON.parse(await readFile(new URL(`../public${endpoint}`, import.meta.url), 'utf8'));
 const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
 
-test('all public content links belong to the signed CoffeePeek iOS app', () => {
+test('released public content links belong to the signed CoffeePeek iOS app', () => {
   const [details] = association.applinks.details;
   assert.deepEqual(details.appIDs, ['JJ7867S6PS.com.coffeepeek']);
   const paths = details.components.map(component => component['/']);
@@ -15,6 +15,13 @@ test('all public content links belong to the signed CoffeePeek iOS app', () => {
   }
   assert.ok(!paths.includes('/*'), 'account confirmation and password recovery must keep their website handlers');
   assert.ok(details.components.every(component => component.exclude !== true));
+});
+
+test('collection links remain on the website until an iOS release can handle them', () => {
+  for (const details of association.applinks.details) {
+    assert.ok(!details.components.some(component => component['/'] === '/collections/*'));
+    assert.ok(!details.components.some(component => component['/'] === '/*'));
+  }
 });
 
 test('both Apple association URLs serve JSON before the website fallback without a redirect', () => {

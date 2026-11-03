@@ -1,6 +1,7 @@
 /** Stable route groups: never use a private user/check-in ID as a breakdown. */
 export function analyticsPageType(pathname: string): string {
   const path = pathname.split(/[?#]/, 1)[0];
+  if (/^\/collections\//.test(path)) return 'shared_collection';
   if (/\/check-ins\/[^/]+\/edit$/.test(path)) return 'check_in_edit';
   if (/\/check-ins\/new$/.test(path)) return 'check_in_create';
   if (/^\/(shops|coffee-shops)\/[^/]+\/edit$/.test(path)) return 'shop_edit';
@@ -21,6 +22,7 @@ export function analyticsPageType(pathname: string): string {
 /** Only a closed vocabulary leaves the client; unknown/private endpoints become 'other'. */
 export function analyticsApiCategory(endpoint: string): string {
   const path = endpoint.split(/[?#]/, 1)[0].toLowerCase();
+  if (/\/favorite-collections(?:\/|$)/.test(path)) return 'collections';
   if (/\/(?:auth|account|identity|tokens)(?:\/|$)/.test(path)) return 'authentication';
   if (/\/(?:favorites)(?:\/|$)/.test(path)) return 'favorites';
   if (/\/(?:check-ins|checkins|home-check-ins|homecheckins)(?:\/|$)/.test(path)) return 'check_ins';

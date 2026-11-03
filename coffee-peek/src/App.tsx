@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { analyticsUrl } from './lib/analytics';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -65,8 +66,8 @@ const AppContent: React.FC = () => {
       <AppRoutes />
       <Footer />
       <CookieBanner />
-      <SpeedInsights />
-      <Analytics />
+      <SpeedInsights beforeSend={event => ({ ...event, url: analyticsUrl(event.url) })} />
+      <Analytics beforeSend={event => ({ ...event, url: analyticsUrl(event.url) })} />
     </>
   );
 };
