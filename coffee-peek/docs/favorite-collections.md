@@ -43,3 +43,20 @@ data and remain local. Apply the backend collection migration and deploy its API
 before exposing links from the mobile release; this branch does not deploy the
 backend. Verify associated-domain behavior with both updated and older installed
 apps before release.
+
+## Production rollout — 2026-11-03
+
+The user requested server and website publication. Backend PR #376 is merged;
+the standard deployment applies the additive collection migration before host
+restart. Its PostgreSQL CI passed eight populated-schema upgrade cases.
+
+Keep `/collections/*` out of the iOS association file until a released iOS app
+handles it. The published app currently lacks that route; adding the path now
+could divert a recipient into an app that cannot show the collection. Collection
+links remain readable on the website. Other associated paths are unchanged.
+
+The browser review attempted with synthetic read-only data could not run: the
+in-app browser could not reach localhost, and Windows browser automation stopped
+because URL policy enforcement is unsupported. No visual review is claimed.
+Use HTTP/SSR/contract checks for this rollout; device/browser share, typography
+and installed-app acceptance remain separate gates.
