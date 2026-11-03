@@ -251,9 +251,13 @@ function collectionPlacePath(place) {
 
 function collectionImage(place) {
   try {
-    const value = place?.coverPhoto?.urls?.card || place?.coverPhoto?.fullUrl;
+    const photo = place?.coverPhoto;
+    const saved = photo && Object.hasOwn(photo, 'url');
+    const value = saved ? photo.url : photo?.urls?.card || photo?.fullUrl;
     if (!value) return DEFAULT_IMAGE;
-    const image = new URL(value, apiUrl('/'));
+    const api = new URL(apiUrl('/'));
+    const image = new URL(value, api);
+    if (saved && (image.origin !== api.origin || !/^\/api\/v1\/favorite-collections\/[^/]+\/cover\/[^/]+$/.test(image.pathname))) return DEFAULT_IMAGE;
     return image.protocol === 'https:' && !image.username && !image.password ? image.href : DEFAULT_IMAGE;
   } catch { return DEFAULT_IMAGE; }
 }
@@ -263,26 +267,45 @@ async function renderCollectionPage(shell, rawId) {
   const id = rawId.replaceAll('-', '').toLowerCase();
   const result = valid ? await fetchJson(`/api/v1/favorite-collections/${id}`) : { ok: false, status: 404 };
   const canonical = `${SITE_URL}/collections/${valid ? id : ''}`;
-  if (!result.ok || !result.body?.data) {
-    const status = [400, 404, 410].includes(result.status) ? 404 : 503;
+  const collection = result.body?.data;
+  const hidden = collection && ((collection.mode !== undefined && !['snapshot', 'list'].includes(collection.mode)) ||
+    (collection.visibility !== undefined && collection.visibility !== 'public') ||
+    (collection.mode === 'list' && collection.visibility !== 'public'));
+  if (!result.ok || !collection || hidden) {
+    const status = hidden || [400, 404, 410].includes(result.status) ? 404 : 503;
     const html = replaceMeta(shell, { title: 'Подборка недоступна — CoffeePeek',
       description: 'Ссылка на подборку недоступна или отключена владельцем.', canonical });
     return { html: injectContent(html, status === 404
       ? pageLayout('Подборка недоступна', 'Ссылка могла быть отключена владельцем.', '<p><a href="/search">Найти кофейни</a></p>')
       : renderUnavailable()), status };
   }
-  const collection = result.body.data;
   const places = (collection.items || []).filter(place => collectionPlacePath(place))
     .sort((left, right) => Number(left.kind === 'roaster') - Number(right.kind === 'roaster'));
   const title = `${collection.title} — CoffeePeek`;
-  const description = excerpt(`Мест в подборке: ${places.length}. ${places.map(place => place.name).join(', ')}.`);
+  const description = excerpt(collection.description?.trim() || `Мест в подборке: ${places.length}. ${places.map(place => place.name).join(', ')}.`);
   const cards = places.map(place => `<a href="${escapeHtml(collectionPlacePath(place))}" style="display:block;color:#fff;text-decoration:none;border:1px solid #3D2F28;border-radius:20px;padding:20px">
     <h2>${escapeHtml(place.name)}</h2><p>${escapeHtml([place.cityName, place.streetAddress].filter(Boolean).join(' · ') || (place.kind === 'roaster' ? 'Обжарщик' : 'Кофейня'))}</p>
     </a>`).join('');
-  let html = replaceMeta(shell, { title, description, canonical, image: collectionImage(places[0]) });
+  const cover = collectionImage(collection);
+  let html = replaceMeta(shell, { title, description, canonical, image: cover !== DEFAULT_IMAGE ? cover : collectionImage(places[0]) });
   html = html.replace('</head>', '<meta name="robots" content="noindex, nofollow"></head>');
   return { html: injectContent(html, pageLayout(collection.title, `Мест в подборке: ${places.length}`,
-    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">${cards || '<p>Места из этой подборки больше недоступны.</p>'}</div>`)), status: 200 };
+    `${cover !== DEFAULT_IMAGE ? `<img src="${escapeHtml(cover)}" alt="" style="width:100%;max-height:320px;object-fit:cover;border-radius:24px">` : ''}
+    ${collection.description ? `<p style="white-space:pre-wrap">${escapeHtml(collection.description)}</p>` : ''}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">${cards || (collection.mode === 'list' ? '<p>В подборке пока нет мест.</p>' : '<p>Места из этой подборки больше недоступны.</p>')}</div>`)), status: 200 };
+}
+
+async function renderProfileCollection(slug) {
+  const result = await fetchJson(`/api/v1/profiles/${encodeURIComponent(slug)}/collection`);
+  const collection = result.body?.data;
+  if (!result.ok || !collection || collection.mode !== 'list' || collection.visibility !== 'public') return '';
+  const id = String(collection.id || '').replaceAll('-', '').toLowerCase();
+  if (!/^[a-f0-9]{32}$/.test(id) || collection.canonicalPath !== `/collections/${id}`) return '';
+  const cover = collectionImage(collection);
+  return `<section><h2>Подборка</h2><a href="/collections/${id}" style="display:block;color:inherit;text-decoration:none">
+    ${cover !== DEFAULT_IMAGE ? `<img src="${escapeHtml(cover)}" alt="" style="width:160px;height:160px;object-fit:cover;border-radius:20px">` : ''}
+    <h3>${escapeHtml(collection.title)}</h3>${collection.description ? `<p>${escapeHtml(collection.description)}</p>` : ''}
+    <p>Мест в подборке: ${Array.isArray(collection.items) ? collection.items.length : 0}</p></a></section>`;
 }
 
 export async function renderPublicPage(request) {
@@ -366,8 +389,9 @@ export async function renderPublicPage(request) {
   const description = kind === 'shops' ? shopDescription(data) : data.description || data.about || (kind === 'coffees' ? `Кофе «${title}» от ${data.roaster?.name || 'обжарщика'}. Описание и предложения на CoffeePeek.` : title);
   const canonical = `${SITE_URL}${address.canonicalPath}`;
   const image = pageImage(data);
+  const featured = kind === 'users' ? await renderProfileCollection(address.slug) : '';
   const content = kind === 'shops' ? renderShopDetails(data) : pageLayout(title, description,
-    kind === 'users' ? `<p>Чекинов: ${escapeHtml(data.checkInCount)}</p>` : '');
+    kind === 'users' ? `<p>Чекинов: ${escapeHtml(data.checkInCount)}</p>${featured}` : '');
   const structuredData = kind === 'shops' ? { '@context': 'https://schema.org', '@type': 'CafeOrCoffeeShop', name: data.name, description, url: canonical, image,
     address: { '@type': 'PostalAddress', streetAddress: data.location?.address, addressCountry: 'BY' },
     geo: data.location?.latitude != null ? { '@type': 'GeoCoordinates', latitude: data.location.latitude, longitude: data.location.longitude } : undefined,
