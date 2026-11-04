@@ -302,10 +302,39 @@ async function renderProfileCollection(slug) {
   const id = String(collection.id || '').replaceAll('-', '').toLowerCase();
   if (!/^[a-f0-9]{32}$/.test(id) || collection.canonicalPath !== `/collections/${id}`) return '';
   const cover = collectionImage(collection);
-  return `<section><h2>Подборка</h2><a href="/collections/${id}" style="display:block;color:inherit;text-decoration:none">
+  return `<section><h2>${escapeHtml(collection.title || 'Избранное')}</h2><a href="/collections/${id}" style="display:block;color:inherit;text-decoration:none">
     ${cover !== DEFAULT_IMAGE ? `<img src="${escapeHtml(cover)}" alt="" style="width:160px;height:160px;object-fit:cover;border-radius:20px">` : ''}
     <h3>${escapeHtml(collection.title)}</h3>${collection.description ? `<p>${escapeHtml(collection.description)}</p>` : ''}
     <p>Мест в подборке: ${Array.isArray(collection.items) ? collection.items.length : 0}</p></a></section>`;
+}
+
+function profileShelfImage(slug, item) {
+  try {
+    const uuid = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
+    if (!uuid.test(item.id) || typeof item.photoUrl !== 'string') return '';
+    const api = new URL(apiUrl('/'));
+    const image = new URL(item.photoUrl, api);
+    const prefix = `/api/v1/profiles/${encodeURIComponent(slug)}/shelf/bags/${item.id}/photos/`;
+    return image.protocol === 'https:' && image.origin === api.origin && !image.username && !image.password && !image.search && !image.hash
+      && image.pathname.startsWith(prefix) && uuid.test(image.pathname.slice(prefix.length)) ? image.href : '';
+  } catch { return ''; }
+}
+
+async function renderProfileShelf(slug) {
+  const result = await fetchJson(`/api/v1/profiles/${encodeURIComponent(slug)}/shelf`);
+  const shelf = result.body?.data;
+  if (!result.ok || !shelf || !Array.isArray(shelf.items) || shelf.totalCount !== shelf.items.length) return '';
+  const cards = shelf.items.map(item => {
+    if (!item || typeof item.name !== 'string') return '';
+    const photo = profileShelfImage(slug, item);
+    const name = escapeHtml(item.name || 'Кофе');
+    const coffee = typeof item.coffeeSlug === 'string' && item.coffeeSlug.trim()
+      && !/[\\/\u0000-\u001f]/.test(item.coffeeSlug) && !['.', '..'].includes(item.coffeeSlug)
+      ? `<a href="/coffees/${encodeURIComponent(item.coffeeSlug)}">${name}</a>` : name;
+    return `<article style="width:144px;flex:none">${photo ? `<img src="${escapeHtml(photo)}" alt="" crossorigin="anonymous" referrerpolicy="no-referrer" style="width:144px;height:144px;object-fit:cover;border-radius:12px">` : ''}
+      <h3>${coffee}</h3>${typeof item.roasterName === 'string' ? `<p>${escapeHtml(item.roasterName)}</p>` : ''}</article>`;
+  }).join('');
+  return `<section><h2>Кофейная полка</h2><div style="display:flex;gap:12px;overflow-x:auto">${cards || '<p>На полке пока нет кофе.</p>'}</div></section>`;
 }
 
 export async function renderPublicPage(request) {
@@ -389,9 +418,10 @@ export async function renderPublicPage(request) {
   const description = kind === 'shops' ? shopDescription(data) : data.description || data.about || (kind === 'coffees' ? `Кофе «${title}» от ${data.roaster?.name || 'обжарщика'}. Описание и предложения на CoffeePeek.` : title);
   const canonical = `${SITE_URL}${address.canonicalPath}`;
   const image = pageImage(data);
-  const featured = kind === 'users' ? await renderProfileCollection(address.slug) : '';
+  const [featured, shelf] = kind === 'users' && !data.isBlockedByViewer
+    ? await Promise.all([renderProfileCollection(address.slug), renderProfileShelf(address.slug)]) : ['', ''];
   const content = kind === 'shops' ? renderShopDetails(data) : pageLayout(title, description,
-    kind === 'users' ? `<p>Чекинов: ${escapeHtml(data.checkInCount)}</p>${featured}` : '');
+    kind === 'users' ? `<p>Чекинов: ${escapeHtml(data.checkInCount)}</p>${featured}${shelf}` : '');
   const structuredData = kind === 'shops' ? { '@context': 'https://schema.org', '@type': 'CafeOrCoffeeShop', name: data.name, description, url: canonical, image,
     address: { '@type': 'PostalAddress', streetAddress: data.location?.address, addressCountry: 'BY' },
     geo: data.location?.latitude != null ? { '@type': 'GeoCoordinates', latitude: data.location.latitude, longitude: data.location.longitude } : undefined,

@@ -42,6 +42,13 @@ test('ordinary personalized GET retains its existing bearer and cookie policy', 
   expect(options?.credentials).toBe('include');
 });
 
+test('privacy-sensitive public projections can bypass the browser HTTP cache', async () => {
+  await httpClient.get('/api/v1/profiles/author/shelf', { requiresAuth: false, cache: 'no-store' });
+  const [url, options] = jest.mocked(globalThis.fetch).mock.calls[0];
+  expect(url).toBe('https://api.example/api/v1/profiles/author/shelf');
+  expect(options?.cache).toBe('no-store');
+});
+
 test('an anonymous collection failure cannot refresh or clear the viewer session', async () => {
   globalThis.fetch = jest.fn().mockResolvedValue(response(401));
   await expect(getCollection(id)).rejects.toMatchObject({ status: 401 });

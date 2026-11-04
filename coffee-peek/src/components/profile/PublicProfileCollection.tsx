@@ -11,7 +11,7 @@ export default function PublicProfileCollection({ slug }: { slug: string }) {
   if (!query.isPending && !query.isError && !collection) return null;
   const image = collectionCoverUrl(collection?.coverPhoto);
   return <section>
-    <ProfileSectionHeading title="Подборка" />
+    <ProfileSectionHeading title={collection?.title || 'Избранное'} />
     {query.isPending ? <ProfileLoading /> : query.isError
       ? <ProfileError message="Не удалось загрузить подборку" onRetry={() => void query.refetch()} />
       : collection && <Link to={collection.canonicalPath} className="profile-panel mt-2 flex min-w-0 items-center gap-4 rounded-2xl border p-3 transition-opacity hover:opacity-80">

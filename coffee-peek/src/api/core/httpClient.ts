@@ -254,6 +254,7 @@ class HttpClient {
       requiresAuth: config?.requiresAuth,
       skipAuthHeader: config?.skipAuthHeader,
       credentials: config?.credentials,
+      cache: config?.cache,
       signal: config?.signal,
     });
   }

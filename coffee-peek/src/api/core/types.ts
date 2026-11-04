@@ -21,6 +21,8 @@ export interface ApiConfig {
   skipAuthHeader?: boolean;
   /** Fetch credential policy; anonymous shared pages omit browser cookies. */
   credentials?: RequestCredentials;
+  /** Privacy-sensitive projections may bypass the browser HTTP cache. */
+  cache?: RequestCache;
   signal?: AbortSignal;
 }
 
