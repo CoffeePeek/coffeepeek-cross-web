@@ -8,6 +8,7 @@ import { publicProfileKey, useProfileFollow } from '../hooks/queries/usePublicPr
 import PhotoLightbox from '../components/PhotoLightbox';
 import PublicProfileActivity from '../components/profile/PublicProfileActivity';
 import PublicProfileCollection from '../components/profile/PublicProfileCollection';
+import PublicProfileShelf from '../components/profile/PublicProfileShelf';
 import PublicProfileCheckIns from '../components/profile/PublicProfileCheckIns';
 import ProfileConnections from '../components/profile/ProfileConnections';
 import { ProfileAvatar, ProfileDialog, ProfileError, ProfileLoading } from '../components/profile/ProfileUI';
@@ -128,6 +129,7 @@ function PublicProfileContent({ profile }: { profile: PublicUserProfile }) {
         </section>
         <PublicProfileActivity slug={profile.id} />
         <PublicProfileCollection slug={profile.id} />
+        <PublicProfileShelf slug={profile.id} />
       </div>
       <PublicProfileCheckIns slug={profile.id} />
     </div>}

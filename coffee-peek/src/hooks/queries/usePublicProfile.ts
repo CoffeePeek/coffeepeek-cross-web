@@ -3,6 +3,7 @@ import { getProfileActivity, getProfileConnections, getProfileFavorites, setProf
 import { useUser } from '../../contexts/UserContext';
 import { getCatalogScope } from '../../lib/catalogSession';
 import { getProfileCollection } from '../../api/collections';
+import { getProfileShelf } from '../../api/profileShelf';
 
 export const publicProfileKey = (slug: string) => ['userProfile', getCatalogScope(), slug] as const;
 
@@ -31,6 +32,16 @@ export function useProfileCollection(slug: string) {
   return useQuery({
     queryKey: [...publicProfileKey(slug), 'collection'],
     queryFn: ({ signal }) => getProfileCollection(slug, signal),
+    enabled: !isLoading, gcTime: 0, staleTime: 0, retry: false,
+    refetchOnMount: 'always', refetchOnWindowFocus: true,
+  });
+}
+
+export function useProfileShelf(slug: string) {
+  const { isLoading } = useUser();
+  return useQuery({
+    queryKey: [...publicProfileKey(slug), 'shelf'],
+    queryFn: ({ signal }) => getProfileShelf(slug, signal),
     enabled: !isLoading, gcTime: 0, staleTime: 0, retry: false,
     refetchOnMount: 'always', refetchOnWindowFocus: true,
   });

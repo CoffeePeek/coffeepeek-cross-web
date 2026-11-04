@@ -19,6 +19,7 @@ async function withProfileCollection(collection, callback) {
       data: { userName: 'Author', checkInCount: 3 }, address: { slug: 'author', canonicalPath: '/users/author' },
     }));
     if (url.endsWith('/api/v1/profiles/author/collection')) return new Response(JSON.stringify({ isSuccess: true, data: collection }));
+    if (url.endsWith('/api/v1/profiles/author/shelf')) return new Response(JSON.stringify({ isSuccess: true, data: null }));
     throw new Error('Unexpected profile read');
   };
   try { await callback(calls); } finally { globalThis.fetch = original; }
@@ -30,8 +31,9 @@ test('profile HTML includes only the explicitly featured public list and escapes
     assert.equal(status, 200);
     assert.match(html, /href="\/collections\/123456781234123412341234567890ab"/);
     assert.match(html, /My &lt;places&gt;/);
+    assert.match(html, /<h2>My &lt;places&gt;<\/h2>/);
     assert.match(html, /A public list/);
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
     assert.ok(calls.every(call => !call.url.endsWith('/favorites') && !call.init.headers.Authorization));
   });
 });
