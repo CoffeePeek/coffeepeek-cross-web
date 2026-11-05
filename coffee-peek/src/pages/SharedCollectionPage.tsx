@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CaretRight, Factory, MapPin, ShareNetwork, Star } from '@phosphor-icons/react';
+import { AppleLogo, CaretRight, DownloadSimple, Factory, GooglePlayLogo, MapPin, ShareNetwork, Star } from '@phosphor-icons/react';
 import { getCollection, collectionCoverUrl, collectionPlacePath, type CollectionPlace } from '../api/collections';
 import { ProfileError, ProfileLoading } from '../components/profile/ProfileUI';
-import { APP_DOWNLOAD_PATH } from '../utils/appDownload';
 import './SharedCollectionPage.css';
 
 export default function SharedCollectionPage() {
@@ -47,7 +46,11 @@ export default function SharedCollectionPage() {
               <button type="button" onClick={() => void share()} className="shared-collection__share" aria-label="Поделиться подборкой">
                 <ShareNetwork size={20} aria-hidden="true" /><span>Поделиться</span>
               </button>
-              <Link to={APP_DOWNLOAD_PATH} className="shared-collection__download">Скачать приложение</Link>
+              <div className="shared-collection__downloads">
+                <a href="/download/ios" className="shared-collection__download" aria-label="Скачать в App Store"><AppleLogo size={16} weight="fill" aria-hidden="true" />App Store</a>
+                <a href="/download/android" className="shared-collection__download" aria-label="Скачать в Google Play"><GooglePlayLogo size={16} weight="fill" aria-hidden="true" />Google Play</a>
+                <a href="/download/apk" className="shared-collection__download" aria-label="Скачать APK для Android"><DownloadSimple size={16} aria-hidden="true" />.apk</a>
+              </div>
             </nav>
           </header>
           {collection.data.items.length === 0 ? <p className="shared-collection__empty">{collection.data.mode === 'list' ? 'В подборке пока нет мест.' : 'Места из этой подборки больше недоступны.'}</p>
@@ -55,13 +58,15 @@ export default function SharedCollectionPage() {
         </>}
       {message && <p className="shared-collection__message" role="status">{message}</p>}
     </div>
-    <BrandRibbon />
+    <BrandRibbon reverse />
   </main>;
 }
 
-function BrandRibbon() {
-  return <div className="shared-collection__ribbon" aria-hidden="true">
-    <span>{Array.from({ length: 32 }, (_, index) => <span key={index}>COFFEEPEEK</span>)}</span>
+function BrandRibbon({ reverse = false }: { reverse?: boolean }) {
+  return <div className={`shared-collection__ribbon${reverse ? ' shared-collection__ribbon--reverse' : ''}`} aria-hidden="true">
+    <span className="shared-collection__ribbon-track">{[0, 1].map(copy => <span className="shared-collection__ribbon-group" key={copy}>
+      {Array.from({ length: 32 }, (_, index) => <span key={index}>COFFEEPEEK</span>)}
+    </span>)}</span>
   </div>;
 }
 
