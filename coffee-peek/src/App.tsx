@@ -54,6 +54,7 @@ const AuthRedirect: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
+  const { pathname } = useLocation();
   return (
     <>
       <RouteMetadata />
@@ -64,7 +65,7 @@ const AppContent: React.FC = () => {
       <ProductAnalytics />
       <NotificationActivity />
       <AppRoutes />
-      <Footer />
+      {!pathname.startsWith('/collections/') && <Footer />}
       <CookieBanner />
       <SpeedInsights beforeSend={event => ({ ...event, url: analyticsUrl(event.url) })} />
       <Analytics beforeSend={event => ({ ...event, url: analyticsUrl(event.url) })} />

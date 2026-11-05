@@ -19,8 +19,8 @@ downloaded images or a page already open offline cannot be recalled.
 Analytics keeps the existing consent and identity rules. Collection IDs are
 replaced by a stable group in explicit and SDK-added URL properties, including
 the Vercel analytics/performance callbacks. No collection title or membership is
-sent as a new analytics property. Existing shared profile CSS provides theme
-colors and responsive cards.
+sent as a new analytics property. The collection page uses its own dark palette,
+full-width shop rows, compact roaster cards and responsive layouts.
 
 ## Validation — 2026-11-02
 
@@ -78,3 +78,21 @@ successfully. Its revision `31efbde7` is healthy. External anonymous reads retur
 an uncached 404 for an unknown collection; private listing returns 401, and CORS
 allows the website origin. A successful real collection read still needs a link
 created by an updated normal app; Sandbox collections are local fixtures.
+
+## Reference layout refinement — 2026-11-05
+
+The collection now follows the supplied reference proportions: 206 px shop rows,
+large cover photos, vertically centered names and addresses, a separate rating
+pill and check-in count, compact roaster cards, warm brown surfaces and static
+CoffeePeek ribbons. Header actions remain available, with a separate action row
+on phones. Missing shop photos use the white CoffeePeek placeholder. The
+no-JavaScript version uses the same classes and inline stylesheet. Existing
+sharing, navigation and anonymous transport behavior is retained.
+
+Validation: both TypeScript projects, production build, all 55 server-route/link
+checks and 8 collection API/anonymous-transport checks passed. Existing build
+warnings about bundle sizes, ErrorPage imports and SignalR annotations remain.
+Visual/browser verification could not be completed: the in-app browser timed out
+connecting to localhost, and Windows Firefox automation stopped because browser
+URL policy enforcement is unsupported. No screenshot or device/share acceptance
+is claimed. These changes have not been deployed by this update.
