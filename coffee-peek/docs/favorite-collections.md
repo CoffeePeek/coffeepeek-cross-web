@@ -85,8 +85,10 @@ The collection now follows the supplied reference proportions: 206 px shop rows,
 large cover photos, vertically centered names and addresses, a separate rating
 pill and check-in count, compact roaster cards, warm brown surfaces and seamless
 CoffeePeek ribbons scrolling in opposite directions (disabled for reduced motion).
-Header actions include separate App Store, Google Play and .apk links to the
-existing download endpoints, with a separate action row on phones. Missing shop photos use the white CoffeePeek placeholder. The
+Header actions reuse the existing App Store, Google Play and APK badge artwork
+in a compact DownloadButton variant, with proportional scaling and 44 px touch
+areas. All three badges fit in one row down to 320 px; on phones the share action
+sits next to the title. Download endpoints are unchanged. Missing shop photos use the white CoffeePeek placeholder. The
 no-JavaScript version uses the same classes and inline stylesheet. Existing
 sharing, navigation and anonymous transport behavior is retained.
 

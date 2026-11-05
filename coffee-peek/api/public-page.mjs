@@ -378,11 +378,10 @@ async function renderCollectionPage(shell, rawId) {
 .shared-collection__heading p { margin: 10px 0 0; color: var(--collection-muted); font-size: clamp(16px, 2.15vw, 22px); line-height: 1.4; letter-spacing: -.035em; }
 .shared-collection__heading .shared-collection__description { margin-top: 12px; font-size: 16px; line-height: 1.55; letter-spacing: normal; white-space: pre-line; overflow-wrap: anywhere; }
 .shared-collection__actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding-top: 4px; }
-.shared-collection__downloads { display: flex; align-items: center; gap: 6px; }
-.shared-collection__share, .shared-collection__download { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--collection-muted); font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
-.shared-collection__download { gap: 6px; padding-inline: 12px; border-color: #5a4b3d; white-space: nowrap; }
-.shared-collection__download svg { flex-shrink: 0; }
-.shared-collection__share:hover, .shared-collection__download:hover { background: var(--collection-card); color: var(--collection-text); }
+.shared-collection__downloads { --download-badge-scale: .75; display: flex; align-items: center; gap: 6px; }
+.shared-collection__downloads .download-button--compact { border-radius: 6px; }
+.shared-collection__share { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--collection-muted); font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
+.shared-collection__share:hover { background: var(--collection-card); color: var(--collection-text); }
 .shared-collection :is(a, button):focus-visible { outline: 2px solid var(--collection-gold); outline-offset: 4px; }
 .shared-collection .shared-collection__home:focus-visible { outline-offset: -3px; }
 .shared-collection__message { margin-top: 20px; color: var(--collection-gold); }
@@ -434,11 +433,12 @@ async function renderCollectionPage(shell, rawId) {
 
 @media (max-width: 760px) {
   .shared-collection__content { padding: 28px 20px 56px; }
-  .shared-collection__heading { flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .shared-collection__heading { position: relative; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .shared-collection__title { padding-right: 52px; }
   .shared-collection__actions { width: 100%; justify-content: space-between; gap: 8px; padding: 0; }
-  .shared-collection__share { width: 44px; padding: 10px; }
+  .shared-collection__share { position: absolute; top: 0; right: 0; width: 44px; padding: 10px; }
   .shared-collection__share span { display: none; }
-  .shared-collection__download { padding: 10px 12px; font-size: 12px; }
+  .shared-collection__downloads { --download-badge-scale: .7; }
   .shared-place--shop { min-height: 166px; grid-template-columns: 29% minmax(0, 1fr) 94px 14px; gap: 14px; padding-right: 14px; border-radius: 24px; }
   .shared-place--shop .shared-place__image { min-height: 144px; border-radius: 16px; }
   .shared-place__name { font-size: 25px; }
@@ -462,8 +462,6 @@ async function renderCollectionPage(shell, rawId) {
   .shared-collection__actions { width: 100%; justify-content: space-between; padding: 0; }
   .shared-collection__share { width: 44px; padding: 10px; }
   .shared-collection__share span { display: none; }
-  .shared-collection__download { font-size: 12px; }
-  .shared-collection__download svg { display: none; }
   .shared-collection__groups, .shared-collection__shops { gap: 12px; }
   .shared-place--shop { min-height: 142px; grid-template-columns: 100px minmax(0, 1fr) 12px; grid-template-rows: auto auto; column-gap: 12px; row-gap: 8px; padding: 8px 12px 8px 8px; border-radius: 22px; }
   .shared-place--shop .shared-place__image { grid-row: 1 / span 2; min-height: 124px; border-radius: 15px; }
@@ -482,8 +480,12 @@ async function renderCollectionPage(shell, rawId) {
   .shared-place--roaster .shared-place__name { font-size: 20px; }
 }
 
+@media (max-width: 420px) {
+  .shared-collection__downloads { --download-badge-scale: .66; }
+}
+
 @media (max-width: 360px) {
-  .shared-collection__download { padding-inline: 10px; font-size: 11px; }
+  .shared-collection__downloads { --download-badge-scale: .58; }
   .shared-place--shop { grid-template-columns: 82px minmax(0, 1fr) 10px; column-gap: 8px; }
   .shared-place__name { font-size: 18px; }
   .shared-place__score { gap: 5px; }
@@ -502,7 +504,7 @@ async function renderCollectionPage(shell, rawId) {
   const ribbon = (reverse = false) => `<div class="shared-collection__ribbon${reverse ? ' shared-collection__ribbon--reverse' : ''}" aria-hidden="true"><span class="shared-collection__ribbon-track">${`<span class="shared-collection__ribbon-group">${'<span>COFFEEPEEK</span>'.repeat(32)}</span>`.repeat(2)}</span></div>`;
   const content = `<main class="shared-collection"><a class="shared-collection__home" href="/" aria-label="CoffeePeek — на главную">${ribbon()}</a><div class="shared-collection__content">
     ${cover !== DEFAULT_IMAGE ? `<img src="${escapeHtml(cover)}" alt="" class="shared-collection__cover">` : ''}
-    <header class="shared-collection__heading"><div class="shared-collection__title"><h1>${escapeHtml(collection.title)}</h1>${collection.description ? `<p class="shared-collection__description">${escapeHtml(collection.description)}</p>` : ''}<p>Мест в подборке: ${places.length}</p></div><nav class="shared-collection__actions" aria-label="Действия с подборкой"><div class="shared-collection__downloads"><a class="shared-collection__download" href="/download/ios" aria-label="Скачать в App Store"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M128.23,30A40,40,0,0,1,167,0h1a8,8,0,0,1,0,16h-1a24,24,0,0,0-23.24,18,8,8,0,1,1-15.5-4ZM223.3,169.59a8.07,8.07,0,0,0-2.8-3.4C203.53,154.53,200,134.64,200,120c0-17.67,13.47-33.06,21.5-40.67a8,8,0,0,0,0-11.62C208.82,55.74,187.82,48,168,48a72.23,72.23,0,0,0-40,12.13,71.56,71.56,0,0,0-90.71,9.09A74.63,74.63,0,0,0,16,123.4a127,127,0,0,0,40.14,89.73A39.8,39.8,0,0,0,83.59,224h87.68a39.84,39.84,0,0,0,29.12-12.57,125,125,0,0,0,17.82-24.6C225.23,174,224.33,172,223.3,169.59Z"></path></svg>App Store</a><a class="shared-collection__download" href="/download/android" aria-label="Скачать в Google Play"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M239.82,114.18,72,18.16a16,16,0,0,0-16.12,0A15.68,15.68,0,0,0,48,31.87V224.13a15.68,15.68,0,0,0,7.92,13.67,16,16,0,0,0,16.12,0l167.78-96a15.76,15.76,0,0,0,0-27.64ZM160,139.31l18.92,18.92-88.5,50.66ZM90.4,47.1l88.53,50.67L160,116.69ZM193.31,150l-22-22,22-22,38.43,22Z"></path></svg>Google Play</a><a class="shared-collection__download" href="/download/apk" aria-label="Скачать APK для Android"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"></path></svg>.apk</a></div></nav></header>
+    <header class="shared-collection__heading"><div class="shared-collection__title"><h1>${escapeHtml(collection.title)}</h1>${collection.description ? `<p class="shared-collection__description">${escapeHtml(collection.description)}</p>` : ''}<p>Мест в подборке: ${places.length}</p></div><nav class="shared-collection__actions" aria-label="Действия с подборкой"><div class="shared-collection__downloads"><link rel="preload" as="image" href="/images/stores/app-store.svg"/><a href="/download/ios" aria-label="Скачать в App Store" class="download-button--compact relative inline-flex h-11 shrink-0 items-center justify-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]" style="color:#fff;width:calc(144px * var(--download-badge-scale, .75))"><span aria-hidden="true" class="download-button__badge inline-flex h-12 w-[144px] shrink-0 items-center justify-center overflow-hidden rounded-lg  bg-black text-white" style="position:absolute;left:50%;top:50%;transform:translate(-50%, -50%) scale(var(--download-badge-scale, .75))"><img src="/images/stores/app-store.svg" alt="" class="h-full w-full"/></span></a><link rel="preload" as="image" href="/images/stores/google-play.png"/><a href="/download/android" aria-label="Скачать в Google Play" class="download-button--compact relative inline-flex h-11 shrink-0 items-center justify-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]" style="color:#fff;width:calc(162px * var(--download-badge-scale, .75))"><span aria-hidden="true" class="download-button__badge inline-flex h-12 w-[162px] shrink-0 items-center justify-center overflow-hidden rounded-lg  bg-black text-white" style="position:absolute;left:50%;top:50%;transform:translate(-50%, -50%) scale(var(--download-badge-scale, .75))"><img src="/images/stores/google-play.png" alt="" class="h-[72px] w-[186px] max-w-none shrink-0"/></span></a><a href="/download/apk" aria-label="Скачать APK для Android" class="download-button--compact relative inline-flex h-11 shrink-0 items-center justify-center transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]" style="color:#fff;width:calc(162px * var(--download-badge-scale, .75))"><span aria-hidden="true" class="download-button__badge inline-flex h-12 w-[162px] shrink-0 items-center justify-center overflow-hidden rounded-lg border border-[#A6A6A6] bg-black text-white" style="position:absolute;left:50%;top:50%;transform:translate(-50%, -50%) scale(var(--download-badge-scale, .75))"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"></path></svg><span class="ml-2 text-left font-body"><span class="block text-[10px] leading-3">Скачать для Android</span><span class="block text-xl font-semibold leading-6">APK-файл</span></span></span></a></div></nav></header>
     <div class="shared-collection__groups">${cards.some((_, index) => places[index].kind === 'coffee_shop') ? `<section class="shared-collection__shops" aria-label="Кофейни">${cards.filter((_, index) => places[index].kind === 'coffee_shop').join('')}</section>` : ''}${cards.some((_, index) => places[index].kind === 'roaster') ? `<section class="shared-collection__roasters" aria-label="Обжарщики">${cards.filter((_, index) => places[index].kind === 'roaster').join('')}</section>` : ''}</div>${cards.length ? '' : `<p class="shared-collection__empty">${collection.mode === 'list' ? 'В подборке пока нет мест.' : 'Места из этой подборки больше недоступны.'}</p>`}
     </div>${ribbon(true)}</main>`;
   return { html: injectContent(html, content, { showHeader: false }), status: 200 };

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AppleLogo, CaretRight, DownloadSimple, Factory, GooglePlayLogo, MapPin, ShareNetwork, Star } from '@phosphor-icons/react';
+import { CaretRight, Factory, MapPin, ShareNetwork, Star } from '@phosphor-icons/react';
 import { getCollection, collectionCoverUrl, collectionPlacePath, type CollectionPlace } from '../api/collections';
 import { ProfileError, ProfileLoading } from '../components/profile/ProfileUI';
+import DownloadButton from '../components/mobile-app/DownloadButton';
 import './SharedCollectionPage.css';
 
 export default function SharedCollectionPage() {
@@ -47,9 +48,9 @@ export default function SharedCollectionPage() {
                 <ShareNetwork size={20} aria-hidden="true" /><span>Поделиться</span>
               </button>
               <div className="shared-collection__downloads">
-                <a href="/download/ios" className="shared-collection__download" aria-label="Скачать в App Store"><AppleLogo size={16} weight="fill" aria-hidden="true" />App Store</a>
-                <a href="/download/android" className="shared-collection__download" aria-label="Скачать в Google Play"><GooglePlayLogo size={16} weight="fill" aria-hidden="true" />Google Play</a>
-                <a href="/download/apk" className="shared-collection__download" aria-label="Скачать APK для Android"><DownloadSimple size={16} aria-hidden="true" />.apk</a>
+                <DownloadButton compact channel="app-store" href="/download/ios" label="Скачать в App Store" />
+                <DownloadButton compact channel="google-play" href="/download/android" label="Скачать в Google Play" />
+                <DownloadButton compact channel="apk" href="/download/apk" label="Скачать APK для Android" />
               </div>
             </nav>
           </header>
