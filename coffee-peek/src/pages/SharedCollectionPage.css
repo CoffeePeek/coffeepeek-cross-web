@@ -14,22 +14,38 @@
 
 .shared-collection__home { display: block; text-decoration: none; }
 .shared-collection__ribbon {
+  --ribbon-gap: 24px;
   overflow: hidden;
   background: #17130f;
   color: var(--collection-gold);
-  white-space: nowrap;
-}
-
-.shared-collection__ribbon > span {
-  display: flex;
-  width: max-content;
-  gap: 24px;
-  padding: 8px 0;
-  transform: translateX(-38px);
   font-size: 20px;
   font-weight: 500;
   line-height: 24px;
   letter-spacing: -.04em;
+  white-space: nowrap;
+}
+
+.shared-collection__ribbon-track {
+  position: relative;
+  left: -38px;
+  display: flex;
+  width: max-content;
+  animation: shared-collection-marquee 160s linear infinite;
+  will-change: transform;
+}
+
+.shared-collection__ribbon-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--ribbon-gap);
+  padding: 8px var(--ribbon-gap) 8px 0;
+}
+
+.shared-collection__ribbon--reverse .shared-collection__ribbon-track { animation-direction: reverse; }
+
+@keyframes shared-collection-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 .shared-collection__content {
@@ -54,8 +70,10 @@
 .shared-collection__heading p { margin: 10px 0 0; color: var(--collection-muted); font-size: clamp(16px, 2.15vw, 22px); line-height: 1.4; letter-spacing: -.035em; }
 .shared-collection__heading .shared-collection__description { margin-top: 12px; font-size: 16px; line-height: 1.55; letter-spacing: normal; white-space: pre-line; overflow-wrap: anywhere; }
 .shared-collection__actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding-top: 4px; }
+.shared-collection__downloads { display: flex; align-items: center; gap: 6px; }
 .shared-collection__share, .shared-collection__download { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--collection-muted); font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
-.shared-collection__download { border-color: #5a4b3d; }
+.shared-collection__download { gap: 6px; padding-inline: 12px; border-color: #5a4b3d; white-space: nowrap; }
+.shared-collection__download svg { flex-shrink: 0; }
 .shared-collection__share:hover, .shared-collection__download:hover { background: var(--collection-card); color: var(--collection-text); }
 .shared-collection :is(a, button):focus-visible { outline: 2px solid var(--collection-gold); outline-offset: 4px; }
 .shared-collection .shared-collection__home:focus-visible { outline-offset: -3px; }
@@ -108,11 +126,11 @@
 
 @media (max-width: 760px) {
   .shared-collection__content { padding: 28px 20px 56px; }
-  .shared-collection__heading { gap: 12px; margin-bottom: 18px; }
-  .shared-collection__actions { gap: 2px; }
+  .shared-collection__heading { flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .shared-collection__actions { width: 100%; justify-content: space-between; gap: 8px; padding: 0; }
   .shared-collection__share { width: 44px; padding: 10px; }
   .shared-collection__share span { display: none; }
-  .shared-collection__download { padding: 10px 12px; font-size: 11px; }
+  .shared-collection__download { padding: 10px 12px; font-size: 12px; }
   .shared-place--shop { min-height: 166px; grid-template-columns: 29% minmax(0, 1fr) 94px 14px; gap: 14px; padding-right: 14px; border-radius: 24px; }
   .shared-place--shop .shared-place__image { min-height: 144px; border-radius: 16px; }
   .shared-place__name { font-size: 25px; }
@@ -127,15 +145,17 @@
 }
 
 @media (max-width: 540px) {
-  .shared-collection__ribbon > span { gap: 18px; padding-block: 6px; font-size: 16px; line-height: 22px; }
+  .shared-collection__ribbon { --ribbon-gap: 18px; font-size: 16px; line-height: 22px; }
+  .shared-collection__ribbon-group { padding-block: 6px; }
   .shared-collection__content { padding: 26px 16px 48px; }
   .shared-collection__heading { flex-direction: column; gap: 12px; }
   .shared-collection__heading h1 { font-size: 32px; }
   .shared-collection__heading p { margin-top: 8px; font-size: 16px; }
   .shared-collection__actions { width: 100%; justify-content: space-between; padding: 0; }
-  .shared-collection__share { width: auto; padding-left: 0; }
-  .shared-collection__share span { display: inline; }
+  .shared-collection__share { width: 44px; padding: 10px; }
+  .shared-collection__share span { display: none; }
   .shared-collection__download { font-size: 12px; }
+  .shared-collection__download svg { display: none; }
   .shared-collection__groups, .shared-collection__shops { gap: 12px; }
   .shared-place--shop { min-height: 142px; grid-template-columns: 100px minmax(0, 1fr) 12px; grid-template-rows: auto auto; column-gap: 12px; row-gap: 8px; padding: 8px 12px 8px 8px; border-radius: 22px; }
   .shared-place--shop .shared-place__image { grid-row: 1 / span 2; min-height: 124px; border-radius: 15px; }
@@ -155,6 +175,7 @@
 }
 
 @media (max-width: 360px) {
+  .shared-collection__download { padding-inline: 10px; font-size: 11px; }
   .shared-place--shop { grid-template-columns: 82px minmax(0, 1fr) 10px; column-gap: 8px; }
   .shared-place__name { font-size: 18px; }
   .shared-place__score { gap: 5px; }
@@ -163,5 +184,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shared-collection__ribbon-track { animation: none; will-change: auto; }
   .shared-collection *, .shared-collection *::before, .shared-collection *::after { transition: none; }
 }

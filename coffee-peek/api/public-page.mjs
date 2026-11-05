@@ -322,22 +322,38 @@ async function renderCollectionPage(shell, rawId) {
 
 .shared-collection__home { display: block; text-decoration: none; }
 .shared-collection__ribbon {
+  --ribbon-gap: 24px;
   overflow: hidden;
   background: #17130f;
   color: var(--collection-gold);
-  white-space: nowrap;
-}
-
-.shared-collection__ribbon > span {
-  display: flex;
-  width: max-content;
-  gap: 24px;
-  padding: 8px 0;
-  transform: translateX(-38px);
   font-size: 20px;
   font-weight: 500;
   line-height: 24px;
   letter-spacing: -.04em;
+  white-space: nowrap;
+}
+
+.shared-collection__ribbon-track {
+  position: relative;
+  left: -38px;
+  display: flex;
+  width: max-content;
+  animation: shared-collection-marquee 160s linear infinite;
+  will-change: transform;
+}
+
+.shared-collection__ribbon-group {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--ribbon-gap);
+  padding: 8px var(--ribbon-gap) 8px 0;
+}
+
+.shared-collection__ribbon--reverse .shared-collection__ribbon-track { animation-direction: reverse; }
+
+@keyframes shared-collection-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 .shared-collection__content {
@@ -362,8 +378,10 @@ async function renderCollectionPage(shell, rawId) {
 .shared-collection__heading p { margin: 10px 0 0; color: var(--collection-muted); font-size: clamp(16px, 2.15vw, 22px); line-height: 1.4; letter-spacing: -.035em; }
 .shared-collection__heading .shared-collection__description { margin-top: 12px; font-size: 16px; line-height: 1.55; letter-spacing: normal; white-space: pre-line; overflow-wrap: anywhere; }
 .shared-collection__actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding-top: 4px; }
+.shared-collection__downloads { display: flex; align-items: center; gap: 6px; }
 .shared-collection__share, .shared-collection__download { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--collection-muted); font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
-.shared-collection__download { border-color: #5a4b3d; }
+.shared-collection__download { gap: 6px; padding-inline: 12px; border-color: #5a4b3d; white-space: nowrap; }
+.shared-collection__download svg { flex-shrink: 0; }
 .shared-collection__share:hover, .shared-collection__download:hover { background: var(--collection-card); color: var(--collection-text); }
 .shared-collection :is(a, button):focus-visible { outline: 2px solid var(--collection-gold); outline-offset: 4px; }
 .shared-collection .shared-collection__home:focus-visible { outline-offset: -3px; }
@@ -416,11 +434,11 @@ async function renderCollectionPage(shell, rawId) {
 
 @media (max-width: 760px) {
   .shared-collection__content { padding: 28px 20px 56px; }
-  .shared-collection__heading { gap: 12px; margin-bottom: 18px; }
-  .shared-collection__actions { gap: 2px; }
+  .shared-collection__heading { flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .shared-collection__actions { width: 100%; justify-content: space-between; gap: 8px; padding: 0; }
   .shared-collection__share { width: 44px; padding: 10px; }
   .shared-collection__share span { display: none; }
-  .shared-collection__download { padding: 10px 12px; font-size: 11px; }
+  .shared-collection__download { padding: 10px 12px; font-size: 12px; }
   .shared-place--shop { min-height: 166px; grid-template-columns: 29% minmax(0, 1fr) 94px 14px; gap: 14px; padding-right: 14px; border-radius: 24px; }
   .shared-place--shop .shared-place__image { min-height: 144px; border-radius: 16px; }
   .shared-place__name { font-size: 25px; }
@@ -435,15 +453,17 @@ async function renderCollectionPage(shell, rawId) {
 }
 
 @media (max-width: 540px) {
-  .shared-collection__ribbon > span { gap: 18px; padding-block: 6px; font-size: 16px; line-height: 22px; }
+  .shared-collection__ribbon { --ribbon-gap: 18px; font-size: 16px; line-height: 22px; }
+  .shared-collection__ribbon-group { padding-block: 6px; }
   .shared-collection__content { padding: 26px 16px 48px; }
   .shared-collection__heading { flex-direction: column; gap: 12px; }
   .shared-collection__heading h1 { font-size: 32px; }
   .shared-collection__heading p { margin-top: 8px; font-size: 16px; }
   .shared-collection__actions { width: 100%; justify-content: space-between; padding: 0; }
-  .shared-collection__share { width: auto; padding-left: 0; }
-  .shared-collection__share span { display: inline; }
+  .shared-collection__share { width: 44px; padding: 10px; }
+  .shared-collection__share span { display: none; }
   .shared-collection__download { font-size: 12px; }
+  .shared-collection__download svg { display: none; }
   .shared-collection__groups, .shared-collection__shops { gap: 12px; }
   .shared-place--shop { min-height: 142px; grid-template-columns: 100px minmax(0, 1fr) 12px; grid-template-rows: auto auto; column-gap: 12px; row-gap: 8px; padding: 8px 12px 8px 8px; border-radius: 22px; }
   .shared-place--shop .shared-place__image { grid-row: 1 / span 2; min-height: 124px; border-radius: 15px; }
@@ -463,6 +483,7 @@ async function renderCollectionPage(shell, rawId) {
 }
 
 @media (max-width: 360px) {
+  .shared-collection__download { padding-inline: 10px; font-size: 11px; }
   .shared-place--shop { grid-template-columns: 82px minmax(0, 1fr) 10px; column-gap: 8px; }
   .shared-place__name { font-size: 18px; }
   .shared-place__score { gap: 5px; }
@@ -471,18 +492,19 @@ async function renderCollectionPage(shell, rawId) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .shared-collection__ribbon-track { animation: none; will-change: auto; }
   .shared-collection *, .shared-collection *::before, .shared-collection *::after { transition: none; }
 }
   </style>`;
   const cover = collectionImage(collection);
   let html = replaceMeta(shell, { title, description, canonical, image: cover !== DEFAULT_IMAGE ? cover : collectionImage(places[0]) });
   html = html.replace('</head>', `<meta name="robots" content="noindex, nofollow">${styles}</head>`);
-  const ribbon = `<div class="shared-collection__ribbon" aria-hidden="true"><span>${'<span>COFFEEPEEK</span>'.repeat(32)}</span></div>`;
-  const content = `<main class="shared-collection"><a class="shared-collection__home" href="/" aria-label="CoffeePeek — на главную">${ribbon}</a><div class="shared-collection__content">
+  const ribbon = (reverse = false) => `<div class="shared-collection__ribbon${reverse ? ' shared-collection__ribbon--reverse' : ''}" aria-hidden="true"><span class="shared-collection__ribbon-track">${`<span class="shared-collection__ribbon-group">${'<span>COFFEEPEEK</span>'.repeat(32)}</span>`.repeat(2)}</span></div>`;
+  const content = `<main class="shared-collection"><a class="shared-collection__home" href="/" aria-label="CoffeePeek — на главную">${ribbon()}</a><div class="shared-collection__content">
     ${cover !== DEFAULT_IMAGE ? `<img src="${escapeHtml(cover)}" alt="" class="shared-collection__cover">` : ''}
-    <header class="shared-collection__heading"><div class="shared-collection__title"><h1>${escapeHtml(collection.title)}</h1>${collection.description ? `<p class="shared-collection__description">${escapeHtml(collection.description)}</p>` : ''}<p>Мест в подборке: ${places.length}</p></div><nav class="shared-collection__actions" aria-label="Действия с подборкой"><a class="shared-collection__download" href="/download/auto">Скачать приложение</a></nav></header>
+    <header class="shared-collection__heading"><div class="shared-collection__title"><h1>${escapeHtml(collection.title)}</h1>${collection.description ? `<p class="shared-collection__description">${escapeHtml(collection.description)}</p>` : ''}<p>Мест в подборке: ${places.length}</p></div><nav class="shared-collection__actions" aria-label="Действия с подборкой"><div class="shared-collection__downloads"><a class="shared-collection__download" href="/download/ios" aria-label="Скачать в App Store"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M128.23,30A40,40,0,0,1,167,0h1a8,8,0,0,1,0,16h-1a24,24,0,0,0-23.24,18,8,8,0,1,1-15.5-4ZM223.3,169.59a8.07,8.07,0,0,0-2.8-3.4C203.53,154.53,200,134.64,200,120c0-17.67,13.47-33.06,21.5-40.67a8,8,0,0,0,0-11.62C208.82,55.74,187.82,48,168,48a72.23,72.23,0,0,0-40,12.13,71.56,71.56,0,0,0-90.71,9.09A74.63,74.63,0,0,0,16,123.4a127,127,0,0,0,40.14,89.73A39.8,39.8,0,0,0,83.59,224h87.68a39.84,39.84,0,0,0,29.12-12.57,125,125,0,0,0,17.82-24.6C225.23,174,224.33,172,223.3,169.59Z"></path></svg>App Store</a><a class="shared-collection__download" href="/download/android" aria-label="Скачать в Google Play"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M239.82,114.18,72,18.16a16,16,0,0,0-16.12,0A15.68,15.68,0,0,0,48,31.87V224.13a15.68,15.68,0,0,0,7.92,13.67,16,16,0,0,0,16.12,0l167.78-96a15.76,15.76,0,0,0,0-27.64ZM160,139.31l18.92,18.92-88.5,50.66ZM90.4,47.1l88.53,50.67L160,116.69ZM193.31,150l-22-22,22-22,38.43,22Z"></path></svg>Google Play</a><a class="shared-collection__download" href="/download/apk" aria-label="Скачать APK для Android"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M224,144v64a8,8,0,0,1-8,8H40a8,8,0,0,1-8-8V144a8,8,0,0,1,16,0v56H208V144a8,8,0,0,1,16,0Zm-101.66,5.66a8,8,0,0,0,11.32,0l40-40a8,8,0,0,0-11.32-11.32L136,124.69V32a8,8,0,0,0-16,0v92.69L93.66,98.34a8,8,0,0,0-11.32,11.32Z"></path></svg>.apk</a></div></nav></header>
     <div class="shared-collection__groups">${cards.some((_, index) => places[index].kind === 'coffee_shop') ? `<section class="shared-collection__shops" aria-label="Кофейни">${cards.filter((_, index) => places[index].kind === 'coffee_shop').join('')}</section>` : ''}${cards.some((_, index) => places[index].kind === 'roaster') ? `<section class="shared-collection__roasters" aria-label="Обжарщики">${cards.filter((_, index) => places[index].kind === 'roaster').join('')}</section>` : ''}</div>${cards.length ? '' : `<p class="shared-collection__empty">${collection.mode === 'list' ? 'В подборке пока нет мест.' : 'Места из этой подборки больше недоступны.'}</p>`}
-    </div>${ribbon}</main>`;
+    </div>${ribbon(true)}</main>`;
   return { html: injectContent(html, content, { showHeader: false }), status: 200 };
 }
 
