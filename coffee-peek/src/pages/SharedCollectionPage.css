@@ -70,11 +70,10 @@
 .shared-collection__heading p { margin: 10px 0 0; color: var(--collection-muted); font-size: clamp(16px, 2.15vw, 22px); line-height: 1.4; letter-spacing: -.035em; }
 .shared-collection__heading .shared-collection__description { margin-top: 12px; font-size: 16px; line-height: 1.55; letter-spacing: normal; white-space: pre-line; overflow-wrap: anywhere; }
 .shared-collection__actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding-top: 4px; }
-.shared-collection__downloads { display: flex; align-items: center; gap: 6px; }
-.shared-collection__share, .shared-collection__download { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--collection-muted); font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
-.shared-collection__download { gap: 6px; padding-inline: 12px; border-color: #5a4b3d; white-space: nowrap; }
-.shared-collection__download svg { flex-shrink: 0; }
-.shared-collection__share:hover, .shared-collection__download:hover { background: var(--collection-card); color: var(--collection-text); }
+.shared-collection__downloads { --download-badge-scale: .75; display: flex; align-items: center; gap: 6px; }
+.shared-collection__downloads .download-button--compact { border-radius: 6px; }
+.shared-collection__share { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--collection-muted); font-size: 13px; font-weight: 500; line-height: 1.4; text-decoration: none; cursor: pointer; transition: background-color .15s, color .15s; }
+.shared-collection__share:hover { background: var(--collection-card); color: var(--collection-text); }
 .shared-collection :is(a, button):focus-visible { outline: 2px solid var(--collection-gold); outline-offset: 4px; }
 .shared-collection .shared-collection__home:focus-visible { outline-offset: -3px; }
 .shared-collection__message { margin-top: 20px; color: var(--collection-gold); }
@@ -126,11 +125,12 @@
 
 @media (max-width: 760px) {
   .shared-collection__content { padding: 28px 20px 56px; }
-  .shared-collection__heading { flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .shared-collection__heading { position: relative; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+  .shared-collection__title { padding-right: 52px; }
   .shared-collection__actions { width: 100%; justify-content: space-between; gap: 8px; padding: 0; }
-  .shared-collection__share { width: 44px; padding: 10px; }
+  .shared-collection__share { position: absolute; top: 0; right: 0; width: 44px; padding: 10px; }
   .shared-collection__share span { display: none; }
-  .shared-collection__download { padding: 10px 12px; font-size: 12px; }
+  .shared-collection__downloads { --download-badge-scale: .7; }
   .shared-place--shop { min-height: 166px; grid-template-columns: 29% minmax(0, 1fr) 94px 14px; gap: 14px; padding-right: 14px; border-radius: 24px; }
   .shared-place--shop .shared-place__image { min-height: 144px; border-radius: 16px; }
   .shared-place__name { font-size: 25px; }
@@ -154,8 +154,6 @@
   .shared-collection__actions { width: 100%; justify-content: space-between; padding: 0; }
   .shared-collection__share { width: 44px; padding: 10px; }
   .shared-collection__share span { display: none; }
-  .shared-collection__download { font-size: 12px; }
-  .shared-collection__download svg { display: none; }
   .shared-collection__groups, .shared-collection__shops { gap: 12px; }
   .shared-place--shop { min-height: 142px; grid-template-columns: 100px minmax(0, 1fr) 12px; grid-template-rows: auto auto; column-gap: 12px; row-gap: 8px; padding: 8px 12px 8px 8px; border-radius: 22px; }
   .shared-place--shop .shared-place__image { grid-row: 1 / span 2; min-height: 124px; border-radius: 15px; }
@@ -174,8 +172,12 @@
   .shared-place--roaster .shared-place__name { font-size: 20px; }
 }
 
+@media (max-width: 420px) {
+  .shared-collection__downloads { --download-badge-scale: .66; }
+}
+
 @media (max-width: 360px) {
-  .shared-collection__download { padding-inline: 10px; font-size: 11px; }
+  .shared-collection__downloads { --download-badge-scale: .58; }
   .shared-place--shop { grid-template-columns: 82px minmax(0, 1fr) 10px; column-gap: 8px; }
   .shared-place__name { font-size: 18px; }
   .shared-place__score { gap: 5px; }

@@ -7,26 +7,31 @@ interface DownloadButtonProps {
   href: string;
   label: string;
   disabled?: boolean;
+  compact?: boolean;
 }
 
-const DownloadButton: React.FC<DownloadButtonProps> = ({ channel, href, label, disabled = false }) => (
-  <a
+const DownloadButton: React.FC<DownloadButtonProps> = ({ channel, href, label, disabled = false, compact = false }) => {
+  const frameClasses = `inline-flex h-12 ${channel === 'app-store' ? 'w-[144px]' : 'w-[162px]'} shrink-0 items-center justify-center overflow-hidden rounded-lg ${channel === 'apk' ? 'border border-[#A6A6A6]' : ''} bg-black text-white`;
+  const artwork = channel === 'google-play' ? (
+    <img src="/images/stores/google-play.png" alt="" className="h-[72px] w-[186px] max-w-none shrink-0" />
+  ) : channel === 'app-store' ? (
+    <img src="/images/stores/app-store.svg" alt="" className="h-full w-full" />
+  ) : (
+    <><DownloadSimple size={26} aria-hidden /><span className="ml-2 text-left font-body"><span className="block text-[10px] leading-3">Скачать для Android</span><span className="block text-xl font-semibold leading-6">APK-файл</span></span></>
+  );
+
+  return <a
     href={disabled ? undefined : href}
     role={disabled ? 'link' : undefined}
     aria-disabled={disabled || undefined}
     onClick={() => { if (!disabled) captureAnalyticsEvent('app_download_clicked', { channel }); }}
     aria-label={label}
-    className={`inline-flex h-12 ${channel === 'app-store' ? 'w-[144px]' : 'w-[162px]'} shrink-0 items-center justify-center overflow-hidden rounded-lg ${channel === 'apk' ? 'border border-[#A6A6A6]' : ''} bg-black text-white transition-opacity ${disabled ? 'opacity-50' : 'hover:opacity-80'} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]`}
-    style={{ color: '#fff' }}
+    className={`${compact ? 'download-button--compact relative inline-flex h-11 shrink-0 items-center justify-center' : frameClasses} transition-opacity ${disabled ? 'opacity-50' : 'hover:opacity-80'} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#EAB308]`}
+    style={{ color: '#fff', ...(compact ? { width: `calc(${channel === 'app-store' ? 144 : 162}px * var(--download-badge-scale, .75))` } : {}) }}
   >
-    {channel === 'google-play' ? (
-      <img src="/images/stores/google-play.png" alt="" className="h-[72px] w-[186px] max-w-none shrink-0" />
-    ) : channel === 'app-store' ? (
-      <img src="/images/stores/app-store.svg" alt="" className="h-full w-full" />
-    ) : (
-      <><DownloadSimple size={26} aria-hidden /><span className="ml-2 text-left font-body"><span className="block text-[10px] leading-3">Скачать для Android</span><span className="block text-xl font-semibold leading-6">APK-файл</span></span></>
-    )}
-  </a>
-);
+    {compact ? <span aria-hidden="true" className={`download-button__badge ${frameClasses}`}
+      style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%) scale(var(--download-badge-scale, .75))' }}>{artwork}</span> : artwork}
+  </a>;
+};
 
 export default DownloadButton;
