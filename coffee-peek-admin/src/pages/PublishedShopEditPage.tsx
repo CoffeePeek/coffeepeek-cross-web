@@ -67,6 +67,7 @@ const schema = z.object({
   description: z.string().optional(),
   priceRange: z.coerce.number<number>().min(1).max(4),
   status: z.enum(['Active', 'TemporarilyClosed', 'PermanentlyClosed']),
+  isNew: z.boolean(),
   cityId: z.string().optional(),
   address: z.string().optional(),
   latitude: latitudeField,
@@ -150,7 +151,7 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { priceRange: 2, status: 'Active' },
+    defaultValues: { priceRange: 2, status: 'Active', isNew: false },
   });
 
   // Initialize once per shop: photo/owner/menu refetches must not wipe unsaved form edits.
@@ -162,6 +163,7 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
       description: shop.description ?? '',
       priceRange: parsePriceRange(shop.priceRange) ?? 2,
       status: shop.status,
+      isNew: shop.isNew,
       cityId: shop.location?.cityId ?? shop.cityId ?? '',
       address: shop.location?.address ?? '',
       latitude:
@@ -196,6 +198,7 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
         description: data.description ?? null,
         priceRange: data.priceRange,
         status: data.status,
+        isNew: data.isNew,
         location: {
           cityId: data.cityId || undefined,
           address: data.address || undefined,
@@ -427,6 +430,11 @@ export const PublishedShopEditPage: React.FC<{ id: string; submissionId?: string
                   </NativeSelect>
                 </div>
               </div>
+
+              <label className="flex min-h-11 w-fit cursor-pointer items-center gap-2 text-sm">
+                <Input type="checkbox" {...register('isNew')} />
+                Новая кофейня
+              </label>
 
               <div>
                 <label className="block text-xs font-medium text-text-muted dark:text-stone-400 mb-1.5 font-body">

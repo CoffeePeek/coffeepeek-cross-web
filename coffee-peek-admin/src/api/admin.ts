@@ -398,6 +398,7 @@ export interface PublishedShop {
   moderationId: string | null;
   createdAtUtc: string;
   isHidden: boolean;
+  isNew: boolean;
   priceRange?: 1 | 2 | 3 | 4;
   description?: string;
   coffeeFocus?: CoffeeFocus;
@@ -474,6 +475,7 @@ export interface UpdatePublishedShopRequest {
   description?: string | null;
   priceRange?: PriceRangeLevel | number;
   status?: CoffeeShopStatus;
+  isNew?: boolean;
   location?: PublishedShopLocation;
   contacts?: PublishedShopContacts;
   schedules?: AdminShopSchedule[];
@@ -1070,6 +1072,7 @@ export function mapPublishedShop(shop: Record<string, unknown>): PublishedShop {
       shop.moderationId || shop.ModerationId ? String(shop.moderationId ?? shop.ModerationId) : null,
     createdAtUtc: String(shop.createdAtUtc ?? shop.CreatedAtUtc ?? ''),
     isHidden: pickHiddenFlag(shop),
+    isNew: (shop.isNew ?? shop.IsNew) === true,
     priceRange: parsePriceRange(shop.priceRange ?? shop.PriceRange),
     description: pickString(shop.description, shop.Description),
     coffeeFocus: parseCoffeeFocus(shop.coffeeFocus ?? shop.CoffeeFocus ?? shop.type ?? shop.Type),
@@ -1250,6 +1253,7 @@ export async function updatePublishedShop(
   if (data.description !== undefined) body.description = data.description;
   if (data.priceRange !== undefined) body.priceRange = normalizePriceRange(data.priceRange);
   if (data.status !== undefined) body.status = data.status;
+  if (data.isNew !== undefined) body.isNew = data.isNew;
   if (data.location !== undefined) body.location = data.location;
   if (data.contacts !== undefined) body.contacts = data.contacts;
   if (data.schedules !== undefined) body.schedules = toPublishedApiSchedules(data.schedules);
