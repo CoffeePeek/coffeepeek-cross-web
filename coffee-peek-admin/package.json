@@ -59,6 +59,11 @@
   "overrides": {
     "@istanbuljs/load-nyc-config": {
       "js-yaml": "^4.3.2"
-    }
+    },
+    "jest-config": {
+      "deepmerge": "npm:@stackline/deepmerge@1.1.2"
+    },
+    "glob": "14.0.4",
+    "minimatch": "11.0.8"
   }
 }
