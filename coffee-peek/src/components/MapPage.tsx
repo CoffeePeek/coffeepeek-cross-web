@@ -13,6 +13,7 @@ import type { DetailedCoffeeShop, MapCoffeeZone, MapSearchData, MapShop } from '
 import { CaretRight, Star, NavigationArrow, MagnifyingGlass, X, Polygon, MapPin, Minus, Plus } from '@/components/Icon';
 import ShopPhotoPlaceholder from './ShopPhotoPlaceholder';
 import Mascot from './Mascot';
+import MapCheckInHeatmap from './MapCheckInHeatmap';
 import {
   applyOsmMapTheme,
   coffeeMapPinIcon,
@@ -496,6 +497,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
       </div>
 
       <div className="coffee-map-controls absolute right-4 z-[500] flex items-center gap-2" style={{ bottom: carouselItems.length ? 128 : 16 }}>
+        {!embedded && !isLoading && mapInstanceRef.current && <MapCheckInHeatmap map={mapInstanceRef.current} />}
         <div className={`flex overflow-hidden rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
           <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomIn(); }} aria-label="Приблизить карту" className={`flex h-11 w-11 items-center justify-center ${themeClasses.text.primary}`}><Plus size={24} className="h-6 w-6 shrink-0" /></button>
           <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomOut(); }} aria-label="Отдалить карту" className={`flex h-11 w-11 items-center justify-center border-l ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={24} className="h-6 w-6 shrink-0" /></button>

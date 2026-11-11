@@ -48,6 +48,24 @@ export interface SearchRequest<F> { q?: string; filters: F; sort?: string; page:
 const read = async <T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> =>
   (await httpClient.post<T>(path, body, { requiresAuth: false, signal })).data;
 export const searchShops = (body: SearchRequest<ShopFilters>, signal?: AbortSignal) => read<Page<ShopCard>>('/api/v1/coffee-shops/search', body, signal);
+
+export async function getShopCheckInCounts(signal?: AbortSignal): Promise<Record<string, number>> {
+  const counts: Record<string, number> = Object.create(null);
+  const request = { filters: {}, sort: 'name_asc', pageSize: 100 };
+  let page = 1;
+  let result: Page<ShopCard>;
+  do {
+    result = await searchShops({ ...request, page }, signal);
+    for (const shop of result.items) {
+      if (Number.isFinite(shop.checkInCount) && shop.checkInCount > 0) {
+        counts[shop.address.slug] = shop.checkInCount;
+      }
+    }
+    page += 1;
+  } while (page <= result.totalPages);
+  return counts;
+}
+
 export const getRoasterCards = async (signal?: AbortSignal): Promise<RoasterCard[]> => {
   const { data } = await httpClient.get<RoasterCard[]>('/api/roasters', { requiresAuth: false, signal });
   if (!Array.isArray(data)) throw new Error('Некорректный список обжарщиков');
