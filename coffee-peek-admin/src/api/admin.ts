@@ -127,11 +127,14 @@ interface ModerationCheckInsPage {
   pageSize: number;
 }
 
+export type UserActivityFilter = 'Last24Hours' | 'Last7Days' | 'Last30Days' | 'OlderThan30Days' | 'Unknown';
+
 interface BackendAdminUser {
   id: string;
   userName: string;
   email: string;
   createdAtUtc: string;
+  lastActiveAtUtc?: string | null;
   about: string | null;
   avatarUrl: string | null;
   checkInCount: number;
@@ -246,6 +249,7 @@ export interface AdminUser {
   roles: UserRole[];
   about?: string | null;
   createdAtUtc: string;
+  lastActiveAtUtc: string | null;
   avatarUrl?: string | null;
   checkInCount: number;
   addedShopsCount: number;
@@ -592,6 +596,7 @@ function mapUserToAdmin(user: BackendAdminUser): AdminUser {
     roles: user.roles as UserRole[],
     about: user.about,
     createdAtUtc: user.createdAtUtc,
+    lastActiveAtUtc: user.lastActiveAtUtc ?? null,
     avatarUrl: user.avatarUrl,
     checkInCount: user.checkInCount,
     addedShopsCount: user.addedShopsCount,
@@ -802,7 +807,7 @@ export async function updateShopIssueReportStatus(
 // ==================== Users ====================
 
 export async function getAdminUsers(
-  params: { page?: number; pageSize?: number; search?: string; role?: UserRole }
+  params: { page?: number; pageSize?: number; search?: string; role?: UserRole; activity?: UserActivityFilter }
 ): Promise<ApiResponse<PaginatedResult<AdminUser>>> {
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;

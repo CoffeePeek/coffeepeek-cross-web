@@ -13,6 +13,7 @@ import {
   revokeUserSession,
   revokeAllUserSessions,
   AdminUser,
+  UserActivityFilter,
   UserRole,
   UserSession,
 } from '../api/admin';
@@ -32,6 +33,25 @@ import { getErrorMessage } from '../utils/errors';
 const PAGE_SIZE = 20;
 
 const ROLES: UserRole[] = ['User', 'Moderator', 'Admin', 'Owner', 'Employee', 'Roaster'];
+
+const ACTIVITY_OPTIONS: { value: UserActivityFilter | ''; label: string }[] = [
+  { value: '', label: 'Любая активность' },
+  { value: 'Last24Hours', label: 'За последние 24 часа' },
+  { value: 'Last7Days', label: 'За последние 7 дней' },
+  { value: 'Last30Days', label: 'За последние 30 дней' },
+  { value: 'OlderThan30Days', label: 'Более 30 дней назад' },
+  { value: 'Unknown', label: 'Нет данных' },
+];
+
+const lastActiveFormatter = new Intl.DateTimeFormat('ru', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+});
+
+function LastActiveTime({ value }: { value: string | null }) {
+  if (!value || Number.isNaN(Date.parse(value))) return 'Нет данных';
+  return <time dateTime={value}>{lastActiveFormatter.format(new Date(value))}</time>;
+}
 
 const ROLE_COLORS: Record<UserRole, string> = {
   User: 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-stone-300',
@@ -299,6 +319,7 @@ export const UsersPage: React.FC = () => {
   const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const search = searchParams.get('search') ?? '';
   const roleFilter = (searchParams.get('role') ?? '') as UserRole | '';
+  const activity = ACTIVITY_OPTIONS.find(({ value }) => value === searchParams.get('activity'))?.value ?? '';
   const [localSearch, setLocalSearch] = useState(search);
   const [detailsUser, setDetailsUser] = useState<AdminUser | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -316,13 +337,14 @@ export const UsersPage: React.FC = () => {
   });
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ['admin', 'users', { page, search, roleFilter }],
+    queryKey: ['admin', 'users', { page, search, roleFilter, activity }],
     queryFn: () =>
       getAdminUsers({
         page,
         pageSize: PAGE_SIZE,
         search: search || undefined,
         role: roleFilter || undefined,
+        activity: activity || undefined,
       }).then((r) => r.data),
   });
 
@@ -391,7 +413,7 @@ export const UsersPage: React.FC = () => {
         <p className="mt-0.5 font-body text-xs text-text-muted dark:text-stone-400 sm:text-sm">
           {isAdmin ? 'Управление пользователями и ролями' : 'Пользователи и статистика · Только чтение'}
         </p>
-        <p className="mt-1 text-xs text-text-muted dark:text-stone-400">Статус показывает, разрешён ли вход в аккаунт.</p>
+        <p className="mt-1 text-xs text-text-muted dark:text-stone-400">Последняя активность — время входа или обновления сессии.</p>
       </div>
 
       {statsError ? (
@@ -420,6 +442,11 @@ export const UsersPage: React.FC = () => {
               {(['', ...ROLES] as const).map((role) => <option key={role || 'all'} value={role}>{role || 'Все роли'}{roleCount(role) !== undefined ? ` · ${roleCount(role)}` : ''}</option>)}
             </NativeSelect>
           </div>
+          <div className="w-full sm:w-56">
+            <NativeSelect aria-label="Фильтр по последней активности" value={activity} onChange={(event) => setParam('activity', event.target.value)} className="h-11 sm:h-9">
+              {ACTIVITY_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+            </NativeSelect>
+          </div>
           <span className="hidden text-xs tabular-nums text-text-muted dark:text-stone-400 sm:block" role="status">{data ? `Найдено: ${data.totalCount.toLocaleString('ru')}` : 'Загрузка…'}</span>
         </div>
         <div className="hidden flex-wrap gap-1.5 lg:flex" aria-label="Фильтр по роли">
@@ -433,7 +460,7 @@ export const UsersPage: React.FC = () => {
 
       {isError ? <LoadError message={getErrorMessage(error, 'Не удалось загрузить пользователей')} onRetry={() => void refetch()} retrying={isFetching} /> : (
         <Card className="overflow-hidden">
-          <div aria-hidden="true" className={`hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)] items-center gap-4 border-b border-border-light bg-stone-50 px-4 py-2 text-xs text-text-muted dark:border-border-dark dark:bg-white/[0.03] dark:text-stone-400 xl:grid ${isAdmin ? 'pr-[76px]' : ''}`}>
+          <div aria-hidden="true" className={`hidden grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,2fr)] items-center gap-4 border-b border-border-light bg-stone-50 px-4 py-2 text-xs text-text-muted dark:border-border-dark dark:bg-white/[0.03] dark:text-stone-400 xl:grid ${isAdmin ? 'pr-[76px]' : ''}`}>
             <span>Пользователь</span><span>Роли и статус</span><span>Активность и регистрация</span>
           </div>
           {isLoading ? (
@@ -444,7 +471,7 @@ export const UsersPage: React.FC = () => {
             <ul aria-label="Пользователи" className="divide-y divide-border-light dark:divide-border-dark">
               {data.items.map((user) => (
                 <li key={user.id} className="px-3 py-2.5 sm:px-4">
-                  <div className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2 xl:items-center xl:gap-x-4 ${isAdmin ? 'xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)_44px]' : 'xl:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.6fr)]'}`}>
+                  <div className={`grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 gap-y-2 xl:items-center xl:gap-x-4 ${isAdmin ? 'xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,2fr)_44px]' : 'xl:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_minmax(0,2fr)]'}`}>
                     <div className="flex min-w-0 items-start gap-2.5">
                       <UserAvatar user={user} />
                       <div className="min-w-0">
@@ -464,10 +491,11 @@ export const UsersPage: React.FC = () => {
                       <UserRoles user={user} />
                       <span className={`inline-flex items-center gap-1 text-[11px] ${user.isBlocked ? 'text-red-600 dark:text-red-400' : 'text-text-muted dark:text-stone-400'}`}><span aria-hidden="true" className={`h-1.5 w-1.5 rounded-full ${user.isBlocked ? 'bg-red-500' : 'bg-emerald-500'}`} />{user.isBlocked ? 'Заблокирован' : 'Доступен'}</span>
                     </div>
-                    <dl className="col-span-2 grid min-w-0 grid-cols-[1fr_1fr_1.4fr] gap-2 text-xs xl:col-span-1 xl:col-start-3 xl:row-start-1">
+                    <dl className="col-span-2 grid min-w-0 grid-cols-2 gap-2 text-xs sm:grid-cols-[0.7fr_0.7fr_1fr_1.5fr] xl:col-span-1 xl:col-start-3 xl:row-start-1">
                       <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Чекины</dt><dd className="mt-0.5 font-medium tabular-nums">{user.checkInCount?.toLocaleString('ru') ?? '—'}</dd></div>
                       <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Кофейни</dt><dd className="mt-0.5 font-medium tabular-nums">{user.addedShopsCount?.toLocaleString('ru') ?? '—'}</dd></div>
                       <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Регистрация</dt><dd className="mt-0.5 tabular-nums">{formatUserDate(user.createdAtUtc)}</dd></div>
+                      <div><dt className="text-[11px] text-text-muted dark:text-stone-400">Последняя активность</dt><dd className="mt-0.5 tabular-nums"><LastActiveTime value={user.lastActiveAtUtc} /></dd></div>
                     </dl>
                     {user.about && <p className="col-span-full line-clamp-2 whitespace-pre-wrap text-xs text-text-muted [overflow-wrap:anywhere] dark:text-stone-400"><span className="font-medium">О себе: </span>{user.about}</p>}
                   </div>
@@ -491,6 +519,7 @@ export const UsersPage: React.FC = () => {
             <dl className="grid grid-cols-2 gap-3">
               <div><dt className="text-xs text-text-muted">Статус</dt><dd>{detailsUser.isBlocked ? 'Заблокирован' : 'Доступен'}</dd></div>
               <div><dt className="text-xs text-text-muted">Регистрация</dt><dd>{formatSessionDate(detailsUser.createdAtUtc)}</dd></div>
+              <div><dt className="text-xs text-text-muted">Последняя активность</dt><dd><LastActiveTime value={detailsUser.lastActiveAtUtc} /></dd></div>
               <div><dt className="text-xs text-text-muted">Чекины</dt><dd>{detailsUser.checkInCount ?? '—'}</dd></div>
               <div><dt className="text-xs text-text-muted">Добавленные кофейни</dt><dd>{detailsUser.addedShopsCount ?? '—'}</dd></div>
               <div className="col-span-2"><dt className="text-xs text-text-muted">О себе</dt><dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">{detailsUser.about || 'Не указано'}</dd></div>
