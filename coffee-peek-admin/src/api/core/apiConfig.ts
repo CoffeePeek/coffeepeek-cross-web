@@ -21,6 +21,8 @@ export const API_ENDPOINTS = {
   },
 
   ADMIN: {
+    OPERATIONAL_LOGS: '/api/admin/logs',
+    OPERATIONAL_LOGS_EXPORT: '/api/admin/logs/export',
     OWNERSHIP_CLAIMS: '/api/admin/ownership-claims',
     OWNERSHIP_CLAIM: (id: string) => `/api/admin/ownership-claims/${encodeURIComponent(id)}`,
     OWNERSHIP_DECISION: (id: string, decision: 'approve' | 'reject') => `/api/admin/ownership-claims/${encodeURIComponent(id)}/${decision}`,

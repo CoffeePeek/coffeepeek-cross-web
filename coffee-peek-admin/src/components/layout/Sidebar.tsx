@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AppWindow, BookOpen, ChevronDown, ChevronLeft, CircleGauge, Coffee,
-  Flag, History, LogOut, Map, MessageSquareText, Tags, Trophy, Upload, UserRound, Users,
+  Flag, History, Logs, LogOut, Map, MessageSquareText, Tags, Trophy, Upload, UserRound, Users,
 } from 'lucide-react';
 import { getModerationInsights, type AdminModerationQueueName } from '../../api/admin';
 import { getImportStats } from '../../api/import';
@@ -68,6 +68,7 @@ const NAV_SECTIONS: NavSection[] = [
     { path: '/leaderboard', label: 'Рейтинг активности', icon: Trophy, moderatorOnly: true },
   ] },
   { id: 'system', label: 'Система', collapsible: true, items: [
+    { path: '/logs', label: 'Логи сервисов', icon: Logs, adminOnly: true },
     { path: '/notifications', label: 'Уведомления', icon: MessageSquareText, adminOnly: true },
     { path: '/app-distribution', label: 'Релизы приложений', icon: AppWindow, adminOnly: true },
     { path: '/audit', label: 'Журнал модерации', icon: History, adminOnly: true },
