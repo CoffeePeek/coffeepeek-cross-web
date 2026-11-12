@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, ChevronDown, ChevronRight, Download, RefreshCw, Search } from 'lucide-react';
+import { AlertCircle, ChevronDown, ChevronRight, CircleCheck, Download, RefreshCw, Search } from 'lucide-react';
 import {
   downloadOperationalLogs,
   getOperationalLogs,
+  setOperationalLogResolution,
   type OperationalLogEntry,
+  type OperationalLogResolutionFilter,
   type OperationalLogSearch,
 } from '../api/operationalLogs';
 import { Button } from '../components/ui/Button';
@@ -14,10 +16,12 @@ import { Input } from '../components/ui/Input';
 import { LoadError } from '../components/ui/LoadError';
 import { NativeSelect } from '../components/ui/NativeSelect';
 import { Pagination } from '../components/ui/Pagination';
+import { useToast } from '../contexts/ToastContext';
 import { getErrorMessage } from '../utils/errors';
 
 const PAGE_SIZE = 50;
 const MAX_PAGE = 10_000 / PAGE_SIZE;
+const LOG_QUERY_KEY = ['admin', 'operational-logs'] as const;
 const SERVICES = [
   { value: '', label: 'Все сервисы' },
   { value: 'gateway', label: 'Шлюз' },
@@ -93,7 +97,12 @@ function groupErrors(entries: OperationalLogEntry[], sort: 'asc' | 'desc'): Erro
   });
 }
 
-function EntryDetails({ entry }: { entry: OperationalLogEntry }) {
+interface ResolutionActions {
+  onChange: (ids: string[], resolved: boolean) => void;
+  pending: boolean;
+}
+
+function EntryDetails({ entry, actions }: { entry: OperationalLogEntry; actions?: ResolutionActions }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -110,6 +119,15 @@ function EntryDetails({ entry }: { entry: OperationalLogEntry }) {
         <p className="min-w-0 flex-1 whitespace-pre-wrap break-words font-mono text-xs leading-5 text-text-main dark:text-stone-100">{entry.message}</p>
         <Button variant="secondary" size="sm" onClick={() => void copy()}>{copied ? 'Скопировано' : 'Копировать JSON'}</Button>
       </div>
+      {entry.id && <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs text-text-muted dark:text-stone-400">
+          {entry.resolution ? 'Решено ' + formatTime(entry.resolution.resolvedAtUtc) : 'Открыто'}
+        </span>
+        {actions && <Button variant="secondary" size="sm" disabled={actions.pending}
+          onClick={() => actions.onChange([entry.id!], !entry.resolution)}>
+          {entry.resolution ? 'Открыть снова' : 'Отметить решённой'}
+        </Button>}
+      </div>}
       <dl className="grid gap-x-6 gap-y-3 text-xs sm:grid-cols-2 xl:grid-cols-3">
         <div><dt className="text-text-muted dark:text-stone-400">Время</dt><dd className="mt-1 font-mono tabular-nums">{formatTime(entry.timestampUtc)}</dd></div>
         <div><dt className="text-text-muted dark:text-stone-400">Сервис</dt><dd className="mt-1">{serviceLabel(entry.service)}</dd></div>
@@ -144,15 +162,25 @@ function LogRow({ entry }: { entry: OperationalLogEntry }) {
   );
 }
 
-function ErrorRow({ group }: { group: ErrorGroup }) {
+function ErrorRow({ group, actions }: { group: ErrorGroup; actions: ResolutionActions }) {
   const [expanded, setExpanded] = useState(false);
   const { latest } = group;
+  const openIds: string[] = [];
+  const resolvedIds: string[] = [];
+  for (const entry of group.entries) {
+    if (!entry.id) continue;
+    if (entry.resolution) resolvedIds.push(entry.id);
+    else openIds.push(entry.id);
+  }
+  const allResolved = resolvedIds.length === group.entries.length;
   return (
     <li className="border-b border-border-light last:border-b-0 dark:border-border-dark">
       <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}
         className="grid w-full min-w-0 gap-3 px-4 py-4 text-left hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50 dark:hover:bg-white/5 sm:px-5 lg:grid-cols-[minmax(0,1fr)_130px_120px_100px] lg:items-center">
         <span className="flex min-w-0 items-start gap-3">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+          {allResolved
+            ? <CircleCheck aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            : <AlertCircle aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />}
           <span className="min-w-0">
             <span className="block break-words text-sm font-semibold text-text-main dark:text-white">{group.title}</span>
             {latest.message.trim() !== group.title && <span className="mt-0.5 block truncate text-xs text-text-muted dark:text-stone-400">{latest.message}</span>}
@@ -160,18 +188,28 @@ function ErrorRow({ group }: { group: ErrorGroup }) {
           </span>
         </span>
         <span className="pl-7 text-xs text-text-muted dark:text-stone-400 lg:pl-0"><span className="lg:hidden">Последняя: </span><time dateTime={latest.timestampUtc} className="tabular-nums">{formatTime(latest.timestampUtc)}</time></span>
-        <span className="pl-7 text-xs tabular-nums text-text-main dark:text-stone-100 lg:pl-0"><span className="lg:hidden">Записей: </span>{group.entries.length}</span>
+        <span className="pl-7 text-xs tabular-nums text-text-main dark:text-stone-100 lg:pl-0"><span className="lg:hidden">Записей: </span>{group.entries.length}{resolvedIds.length > 0 && (
+          <span className="mt-0.5 block text-[11px] text-emerald-700 dark:text-emerald-400">
+            {allResolved ? 'Решено' : 'Решено: ' + resolvedIds.length}
+          </span>
+        )}</span>
         <span className="flex items-center gap-1 pl-7 text-xs font-medium text-primary-dark dark:text-primary lg:pl-0">Подробнее {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</span>
       </button>
       {expanded && <div className="space-y-3 px-4 pb-4 sm:px-5">
         <p className="text-xs text-text-muted dark:text-stone-400">Записи этой группы на текущей странице</p>
-        {group.entries.length === 1 ? <EntryDetails entry={latest} /> : group.entries.map((entry, index) =>
+        {group.entries.length > 1 && <div className="flex flex-wrap gap-2">
+          {openIds.length > 0 && <Button variant="secondary" size="sm" disabled={actions.pending}
+            onClick={() => actions.onChange(openIds, true)}>Отметить решёнными ({openIds.length})</Button>}
+          {resolvedIds.length > 0 && <Button variant="secondary" size="sm" disabled={actions.pending}
+            onClick={() => actions.onChange(resolvedIds, false)}>Открыть снова ({resolvedIds.length})</Button>}
+        </div>}
+        {group.entries.length === 1 ? <EntryDetails entry={latest} actions={actions} /> : group.entries.map((entry, index) =>
           <details key={`${entry.timestampUtc}-${index}`} className="rounded-lg border border-border-light dark:border-border-dark">
             <summary className="cursor-pointer px-4 py-3 text-xs font-medium text-text-main marker:text-text-muted dark:text-stone-100">
               <time dateTime={entry.timestampUtc} className="font-mono tabular-nums">{formatTime(entry.timestampUtc)}</time>
               {entry.traceId && <span className="ml-3 break-all font-mono font-normal text-text-muted dark:text-stone-400">Trace: {entry.traceId}</span>}
             </summary>
-            <div className="px-3 pb-3"><EntryDetails entry={entry} /></div>
+            <div className="px-3 pb-3"><EntryDetails entry={entry} actions={actions} /></div>
           </details>,
         )}
       </div>}
@@ -181,10 +219,14 @@ function ErrorRow({ group }: { group: ErrorGroup }) {
 
 export function OperationalLogsPage() {
   const [params, setParams] = useSearchParams();
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const view: View = params.get('view') === 'errors' ? 'errors' : 'logs';
   const service = params.get('service') ?? '';
   const level = params.get('level') ?? '';
   const q = params.get('q') ?? '';
+  const status = params.get('resolution');
+  const resolution: OperationalLogResolutionFilter | 'all' = status === 'resolved' || status === 'all' ? status : 'open';
   const from = params.get('from') ?? '';
   const to = params.get('to') ?? '';
   const sort = params.get('sort') === 'asc' ? 'asc' : 'desc';
@@ -200,6 +242,7 @@ export function OperationalLogsPage() {
   const search: OperationalLogSearch = {
     service: service || undefined,
     level: view === 'errors' ? (level === 'Fatal' ? 'Fatal' : 'Error') : level || undefined,
+    resolution: view === 'errors' && resolution !== 'all' ? resolution : undefined,
     q: q || undefined,
     from: from || undefined,
     to: to || undefined,
@@ -208,11 +251,34 @@ export function OperationalLogsPage() {
     pageSize: PAGE_SIZE,
   };
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['admin', 'operational-logs', search],
+    queryKey: [...LOG_QUERY_KEY, search],
     queryFn: () => getOperationalLogs(search).then(response => response.data),
     enabled: !invalidRange,
   });
+  const { mutate: changeResolution, isPending: resolutionPending } = useMutation({
+    mutationFn: ({ ids, resolved }: { ids: string[]; resolved: boolean }) => setOperationalLogResolution(ids, resolved),
+    onSuccess: async (_, { resolved }) => {
+      await queryClient.invalidateQueries({ queryKey: LOG_QUERY_KEY });
+      showToast(resolved ? 'Ошибки отмечены решёнными' : 'Ошибки снова открыты', 'success');
+    },
+    onError: (failure) => showToast(getErrorMessage(failure, 'Не удалось изменить статус ошибки'), 'error'),
+  });
+  const actions: ResolutionActions = {
+    onChange: (ids, resolved) => changeResolution({ ids, resolved }),
+    pending: resolutionPending,
+  };
+
+  const lastPage = data ? Math.max(1, Math.min(data.totalPages, MAX_PAGE)) : null;
+  useEffect(() => {
+    if (!invalidRange && lastPage !== null && page > lastPage) {
+      const next = new URLSearchParams(params);
+      if (lastPage === 1) next.delete('page'); else next.set('page', String(lastPage));
+      setParams(next, { replace: true });
+    }
+  }, [invalidRange, lastPage, page, params, setParams]);
+
   const errorGroups = view === 'errors' ? groupErrors(data?.items ?? [], sort) : [];
+  const supportsResolution = data?.items.every(entry => Boolean(entry.id)) ?? true;
 
   const setFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params);
@@ -272,6 +338,20 @@ export function OperationalLogsPage() {
           </button>
         ))}
       </nav>
+
+      {view === 'errors' && supportsResolution && <div className="flex flex-wrap gap-2" role="group" aria-label="Статус ошибок">
+        {([
+          { value: 'open', label: 'Открытые' },
+          { value: 'resolved', label: 'Решённые' },
+          { value: 'all', label: 'Все' },
+        ] as const).map(option => (
+          <Button key={option.value} size="sm" variant={resolution === option.value ? 'primary' : 'secondary'}
+            aria-pressed={resolution === option.value}
+            onClick={() => setFilter('resolution', option.value === 'open' ? '' : option.value)}>
+            {option.label}
+          </Button>
+        ))}
+      </div>}
 
       <section className="space-y-3 rounded-xl border border-border-light bg-white p-4 shadow-sm dark:border-border-dark dark:bg-surface-dark" aria-label="Фильтры логов">
         <form onSubmit={applyQuery} className="flex flex-col gap-2 sm:flex-row">
@@ -351,7 +431,7 @@ export function OperationalLogsPage() {
           <div className="hidden grid-cols-[minmax(0,1fr)_130px_120px_100px] gap-3 border-b border-border-light bg-stone-50 px-5 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted dark:border-border-dark dark:bg-white/5 dark:text-stone-400 lg:grid">
             <span>Ошибка</span><span>Последняя</span><span>Записей на странице</span><span />
           </div>
-          <ol aria-label="Группы ошибок">{errorGroups.map(group => <ErrorRow key={group.key} group={group} />)}</ol>
+          <ol aria-label="Группы ошибок">{errorGroups.map(group => <ErrorRow key={group.key} group={group} actions={actions} />)}</ol>
         </>}
         {data && data.totalPages > 1 && <div className="border-t border-border-light px-5 py-3 dark:border-border-dark">
           <Pagination page={page} totalPages={Math.min(data.totalPages, MAX_PAGE)} onPageChange={next => setFilter('page', String(next))} />

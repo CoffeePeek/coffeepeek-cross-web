@@ -1,7 +1,14 @@
 import { API_ENDPOINTS, buildUrlWithParams } from './core/apiConfig';
 import { httpClient } from './core/httpClient';
 
+export type OperationalLogResolutionFilter = 'open' | 'resolved';
+
 export interface OperationalLogEntry {
+  id?: string | null;
+  resolution?: {
+    resolvedAtUtc: string;
+    resolvedBy: string;
+  } | null;
   timestampUtc: string;
   service: string;
   level: string;
@@ -24,6 +31,7 @@ export interface OperationalLogPage {
 export interface OperationalLogSearch {
   service?: string;
   level?: string;
+  resolution?: OperationalLogResolutionFilter;
   q?: string;
   from?: string;
   to?: string;
@@ -37,6 +45,10 @@ export function getOperationalLogs(search: OperationalLogSearch) {
     params: search,
     cache: 'no-store',
   });
+}
+
+export function setOperationalLogResolution(ids: string[], resolved: boolean) {
+  return httpClient.put<void>(API_ENDPOINTS.ADMIN.OPERATIONAL_LOG_RESOLUTION, { ids, resolved });
 }
 
 export function downloadOperationalLogs(search: OperationalLogSearch, format: 'csv' | 'jsonl') {
