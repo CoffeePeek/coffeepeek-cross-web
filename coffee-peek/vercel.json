@@ -14,11 +14,6 @@
       "permanent": true
     },
     {
-      "source": "/cities/:slug",
-      "destination": "/shops?citySlug=:slug",
-      "permanent": true
-    },
-    {
       "source": "/coffee-zones/:slug",
       "destination": "/map",
       "permanent": true
@@ -41,6 +36,9 @@
     {"source": "/coffees/:slug", "destination": "/api/public-page?page=address&kind=coffees&segment=:slug&path=/coffees/:slug"},
     {"source": "/check-ins/:checkInId", "destination": "/api/public-page?page=check-in&id=:checkInId"},
     { "source": "/shops", "destination": "/api/public-page?page=shops" },
+    { "source": "/cities/minsk", "destination": "/api/public-page?page=minsk" },
+    { "source": "/cities/minsk/:topic", "destination": "/api/public-page?page=minsk-topic&topic=:topic" },
+    { "source": "/cities/:slug", "destination": "/api/public-page?page=city-redirect&slug=:slug" },
     { "source": "/shops/:shopId", "destination": "/api/public-page?page=shop&shopId=:shopId&path=/shops/:shopId" },
     { "source": "/download/android", "destination": "https://api.coffeepeek.by/download/android" },
     { "source": "/download/apk", "destination": "https://api.coffeepeek.by/download/apk" },

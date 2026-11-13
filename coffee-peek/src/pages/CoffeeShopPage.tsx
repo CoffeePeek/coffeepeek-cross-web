@@ -29,7 +29,8 @@ import { createCheckInFlow } from '../lib/checkInAnalytics';
 import { distanceKm, formatDistance } from '../utils/distance';
 import { getDeviceLocation, getLocationLifetime } from '../utils/geolocation';
 import { getPriceRangeTier } from '../utils/priceRange';
-import { formatDayOfWeekShort, getCurrentDayOfWeek, isShopOpenNow, toLocalSchedules } from '../utils/shopUtils';
+import { buildShopMetadata, getShopCollectionLinks, getShopLocalWeekday, getShopOpeningHours, getShopUtcOffsetMinutes } from '../seo/shopMetadata.mjs';
+import { formatDayOfWeekShort, getCurrentStatus, isShopOpenNow, toLocalSchedules, utcTimeToLocal } from '../utils/shopUtils';
 import { getThemeClasses } from '../utils/theme';
 import {
   ArrowLeft, CaretDown, Check, Clock, Heart, MapPin,
@@ -63,7 +64,8 @@ const CoffeeShopPage: React.FC = () => {
   const [showReportModal, setShowReportModal] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
-  usePageTitle(shop?.name || 'Кофейня', { description: shop?.description, canonicalPath: shop?.publicAddress?.canonicalPath });
+  const metadata = shop ? buildShopMetadata(shop) : undefined;
+  usePageTitle(metadata?.title || 'Кофейня', { description: metadata?.description, canonicalPath: shop?.publicAddress?.canonicalPath });
   useEntityDetailAnalytics('coffee_shop', !isLoading && !error && shop ? shop.id : undefined);
   const directionsRef = useFeatureExposure<HTMLAnchorElement>('directions', 'shop_detail');
   const checkInRef = useFeatureExposure<HTMLButtonElement>('check_in', 'shop_detail');
@@ -121,9 +123,17 @@ const CoffeeShopPage: React.FC = () => {
   const checkInsTotalCount = shop.checkInCount ?? checkIns.length;
   const shopIsFavorite = favorite === true;
   const openNow = isShopOpenNow(shop);
-  const localSchedules = toLocalSchedules(shop.schedules);
-  const todaySchedule = localSchedules.find(schedule => schedule.dayOfWeek === getCurrentDayOfWeek());
-  const statusTime = openNow === undefined ? undefined : openNow ? todaySchedule?.closeTime : todaySchedule?.openTime;
+  const status = getCurrentStatus(shop);
+  const shopOffset = getShopUtcOffsetMinutes(shop);
+  const currentDay = getShopLocalWeekday(shop);
+  const localSchedules = shopOffset !== undefined
+    ? getShopOpeningHours(shop).map(({ day, opens, closes }) => ({ dayOfWeek: day, openTime: opens, closeTime: closes }))
+    : toLocalSchedules(shop.schedules);
+  const collectionLinks = getShopCollectionLinks(shop);
+  const todaySchedule = localSchedules.find(schedule => schedule.dayOfWeek === currentDay);
+  const statusTime = openNow === undefined ? undefined : status?.isOpen && status.closeTime
+    ? utcTimeToLocal(0, status.closeTime, shopOffset === undefined ? undefined : -shopOffset).time
+    : openNow ? todaySchedule?.closeTime : todaySchedule?.openTime;
   const priceTier = getPriceRangeTier(shop.priceRange);
   const latitude = shop.location?.latitude;
   const longitude = shop.location?.longitude;
@@ -206,7 +216,15 @@ const CoffeeShopPage: React.FC = () => {
 
         {shop.description && <section><SectionTitle colors={colors}>О кофейне</SectionTitle><div className="rounded-[24px] border p-5" style={{ background: colors.surface, borderColor: colors.border }}><p className="leading-relaxed" style={{ color: colors.muted }}>{shop.description}</p></div></section>}
         <ShopMenuSection menu={shop.menu ?? null} textMain={textMain} textMuted={textMuted} cardBg={cardBg} borderColor={borderColor} />
-        {!!shop.schedules?.length && <HoursCard shop={shop} schedules={localSchedules} colors={colors} />}
+        {!!localSchedules.length && <HoursCard shop={shop} schedules={localSchedules} currentDay={currentDay} colors={colors} />}
+
+        {!!collectionLinks.length && <nav aria-label="Подборки кофеен" className="flex flex-wrap gap-x-5 gap-y-1">
+          {collectionLinks.map(({ path, heading }) => (
+            <a key={path} href={path} className={`${textMain} inline-flex min-h-11 items-center rounded-lg font-semibold underline underline-offset-4 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary`}>
+              {heading}
+            </a>
+          ))}
+        </nav>}
 
         {!!shop.roasters?.length && <section ref={roastersRef}><SectionTitle colors={colors}>Обжарщики</SectionTitle><div className="overflow-hidden rounded-[24px] border" style={{ background: colors.surface, borderColor: colors.border }}>{shop.roasters.map((roaster, index) => <PublicEntityLink onClickCapture={() => captureAnalyticsEvent('shop_content_interacted', { section: 'roasters', action: 'select' })} key={roaster.id} kind="roasters" entityId={roaster.id} address={roaster.publicAddress} className="flex min-h-[72px] w-full items-center gap-4 px-5 py-3 text-left" style={{ borderTop: index ? `1px solid ${colors.border}` : undefined, color: colors.text }}>{roaster.photoUrl ? <img src={roaster.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" /> : <span className="flex h-12 w-12 items-center justify-center rounded-full bg-stone-100 font-bold text-stone-700">{roaster.name[0]}</span>}<span className="flex-1 font-semibold">{roaster.name}</span><AppIcon name="chevron_right" size={20} color={colors.muted} /></PublicEntityLink>)}</div></section>}
 
@@ -238,20 +256,25 @@ const SectionTitle: React.FC<{ colors: DetailColors; children: React.ReactNode }
   <h2 className="mb-3 text-2xl font-extrabold" style={{ color: colors.text }}>{children}</h2>
 );
 
-const HoursCard: React.FC<{ shop: DetailedCoffeeShop; schedules: ReturnType<typeof toLocalSchedules>; colors: DetailColors }> = ({ shop, schedules, colors }) => {
+const HoursCard: React.FC<{
+  shop: DetailedCoffeeShop;
+  schedules: ReturnType<typeof toLocalSchedules>;
+  currentDay: number;
+  colors: DetailColors;
+}> = ({ shop, schedules, currentDay, colors }) => {
   const [open, setOpen] = useState(false);
-  const exposureRef = useFeatureExposure<HTMLButtonElement>('shop_hours', 'shop_detail');
-  const currentDay = getCurrentDayOfWeek();
-  const today = schedules.find(schedule => schedule.dayOfWeek === currentDay);
+  const today = schedules.filter(schedule => schedule.dayOfWeek === currentDay);
+  const formatRange = ({ openTime, closeTime }: (typeof schedules)[number]) =>
+    openTime && closeTime ? `${openTime}–${closeTime}` : 'Закрыто';
   return (
     <section className="overflow-hidden rounded-[24px] border" style={{ background: colors.surface, borderColor: colors.border }}>
-      <button ref={exposureRef} type="button" onClick={() => { captureAnalyticsEvent('shop_content_interacted', { section: 'hours', action: open ? 'close' : 'open' }); setOpen(!open); }} aria-expanded={open} className="flex min-h-[76px] w-full items-center gap-4 border-0 bg-transparent px-5 text-left" style={{ color: colors.text }}>
+      <button type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} className="flex min-h-[76px] w-full items-center gap-4 border-0 bg-transparent px-5 text-left" style={{ color: colors.text }}>
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${colors.gold}18`, color: colors.gold }}><Clock size={24} /></span>
         <strong className="flex-1 text-lg">Часы работы</strong>
-        {!open && <span className="text-sm tabular-nums" style={{ color: colors.muted }}>{today?.openTime && today?.closeTime ? `${today.openTime}–${today.closeTime}` : shop.isOpen ? 'Открыто' : 'Закрыто'}</span>}
+        {!open && <span className="text-sm tabular-nums" style={{ color: colors.muted }}>{today.length ? today.map(formatRange).join(', ') : shop.isOpen ? 'Открыто' : 'Закрыто'}</span>}
         <CaretDown size={18} className={open ? 'rotate-180' : ''} />
       </button>
-      {open && <div className="grid grid-cols-[40px_1fr] gap-y-2 border-t py-4 pl-[84px] pr-5 text-sm" style={{ borderColor: colors.border }}>{schedules.map(schedule => <React.Fragment key={schedule.dayOfWeek}><span style={{ color: schedule.dayOfWeek === currentDay ? colors.gold : colors.muted }}>{formatDayOfWeekShort(schedule.dayOfWeek)}</span><span className="tabular-nums" style={{ color: colors.text }}>{schedule.openTime && schedule.closeTime ? `${schedule.openTime}–${schedule.closeTime}` : 'Закрыто'}</span></React.Fragment>)}</div>}
+      {open && <div className="grid grid-cols-[40px_1fr] gap-y-2 border-t py-4 pl-[84px] pr-5 text-sm" style={{ borderColor: colors.border }}>{schedules.map(schedule => <React.Fragment key={`${schedule.dayOfWeek}-${schedule.openTime}-${schedule.closeTime}`}><span style={{ color: schedule.dayOfWeek === currentDay ? colors.gold : colors.muted }}>{formatDayOfWeekShort(schedule.dayOfWeek)}</span><span className="tabular-nums" style={{ color: colors.text }}>{formatRange(schedule)}</span></React.Fragment>)}</div>}
     </section>
   );
 };

@@ -1,0 +1,49 @@
+{
+  "slug": "minsk",
+  "path": "/cities/minsk",
+  "heading": "Кофейни Минска",
+  "title": "Кофейни Минска — адреса, меню и оценки",
+  "description": "Кофейни Минска с адресами, фото и оценками. Откройте карточку заведения, чтобы посмотреть меню и чекины посетителей.",
+  "pageSize": 24,
+  "collections": {
+    "specialty": {
+      "path": "/cities/minsk/specialty",
+      "heading": "Спешелти-кофейни Минска",
+      "title": "Спешелти-кофейни Минска — адреса и меню",
+      "description": "Спешелти-кофейни в Минске с адресами, фотографиями и меню. Смотрите, где попробовать фильтр-кофе и взять зерно домой.",
+      "guide": "Если хотите попробовать фильтр, спросите у бариста, какое зерно сейчас заваривают и можно ли взять его домой. В карточках CoffeePeek собраны способы заваривания, обжарщики и цены, где они указаны в меню.",
+      "filters": { "type": "specialty" }
+    },
+    "laptop-friendly": {
+      "path": "/cities/minsk/laptop-friendly",
+      "heading": "Кофейни Минска, где можно поработать с ноутбуком",
+      "title": "Где поработать с ноутбуком в Минске — кофейни",
+      "description": "Минские кофейни с отметкой Laptop Friendly. Сравните адреса, фото и оценки, чтобы выбрать место для работы.",
+      "guide": "Отметка Laptop Friendly означает, что здесь можно прийти с ноутбуком. Если нужен видеозвонок или планируете остаться надолго, уточните у конкретной кофейни наличие Wi‑Fi, розеток и правила для работы в часы пик.",
+      "filters": { "tags": ["laptop-friendly"] },
+      "notes": {
+        "alt-speciality-coffee-ulitsa-leonida-levina-1": {
+          "details": ["В карточке заведения указан Wi‑Fi."],
+          "source": {
+            "url": "https://yandex.by/maps/org/alt_specialty_coffee/77386656176/",
+            "label": "Alt speciality.coffee на Яндекс Картах"
+          }
+        },
+        "404-error-prosp-dzerzhinskogo-34": {
+          "details": ["В карточке заведения указан Wi‑Fi."],
+          "source": {
+            "url": "https://yandex.by/maps/org/404_error/112780937919/",
+            "label": "404 Error на Яндекс Картах"
+          }
+        },
+        "prostranstvo-ul-belgradskaya-4": {
+          "details": ["В карточке указаны Wi‑Fi и коворкинг."],
+          "source": {
+            "url": "https://yandex.by/maps/org/prostranstvo/164667538425/",
+            "label": "Пространство на Яндекс Картах"
+          }
+        }
+      }
+    }
+  }
+}

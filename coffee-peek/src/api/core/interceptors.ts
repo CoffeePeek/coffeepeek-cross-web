@@ -355,43 +355,21 @@ function normalizeCoffeeShopData(shop: BackendShopData | unknown): Record<string
 
   // Нормализуем schedules
   if ('schedules' in shopData && Array.isArray(shopData.schedules)) {
-    normalized.schedules = shopData.schedules
-      .filter((schedule: BackendSchedule) => {
-        // Пропускаем закрытые дни
-        if (schedule.isClosed === true) return false;
-        // Проверяем наличие интервалов
-        if (schedule.intervals && Array.isArray(schedule.intervals) && schedule.intervals.length > 0) {
-          return true;
-        }
-        // Поддерживаем старый формат с прямыми полями
-        return schedule.openTime && schedule.closeTime;
-      })
-      .map((schedule: BackendSchedule) => {
-        const dayOfWeek = normalizeDayOfWeek(schedule.dayOfWeek);
-        if (dayOfWeek === null) return null;
-        if (schedule.intervals && Array.isArray(schedule.intervals) && schedule.intervals.length > 0) {
-          // Новый формат с intervals
-          const interval = schedule.intervals[0];
-          // Преобразуем "HH:mm:ss" в "HH:mm" для фронтенда
-          const openTime = interval.openTime ? interval.openTime.substring(0, 5) : '';
-          const closeTime = interval.closeTime ? interval.closeTime.substring(0, 5) : '';
-          return {
-            dayOfWeek,
-            openTime,
-            closeTime,
-          };
-        } else {
-          // Старый формат с прямыми полями
-          const openTime = schedule.openTime ? schedule.openTime.substring(0, 5) : '';
-          const closeTime = schedule.closeTime ? schedule.closeTime.substring(0, 5) : '';
-          return {
-            dayOfWeek,
-            openTime,
-            closeTime,
-          };
-        }
-      })
-      .filter((s): s is { dayOfWeek: number; openTime: string; closeTime: string } => s !== null);
+    normalized.schedules = shopData.schedules.flatMap((schedule: BackendSchedule) => {
+      if (schedule.isClosed) return [];
+      const nested = Array.isArray(schedule.intervals);
+      const rawDay = String(schedule.dayOfWeek).trim();
+      const dayOfWeek = nested && /^[0-6]$/.test(rawDay)
+        ? (Number(rawDay) + 6) % 7 // System.DayOfWeek starts with Sunday.
+        : normalizeDayOfWeek(schedule.dayOfWeek);
+      if (dayOfWeek === null) return [];
+      const intervals = schedule.intervals ?? [schedule];
+      return intervals.flatMap(({ openTime, closeTime }) => openTime && closeTime ? [{
+        dayOfWeek,
+        openTime: openTime.slice(0, 5),
+        closeTime: closeTime.slice(0, 5),
+      }] : []);
+    });
   }
 
   if ('checkIns' in shop && Array.isArray(shop.checkIns)) {

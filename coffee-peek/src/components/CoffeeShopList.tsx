@@ -5,6 +5,7 @@ import { ArrowsOut, ArrowsIn } from '@phosphor-icons/react';
 import { getRoasterCards, searchShops } from '../api/discovery';
 import { applyCriteria, discoveryRoasters, isDiscoveryFiltering, normalizeQuery, readSearchState, validateSearch, writeSearchState, type ShopFilters } from '../utils/catalogSearch';
 import { useTheme } from '../contexts/ThemeContext';
+import minsk from '../constants/minskCatalog.json';
 import { useUser } from '../contexts/UserContext';
 import { getThemeColors } from '../constants/colors';
 import { getCatalogScope } from '../lib/catalogSession';
@@ -197,6 +198,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
       </div>
       <div ref={content} className="discovery-content" inert={mapVisibleExpanded} aria-hidden={mapVisibleExpanded || undefined}>
         <div className="discovery-results" aria-live="polite" aria-busy={query.isFetching || roasters.isFetching}>
+          {location.pathname === '/shops' && <a href={minsk.path} className="inline-flex min-h-11 items-center self-start font-semibold underline underline-offset-4 hover:text-primary">{minsk.heading}</a>}
           {section !== 'shops' && (localRoasters.length > 0 || roasters.isPending && enabled) && <section aria-label="Обжарщики" className="discovery-roasters">
             {sectionHeading('Обжарщики', localRoasters.length, 'roasters')}
             <div className="discovery-cards discovery-cards--roasters" role="group" aria-label="Карточки обжарщиков" tabIndex={overview && !desktop ? 0 : undefined}>{roasters.isPending && enabled ? <ShopCardSkeleton variant="roaster" count={columns} /> : (overview && desktop ? localRoasters.slice(0, columns) : localRoasters).map((roaster, index) => <RoasterCatalogCard key={roaster.address.slug ?? index} roaster={roaster} analytics={{ ...analytics, position: index + 1 }} />)}</div>

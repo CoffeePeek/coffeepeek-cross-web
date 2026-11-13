@@ -33,7 +33,7 @@ test('sitemap includes every catalog page, unique canonical URLs and escaped XML
     assert.match(response.headers.get('Cache-Control'), /s-maxage=300/);
     const xml = await response.text();
     assert.match(xml, /^<\?xml version="1.0" encoding="UTF-8"\?>/);
-    for (const path of ['/', '/shops', '/coffees', '/roasters', '/coffee-shops/shop-1', '/coffee-shops/shop-2', '/coffees/coffee-1', '/coffees/coffee-2']) {
+    for (const path of ['/', '/shops', '/cities/minsk', '/cities/minsk/specialty', '/cities/minsk/laptop-friendly', '/coffees', '/roasters', '/coffee-shops/shop-1', '/coffee-shops/shop-2', '/coffees/coffee-1', '/coffees/coffee-2']) {
       assert.ok(xml.includes(`<loc>https://coffeepeek.by${path}</loc>`), path);
     }
     assert.equal(xml.match(/roast&amp;coffee/g)?.length, 1);
@@ -72,6 +72,6 @@ test('empty public catalogs still produce the public section URLs', async () => 
   await withFetch(async input => Response.json({ isSuccess: true, data: String(input).endsWith('/api/Roasters') ? [] : { totalPages: 0, items: [] } }), async () => {
     const response = await handler.fetch();
     assert.equal(response.status, 200);
-    assert.equal((await response.text()).match(/<loc>/g)?.length, 9);
+    assert.equal((await response.text()).match(/<loc>/g)?.length, 12);
   });
 });

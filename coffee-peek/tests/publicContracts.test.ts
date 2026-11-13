@@ -78,6 +78,24 @@ test('catalog arrays map supplied slugs without modifying address metadata or se
     items: [{ id: 'request-service-id', shopId: '' }], totalItems: 1,
   });
 });
+test('shop detail normalization preserves all UTC intervals and respects .NET weekday numbering', () => {
+  const result = normalizeResponseData<{ schedules: unknown[] }>({
+    name: 'Coffee',
+    schedules: [
+      { dayOfWeek: 1, isClosed: false, intervals: [
+        { openTime: '05:00:00', closeTime: '09:00:00' },
+        { openTime: '11:00:00', closeTime: '20:00:00' },
+      ] },
+      { dayOfWeek: 'Tuesday', isClosed: true, intervals: [{ openTime: '05:00:00', closeTime: '20:00:00' }] },
+      { dayOfWeek: 6, openTime: '08:00', closeTime: '18:00' },
+    ],
+  });
+  expect(result.schedules).toEqual([
+    { dayOfWeek: 0, openTime: '05:00', closeTime: '09:00' },
+    { dayOfWeek: 0, openTime: '11:00', closeTime: '20:00' },
+    { dayOfWeek: 6, openTime: '08:00', closeTime: '18:00' },
+  ]);
+});
 test('map markers and zones use addresses without losing clusters', async () => {
   jest.mocked(httpClient.get).mockResolvedValue({ data: {
     shops: [{ address, latitude: 53, longitude: 27, title: 'Coffee', type: 'Specialty', primaryZone: author }],

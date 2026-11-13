@@ -8,6 +8,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { AuthenticatedLayout } from '../components/layouts/AuthenticatedLayout';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import minsk from '../constants/minskCatalog.json';
 import { APP_DOWNLOAD_PATH } from '../utils/appDownload';
 
 // Lazy load pages; retry via full reload if a deploy invalidated hashed chunks
@@ -16,6 +17,7 @@ const AppDownloadPage = lazyWithRetry(() => import('../pages/AppDownloadPage'));
 const LoginPage = lazyWithRetry(() => import('../pages/LoginPage'));
 const RegisterPage = lazyWithRetry(() => import('../pages/RegisterPage'));
 const CoffeeShopListPage = lazyWithRetry(() => import('../pages/CoffeeShopListPage'));
+const MinskCatalogPage = lazyWithRetry(() => import('../pages/MinskCatalogPage'));
 const CatalogSearchPage = lazyWithRetry(() => import('../pages/CatalogSearchPage'));
 const CoffeeDetailPage = lazyWithRetry(() => import('../pages/CoffeeDetailPage'));
 const CoffeeShopDetailPage = lazyWithRetry(() => import('../pages/CoffeeShopPage'));
@@ -112,6 +114,9 @@ export const AppRoutes: React.FC = () => {
         <Route path="/download" element={<Navigate to="/settings" replace />} />
 
         <Route path="/coffee-shops/:shopId" element={<AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CoffeeShopDetailPage /></PublicAddressPage></AuthenticatedLayout>} />
+        <Route path={minsk.path} caseSensitive element={<AuthenticatedLayout><MinskCatalogPage /></AuthenticatedLayout>} />
+        <Route path={minsk.collections.specialty.path} caseSensitive element={<AuthenticatedLayout><MinskCatalogPage collection="specialty" /></AuthenticatedLayout>} />
+        <Route path={minsk.collections['laptop-friendly'].path} caseSensitive element={<AuthenticatedLayout><MinskCatalogPage collection="laptop-friendly" /></AuthenticatedLayout>} />
         <Route path="/cities/:slug" element={<LegacyCityRedirect />} />
         <Route path="/coffee-zones/:slug" element={<Navigate to="/map" replace />} />
         <Route path="/coffee-shops/:shopId/check-ins/new" element={<ProtectedRoute><AuthenticatedLayout><PublicAddressPage kind="shops" param="shopId"><CheckInEditorPage /></PublicAddressPage></AuthenticatedLayout></ProtectedRoute>} />

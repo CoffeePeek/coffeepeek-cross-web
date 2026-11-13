@@ -16,7 +16,9 @@ async function withMock(body, run, status = 200) {
     if (url.endsWith('/spa-shell.html')) return new Response(shell);
     calls.push({ url, init });
     assert.doesNotMatch(url, /public-address/);
-    return new Response(JSON.stringify(body), { status, headers: { 'Retry-After': '30' } });
+    return typeof body === 'function'
+      ? body(new URL(url), init)
+      : new Response(JSON.stringify(body), { status, headers: { 'Retry-After': '30' } });
   };
   try { await run(calls); } finally { globalThis.fetch = original; }
 }
@@ -29,7 +31,7 @@ test('home HTML contains useful metadata and crawlable navigation without JavaSc
   assert.match(head, /name="twitter:card" content="summary_large_image"/);
   assert.match(head, /"@type":"WebSite"/);
   assert.match(html, /<div id="root"><div id="server-rendered-content"/);
-  for (const path of ['/shops', '/map', '/coffees', '/roasters', '/feed']) assert.ok(html.includes(`href="${path}"`));
+  for (const path of ['/shops', '/map', '/coffees', '/roasters', '/feed', '/cities/minsk']) assert.ok(html.includes(`href="${path}"`));
   assert.doesNotMatch(html, /\.remove\(\)/);
 });
 test('catalog uses inline addresses for links and SEO, in one request', async () => {
@@ -49,15 +51,123 @@ test('catalog uses inline addresses for links and SEO, in one request', async ()
     assert.deepEqual(JSON.parse(calls[0].init.body), { filters: {}, page: 1, pageSize: 48 });
   });
 });
+test('Minsk serves city-filtered HTML, crawlable pagination and a safe client snapshot', async () => {
+  const name = 'Кофе </script>';
+  await withMock({ isSuccess: true, data: { items: [{ ...shop, name }], totalPages: 2 } }, async calls => {
+    const base = 'https://coffeepeek.by/api/public-page?page=minsk';
+    const first = await renderPublicPage(new Request(base));
+    assert.equal(first.status, 200);
+    assert.match(first.html, /<h1[^>]*>Кофейни Минска<\/h1>/);
+    assert.match(first.html, /rel="canonical" href="https:\/\/coffeepeek.by\/cities\/minsk"/);
+    assert.match(first.html, /href="\/cities\/minsk\?p=2"/);
+    assert.match(first.html, /href="\/cities\/minsk\/specialty"/);
+    assert.match(first.html, /href="\/cities\/minsk\/laptop-friendly"/);
+    assert.match(first.html, /href="\/coffee-shops\/1801"/);
+    assert.match(first.html, /пр\. Независимости 95/);
+    assert.doesNotMatch(first.html, /server-rendered-content'\)\?\.remove/);
+    const snapshot = first.html.match(/id="minsk-catalog-data" type="application\/json">(.*?)<\/script>/)?.[1];
+    assert.equal(JSON.parse(snapshot).shops[0].name, name);
+
+    const second = await renderPublicPage(new Request(base + '&p=2'));
+    assert.equal(second.status, 200);
+    assert.match(second.html, /rel="canonical" href="https:\/\/coffeepeek.by\/cities\/minsk\?p=2"/);
+    assert.match(second.html, /href="\/cities\/minsk"[^>]*>Назад/);
+    assert.equal((await renderPublicPage(new Request(base + '&p=3'))).status, 404);
+    assert.equal((await renderPublicPage(new Request(base + '&p=0'))).status, 404);
+    assert.deepEqual(calls.map(call => JSON.parse(call.init.body)), [
+      { filters: { city: 'minsk' }, sort: 'name_asc', page: 1, pageSize: 24 },
+      { filters: { city: 'minsk' }, sort: 'name_asc', page: 2, pageSize: 24 },
+      { filters: { city: 'minsk' }, sort: 'name_asc', page: 3, pageSize: 24 },
+    ]);
+  });
+});
+test('specialty collection uses the public search and renders verified shop details', async () => {
+  const slug = '26-ulyanovskaya-ulitsa-30';
+  const address = { slug, canonicalPath: `/coffee-shops/${slug}` };
+  const specialty = { ...shop, address, name: '26', city: { slug: 'minsk' },
+    brewMethods: [{ name: 'Hario V60' }], roasters: [{ name: 'River Roasters' }],
+  };
+  await withMock((url, options) => {
+    if (url.pathname.endsWith(`/by-slug/${slug}`)) {
+      return Response.json({ isSuccess: true, data: specialty });
+    }
+    assert.equal(url.pathname, '/api/v1/coffee-shops/search');
+    assert.equal(options.method, 'POST');
+    assert.deepEqual(JSON.parse(options.body).filters, { city: 'minsk', type: 'specialty' });
+    return Response.json({ isSuccess: true, data: { items: [{ ...specialty, addressLine: 'Ульяновская улица, 30' }], totalPages: 2 } });
+  }, async calls => {
+    const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=minsk-topic&topic=specialty&p=2'));
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /rel="canonical" href="https:\/\/coffeepeek.by\/cities\/minsk\/specialty\?p=2"/);
+    assert.match(html, /Спешелти-кофейни Минска/);
+    assert.match(html, /Ульяновская улица, 30/);
+    assert.match(html, /Способы заваривания: Hario V60/);
+    assert.match(html, /Обжарщики: River Roasters/);
+    assert.match(html, /Капучино — 7 BYN/);
+    assert.match(html, /href="\/cities\/minsk\/specialty"[^>]*>Назад/);
+    assert.equal(calls.length, 2);
+  });
+});
+test('laptop collection limits notes to sourced branch details', async () => {
+  const slug = 'prostranstvo-ul-belgradskaya-4';
+  await withMock((url, options) => {
+    assert.equal(url.pathname, '/api/v1/coffee-shops/search');
+    assert.deepEqual(JSON.parse(options.body).filters, { city: 'minsk', tags: ['laptop-friendly'] });
+    return Response.json({ isSuccess: true, data: { items: [
+      { ...shop, address: { slug, canonicalPath: `/coffee-shops/${slug}` }, name: 'Пространство' },
+      shop,
+    ], totalPages: 1 } });
+  }, async calls => {
+    const base = 'https://coffeepeek.by/api/public-page?page=minsk-topic&topic=';
+    const response = await handler.fetch(new Request(base + 'laptop-friendly'));
+    const html = await response.text();
+    assert.equal(response.status, 200);
+    assert.match(html, /href="https:\/\/yandex.by\/maps\/org\/prostranstvo\/164667538425\//);
+    const snapshot = JSON.parse(html.match(/id="minsk-catalog-data" type="application\/json">(.*?)<\/script>/)[1]);
+    assert.match(snapshot.shops[0].details.join(' '), /Wi[‑-]Fi/i);
+    assert.equal(snapshot.shops[1].details, undefined);
+    assert.equal((await handler.fetch(new Request(base + 'unknown'))).status, 404);
+    assert.equal(calls.length, 1);
+  });
+});
+test('other city addresses continue redirecting to the existing catalog filter', async () => {
+  await withMock(null, async calls => {
+    const result = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?page=city-redirect&slug=brest'));
+    assert.equal(result.status, 308);
+    assert.equal(result.headers.get('Location'), '/shops?citySlug=brest');
+    assert.equal(calls.length, 0);
+  });
+});
 test('shop details are directly in data; menu, photos and structured metadata render', async () => {
-  await withMock({ isSuccess: true, data: shop }, async calls => {
+  const detail = { ...shop, description: '', city: { slug: 'minsk' }, type: 'Specialty',
+    tags: [{ slug: 'laptop-friendly' }],
+    menu: { ...shop.menu, items: [...shop.menu.items, { nameRu: 'Неподтверждённый напиток', availability: 'Unknown' }] },
+    schedules: [
+      { dayOfWeek: 'Monday', intervals: [{ openTime: '05:00:00', closeTime: '20:00:00' }] },
+      { dayOfWeek: 'Tuesday', isClosed: true, intervals: [] },
+    ],
+  };
+  await withMock({ isSuccess: true, data: detail }, async calls => {
     const result = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shop&shopId=1801'));
     assert.equal(result.status, 200);
     assert.match(result.html, /Капучино — 7 BYN/);
+    assert.doesNotMatch(result.html, /Неподтверждённый напиток/);
     assert.match(result.html, /property="og:image"/);
     assert.match(result.html, /CafeOrCoffeeShop/);
-    assert.match(result.html, /1801 кофе — CoffeePeek/);
-    assert.match(result.html.split('</head>')[0], /"@type":"CafeOrCoffeeShop"/);
+    assert.match(result.html, /<title>CoffeePeek \| 1801 кофе — Минск, пр\. Независимости 95<\/title>/);
+    assert.match(result.html, /meta name="description" content="[^"]*Оценка посетителей: 4,9 из 5/);
+    assert.match(result.html, /<h2>Часы работы<\/h2>/);
+    assert.match(result.html, /<time datetime="08:00">08:00<\/time>–<time datetime="23:00">23:00<\/time>/);
+    assert.match(result.html, /href="\/cities\/minsk\/specialty"/);
+    assert.match(result.html, /href="\/cities\/minsk\/laptop-friendly"/);
+    const schema = JSON.parse(result.html.match(/type="application\/ld\+json">(.*?)<\/script>/)[1]);
+    assert.equal(schema.address.addressLocality, 'Минск');
+    assert.equal(schema.address.addressCountry, 'BY');
+    assert.equal(schema.aggregateRating, undefined);
+    assert.deepEqual(schema.openingHoursSpecification, [
+      { '@type': 'OpeningHoursSpecification', dayOfWeek: 'Monday', opens: '08:00', closes: '23:00' },
+    ]);
     assert.equal(calls.length, 1);
   });
 });

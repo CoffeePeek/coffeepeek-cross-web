@@ -8,6 +8,7 @@ import { useUser } from '../contexts/UserContext';
 import { brand, card, dark, light, getThemeColors, shadow } from '../design-system';
 import { getCatalogScope } from '../lib/catalogSession';
 import { usePageTitle } from '../hooks/usePageTitle';
+import minsk from '../constants/minskCatalog.json';
 import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
 import { APP_DOWNLOAD_URL } from '../utils/appDownload';
 import { AppIcon } from '../components/icons';
@@ -116,7 +117,10 @@ const LandingPage: React.FC = () => {
                 <li key={text} className="flex items-start gap-3"><AppIcon name="check" size={20} color={brand.primary} className="shrink-0" /><span>{text}</span></li>
               ))}
             </ul>
-            <Link to="/map" className="landing-link">Исследовать карту <AppIcon name="arrow_forward" size={18} /></Link>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/map" className="landing-link">Исследовать карту <AppIcon name="arrow_forward" size={18} /></Link>
+              <a href={minsk.path} className="landing-link">{minsk.heading}</a>
+            </div>
           </div>
           <div className="min-w-0 overflow-hidden rounded-[28px] border" style={{ borderColor: c.border }}><LandingMapWidget embed /></div>
         </section>
