@@ -1,5 +1,4 @@
 import type { OverviewStats } from '../../api/admin';
-import { Card } from '../ui/Card';
 
 const formatPercent = (value: number | null) => value === null
   ? '—'
@@ -17,7 +16,7 @@ export const AudienceGrowthStats = ({ overview }: { overview: OverviewStats }) =
   ];
 
   return (
-    <Card className="space-y-5 p-4">
+    <div className="space-y-5">
       <section aria-label="Способы регистрации">
         <h3 className="font-display text-sm font-semibold">Способы регистрации</h3>
         {providersAvailable ? (
@@ -73,6 +72,6 @@ export const AudienceGrowthStats = ({ overview }: { overview: OverviewStats }) =
           </>
         ) : <p className="mt-2 text-sm text-text-muted">Данные возвращаемости недоступны</p>}
       </section>
-    </Card>
+    </div>
   );
 };

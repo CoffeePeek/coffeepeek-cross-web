@@ -356,6 +356,7 @@ export interface AdminShopsInsights {
     distribution: { stars: number; count: number }[];
   };
   topShopsByCheckIns30Days: AdminTopShop[];
+  topShopsByFavorites?: AdminTopShop[];
   downloads: {
     total: number;
     last30Days: number;

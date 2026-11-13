@@ -130,6 +130,13 @@ function button(text: string, scope: ParentNode = document): HTMLButtonElement {
   return result!;
 }
 
+async function expandDetail(title: string) {
+  const summary = [...document.querySelectorAll('main summary')].find(node => node.textContent?.includes(title));
+  expect(summary).toBeDefined();
+  await act(async () => (summary as HTMLElement).click());
+  await settle();
+}
+
 function expectNoPrivilegedRequests() {
   for (const request of [api.updateUserRole, api.blockUser, api.deleteAdminUser,
     api.getUserSessions, api.revokeUserSession, api.revokeAllUserSessions]) {
@@ -149,7 +156,14 @@ test.each(['Moderator', 'Admin'])('%s can navigate to the complete dashboard and
   expect(api.getShopsTimeseries).toHaveBeenCalledWith(30);
   expect(api.getShopsInsights).toHaveBeenCalled();
   expect(api.getModerationInsights).toHaveBeenCalled();
-  for (const text of ['Аудитория', 'Динамика', 'Кофейни и чекины', 'Средний рейтинг', 'Test Coffee', 'Загрузки приложения: 100', 'Test Moderator',
+  expect(document.querySelectorAll('main details[open]')).toHaveLength(0);
+  expect(getUserPublicProfile).not.toHaveBeenCalled();
+  for (const title of ['Активность по дням', 'Регистрация и возвращаемость', 'Рейтинги, охват и топ кофеен', 'Загрузки приложения', 'Работа модераторов']) {
+    await expandDetail(title);
+  }
+  expect(document.querySelector('main a[href="/published-shops"]') !== null).toBe(role === 'Admin');
+  expect(document.querySelector('main a[href="/published-shops/shop-id"]') !== null).toBe(role === 'Admin');
+  for (const text of ['Аудитория', 'Динамика', 'Требуют модерации', 'Средний рейтинг', 'Test Coffee', 'Всего загрузок: 100', 'Test Moderator',
     'Способы регистрации', 'Google', 'Apple', 'Почта и пароль', 'Retention D1', 'Retention D7', 'Retention D30',
     '15 из 40 пользователей', 'Заполненность и охват кофеен', '65,25%', 'С чекинами', 'Без чекинов']) {
     expect(document.querySelector('main')!.textContent).toContain(text);
@@ -159,36 +173,39 @@ test.each(['Moderator', 'Admin'])('%s can navigate to the complete dashboard and
     await settle();
     expect(api.getUsersTimeseries).toHaveBeenLastCalledWith(days);
     expect(api.getShopsTimeseries).toHaveBeenLastCalledWith(days);
-    const dau = document.querySelector('[role="img"][aria-label^="DAU по дням"]');
-    expect(dau?.children).toHaveLength(days);
+    const dau = document.querySelector('[role="slider"][aria-label="DAU: по дням"]');
+    expect(dau?.getAttribute('aria-valuemax')).toBe(String(days - 1));
   }
   expectNoPrivilegedRequests();
 });
 
 test('dashboard plots calendar DAU separately, includes zero days and marks today as incomplete without summing users', async () => {
   await mount('/dashboard');
-  const dau = document.querySelector<HTMLElement>('[role="img"][aria-label^="DAU по дням"]');
+  await expandDetail('Активность по дням');
+  const dau = document.querySelector<HTMLElement>('[role="slider"][aria-label="DAU: по дням"]');
   expect(dau).not.toBeNull();
-  expect(dau!.children).toHaveLength(30);
-  expect((dau!.children[0] as HTMLElement).style.height).toBe('100%');
-  expect((dau!.children[1] as HTMLElement).style.height).toBe('0%');
-  expect((dau!.children[29] as HTMLElement).style.height).toBe('50%');
+  expect(dau!.getAttribute('aria-valuemax')).toBe('29');
+  await act(async () => dau!.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Home', bubbles: true })));
+  expect(dau!.getAttribute('aria-valuetext')).toMatch(/: 8$/);
+  await act(async () => dau!.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
+  expect(dau!.getAttribute('aria-valuetext')).toMatch(/: 0$/);
+  await act(async () => dau!.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'End', bubbles: true })));
   const today = new Date().toISOString().slice(0, 10);
-  expect(dau!.getAttribute('aria-label')).toContain(`${today}: 4`);
-  expect(dau!.children[1].textContent).toContain('0');
+  expect(dau!.getAttribute('aria-valuetext')).toMatch(/: 4$/);
   expect(dau!.parentElement!.textContent).not.toContain('за период');
-  expect(document.querySelector('[role="img"][aria-label^="Новые пользователи"]')).not.toBeNull();
-  expect(document.querySelector('main')!.textContent).toContain('Дни по UTC. Сегодня — неполный день.');
+  expect(document.querySelector('[role="slider"][aria-label="Пользователи: по дням"]')).not.toBeNull();
+  expect(document.querySelector('main')!.textContent).toContain('Сегодня — неполный день.');
   const dateLabel = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${today}T00:00:00Z`));
-  expect(dau!.lastElementChild!.textContent).toContain(dateLabel);
+  expect(dau!.getAttribute('aria-valuetext')).toContain(dateLabel);
 });
 
 test('a failed users timeseries request leaves shop charts available and does not display zero DAU', async () => {
   jest.mocked(api.getUsersTimeseries).mockRejectedValue(new Error('Service unavailable'));
   await mount('/dashboard');
-  expect(document.querySelector('[role="img"][aria-label^="DAU по дням"]')).toBeNull();
-  expect(document.querySelector('[role="img"][aria-label^="Новые пользователи"]')).toBeNull();
-  expect(document.querySelector('[role="img"][aria-label^="Новые кофейни"]')).not.toBeNull();
+  await expandDetail('Активность по дням');
+  expect(document.querySelector('[role="slider"][aria-label="DAU: по дням"]')).toBeNull();
+  expect(document.querySelector('[role="slider"][aria-label="Пользователи: по дням"]')).toBeNull();
+  expect(document.querySelector('section[aria-label="Кофейни"]')!.textContent).toContain('Нет данных за период');
   expect(document.querySelector('main')!.textContent).toContain('Данные недоступны');
 });
 
