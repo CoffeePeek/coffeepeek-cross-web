@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { Suspense, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,20 +10,22 @@ import { getCatalogScope } from '../lib/catalogSession';
 import { usePageTitle } from '../hooks/usePageTitle';
 import minsk from '../constants/minskCatalog.json';
 import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
+import { useNearViewport } from '../hooks/useNearViewport';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { APP_DOWNLOAD_URL } from '../utils/appDownload';
 import { AppIcon } from '../components/icons';
 import Button from '../components/Button';
-import { CoffeeCatalogCard } from '../components/CatalogCards';
-import CheckInCard from '../components/CheckInCard';
 import ShopCardSkeleton from '../components/skeletons/ShopCardSkeleton';
 import CheckInCardSkeleton from '../components/skeletons/CheckInCardSkeleton';
 import { MobileAppDownload } from '../components/mobile-app';
-import LandingMapWidget from '../components/LandingMapWidget';
 import Header from '../components/Header';
 import Mascot from '../components/Mascot';
 import './LandingPage.css';
 
 const appScreenshots = ['shops', 'map', 'feed'] as const;
+const LandingMapWidget = lazyWithRetry(() => import('../components/LandingMapWidget'));
+const CoffeeCatalogCard = lazyWithRetry(() => import('../components/CatalogCards').then(module => ({ default: module.CoffeeCatalogCard })));
+const CheckInCard = lazyWithRetry(() => import('../components/CheckInCard'));
 
 const questions = [
   { title: 'Что такое CoffeePeek?', answer: 'Кофейный гид по Минску: карта кофеен, каталог кофе и обжарщиков, чекины и впечатления сообщества.' },
@@ -39,6 +41,9 @@ const LandingPage: React.FC = () => {
   const { isLoading: authLoading } = useUser();
   const c = getThemeColors(theme);
   const scope = getCatalogScope();
+  const mapSection = useNearViewport<HTMLDivElement>('150px');
+  const coffeeSection = useNearViewport<HTMLDivElement>('300px');
+  const communitySection = useNearViewport<HTMLDivElement>('300px');
   const downloadDialog = useRef<HTMLDialogElement>(null);
   const [copyStatus, setCopyStatus] = useState('');
   const openDownloads = () => downloadDialog.current?.showModal();
@@ -53,13 +58,14 @@ const LandingPage: React.FC = () => {
   const coffees = useQuery({
     queryKey: ['catalog', scope, 'landing', 'coffees'],
     queryFn: ({ signal }) => searchCoffees({ q: '', filters: {}, sort: 'name_asc', page: 1, pageSize: 2 }, signal),
-    enabled: !authLoading,
+    enabled: coffeeSection.nearViewport && !authLoading,
   });
   const dictionary = useQuery({
     queryKey: ['catalogs', 'coffee-filter-values'],
     queryFn: ({ signal }) => getCoffeeFilterValues(signal),
+    enabled: coffeeSection.nearViewport,
   });
-  const checkIns = usePublicCheckIns({ citySlug: 'minsk', pageSize: 1 });
+  const checkIns = usePublicCheckIns({ citySlug: 'minsk', pageSize: 1 }, communitySection.nearViewport);
   const latestCheckIn = checkIns.data?.pages[0]?.items[0];
 
   return (
@@ -94,7 +100,9 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="landing-preview" aria-hidden="true" inert>
             {appScreenshots.map(screen => <div key={screen} className={`landing-preview-screen landing-preview-${screen}`}>
-              <img src={`/images/app-screenshots/${screen}-${theme}.png`} alt="" width={1179} height={2556} decoding="async" className="landing-app-screenshot" />
+              <img src={`/images/app-screenshots/${screen}-${theme}.webp`} alt="" width={480} height={1041}
+                loading={screen === 'map' ? undefined : 'lazy'} fetchPriority={screen === 'map' ? undefined : 'low'}
+                decoding="async" className="landing-app-screenshot" />
             </div>)}
           </div>
         </section>
@@ -122,7 +130,11 @@ const LandingPage: React.FC = () => {
               <a href={minsk.path} className="landing-link">{minsk.heading}</a>
             </div>
           </div>
-          <div className="min-w-0 overflow-hidden rounded-[28px] border" style={{ borderColor: c.border }}><LandingMapWidget embed /></div>
+          <div ref={mapSection.ref} className="min-w-0 overflow-hidden rounded-[28px] border" style={{ borderColor: c.border }}>
+            <Suspense fallback={<div className="landing-map-placeholder" aria-hidden="true" />}>
+              {mapSection.nearViewport ? <LandingMapWidget embed /> : <div className="landing-map-placeholder" aria-hidden="true" />}
+            </Suspense>
+          </div>
         </section>
 
         <section className="landing-section-border" style={{ borderColor: c.border }} aria-labelledby="coffee-title">
@@ -138,11 +150,13 @@ const LandingPage: React.FC = () => {
                 <Link to="/roasters" className="landing-link">Обжарщики <AppIcon name="arrow_forward" size={18} /></Link>
               </div>
             </div>
-            <div className="min-w-0 lg:order-1">
-              {coffees.isPending ? <div className="landing-coffees"><ShopCardSkeleton count={2} variant="coffee" /></div>
-                : coffees.isError ? <div className="landing-empty" role="status"><p>Не удалось загрузить кофе.</p><Button variant="secondary" onClick={() => void coffees.refetch()}>Попробовать ещё раз</Button></div>
-                : coffees.data?.items.length ? <div className="landing-coffees">{coffees.data.items.map(coffee => <CoffeeCatalogCard key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}</div>
-                : <div className="landing-empty"><Mascot pose="bean" size={160} /><p>В каталоге пока нет кофе.</p></div>}
+            <div ref={coffeeSection.ref} className="min-w-0 lg:order-1">
+              <Suspense fallback={<div className="landing-coffees"><ShopCardSkeleton count={2} variant="coffee" /></div>}>
+                {!coffeeSection.nearViewport || coffees.isPending ? <div className="landing-coffees"><ShopCardSkeleton count={2} variant="coffee" /></div>
+                  : coffees.isError ? <div className="landing-empty" role="status"><p>Не удалось загрузить кофе.</p><Button variant="secondary" onClick={() => void coffees.refetch()}>Попробовать ещё раз</Button></div>
+                  : coffees.data?.items.length ? <div className="landing-coffees">{coffees.data.items.map(coffee => <CoffeeCatalogCard key={coffee.address.slug} coffee={coffee} groups={dictionary.data ?? []} />)}</div>
+                  : <div className="landing-empty"><Mascot pose="bean" size={160} /><p>В каталоге пока нет кофе.</p></div>}
+              </Suspense>
             </div>
           </div>
         </section>
@@ -156,11 +170,13 @@ const LandingPage: React.FC = () => {
             <p className="landing-description mt-5">Отмечай визиты, сохраняй впечатления и смотри, что пробуют другие любители кофе.</p>
             <Link to="/feed" className="landing-link mt-6">Открыть ленту <AppIcon name="arrow_forward" size={18} /></Link>
           </div>
-          <div className="min-w-0">
-            {checkIns.isPending ? <CheckInCardSkeleton count={1} />
-              : checkIns.isError ? <div className="landing-empty" role="status"><p>Не удалось загрузить чекины.</p><Button variant="secondary" onClick={() => void checkIns.refetch()}>Попробовать ещё раз</Button></div>
-              : latestCheckIn ? <CheckInCard item={latestCheckIn} />
-              : <div className="landing-empty"><Mascot pose="cup" size={160} /><p>Поделись первым впечатлением о кофейнях Минска.</p></div>}
+          <div ref={communitySection.ref} className="min-w-0">
+            <Suspense fallback={<CheckInCardSkeleton count={1} />}>
+              {!communitySection.nearViewport || checkIns.isPending ? <CheckInCardSkeleton count={1} />
+                : checkIns.isError ? <div className="landing-empty" role="status"><p>Не удалось загрузить чекины.</p><Button variant="secondary" onClick={() => void checkIns.refetch()}>Попробовать ещё раз</Button></div>
+                : latestCheckIn ? <CheckInCard item={latestCheckIn} />
+                : <div className="landing-empty"><Mascot pose="cup" size={160} /><p>Поделись первым впечатлением о кофейнях Минска.</p></div>}
+            </Suspense>
           </div>
         </section>
 

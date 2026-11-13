@@ -2,11 +2,13 @@ jest.mock('../src/api/discovery', () => ({ searchShops: jest.fn(), searchCoffees
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'dark' }) }));
 jest.mock('../src/contexts/UserContext', () => ({ useUser: jest.fn(() => ({ isLoading: false })) }));
 jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: jest.fn() }));
+jest.mock('../src/hooks/useNearViewport', () => ({ useNearViewport: jest.fn(() => ({ ref: { current: null }, nearViewport: true })) }));
 jest.mock('../src/hooks/queries/useCheckIns', () => ({ usePublicCheckIns: jest.fn() }));
 jest.mock('../src/lib/catalogSession', () => ({ getCatalogScope: () => 'guest:1' }));
 jest.mock('../src/components/Header', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/MapPage', () => ({ __esModule: true, default: () => null }));
 jest.mock('../src/components/LandingMapWidget', () => ({ __esModule: true, default: () => null }));
+jest.mock('../src/utils/lazyWithRetry', () => ({ lazyWithRetry: jest.requireActual('react').lazy }));
 jest.mock('../src/components/mobile-app', () => ({ MobileAppDownload: () => null }));
 jest.mock('../src/components/CatalogCards', () => ({
   CoffeeCatalogCard: ({ coffee }: { coffee: { name: string } }) => coffee.name,
@@ -17,14 +19,27 @@ jest.mock('../src/pages/LandingPage.css', () => ({}));
 jest.mock('@tanstack/react-query', () => ({ useQuery: jest.fn() }));
 
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { PassThrough } from 'node:stream';
+import { renderToPipeableStream } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicCheckIns } from '../src/hooks/queries/useCheckIns';
 import { useUser } from '../src/contexts/UserContext';
+import { useNearViewport } from '../src/hooks/useNearViewport';
 import LandingPage from '../src/pages/LandingPage';
 
-const render = () => renderToStaticMarkup(React.createElement(MemoryRouter, {}, React.createElement(LandingPage)));
+const render = () => new Promise<string>((resolve, reject) => {
+  const output = new PassThrough();
+  output.setEncoding('utf8');
+  let html = '';
+  output.on('data', chunk => { html += chunk; });
+  output.on('end', () => resolve(html));
+  output.on('error', reject);
+  const stream = renderToPipeableStream(React.createElement(MemoryRouter, {}, React.createElement(LandingPage)), {
+    onAllReady: () => stream.pipe(output),
+    onError: reject,
+  });
+});
 const query = useQuery as jest.Mock;
 const checkIns = usePublicCheckIns as jest.Mock;
 
@@ -34,8 +49,8 @@ beforeEach(() => {
   checkIns.mockReturnValue({ data: { pages: [{ items: [] }] }, isPending: false, isError: false });
 });
 
-test('empty catalog and community keep navigation usable without invented products or reviews', () => {
-  const html = render();
+test('empty catalog and community keep navigation usable without invented products or reviews', async () => {
+  const html = await render();
   expect(html).toContain('В каталоге пока нет кофе.');
   expect(html).toContain('Поделись первым впечатлением о кофейнях Минска.');
   for (const href of ['/map', '/coffees', '/roasters', '/feed']) expect(html).toContain(`href="${href}"`);
@@ -43,33 +58,33 @@ test('empty catalog and community keep navigation usable without invented produc
   expect(html).toContain('aria-hidden="true" inert=""');
 });
 
-test('renders the returned coffee and public check-in through existing cards', () => {
+test('renders the returned coffee and public check-in through existing cards', async () => {
   query.mockImplementation(({ queryKey }) => ({
     data: queryKey.at(-1) === 'coffees' ? { items: [{ address: { slug: 'coffee' }, name: 'Кофе из API' }] }
       : queryKey.at(-1) === 'shops' ? { items: [{ address: { slug: 'shop' }, name: 'Кофейня из API' }] } : [],
     isPending: false, isError: false,
   }));
   checkIns.mockReturnValue({ data: { pages: [{ items: [{ text: 'Публичный чекин из API' }] }] }, isPending: false, isError: false });
-  const html = render();
+  const html = await render();
   expect(html).toContain('Кофе из API');
   expect(html).toContain('Публичный чекин из API');
   expect(html).not.toContain('В каталоге пока нет кофе.');
-  expect(checkIns).toHaveBeenCalledWith({ citySlug: 'minsk', pageSize: 1 });
+  expect(checkIns).toHaveBeenCalledWith({ citySlug: 'minsk', pageSize: 1 }, true);
 });
 
-test('request failures show retry actions instead of an empty catalog', () => {
+test('request failures show retry actions instead of an empty catalog', async () => {
   query.mockReturnValue({ isPending: false, isError: true });
   checkIns.mockReturnValue({ isPending: false, isError: true });
-  const html = render();
+  const html = await render();
   expect(html).toContain('Не удалось загрузить кофе.');
   expect(html).toContain('Не удалось загрузить чекины.');
   expect(html.match(/Попробовать ещё раз/g)).toHaveLength(2);
   expect(html).not.toContain('В каталоге пока нет кофе.');
 });
 
-test('personalized catalog requests wait for the session to resolve and use its cache scope', () => {
+test('personalized catalog requests wait for the session to resolve and use its cache scope', async () => {
   (useUser as jest.Mock).mockReturnValueOnce({ isLoading: true });
-  render();
+  await render();
   const requests = query.mock.calls.map(([options]) => options).filter(options => options.queryKey[0] === 'catalog');
   expect(requests).toHaveLength(1);
   for (const request of requests) {
@@ -78,14 +93,26 @@ test('personalized catalog requests wait for the session to resolve and use its 
   }
 });
 
-test('download dialog has a public phone link and real app screenshots', () => {
-  const html = render();
+test('below-the-fold content waits until it approaches the viewport', async () => {
+  jest.mocked(useNearViewport).mockReturnValue({ ref: { current: null }, nearViewport: false });
+  query.mockReturnValue({ data: { items: [{ address: { slug: 'coffee' }, name: 'Кофе из кэша' }] } });
+  checkIns.mockReturnValue({ data: { pages: [{ items: [{ text: 'Чекин из кэша' }] }] } });
+  const html = await render();
+  expect(html).toContain('landing-map-placeholder');
+  expect(html).not.toContain('Кофе из кэша');
+  expect(html).not.toContain('Чекин из кэша');
+  expect(query.mock.calls.every(([options]) => options.enabled === false)).toBe(true);
+  expect(checkIns).toHaveBeenCalledWith({ citySlug: 'minsk', pageSize: 1 }, false);
+});
+
+test('download dialog has a public phone link and compressed app screenshots', async () => {
+  const html = await render();
   expect(html).toContain('<dialog');
   expect(html).toContain('aria-labelledby="download-dialog-title"');
   expect(html).toContain('https://coffeepeek.by/download/auto');
   expect(html).not.toContain('mailto:');
   expect(html).not.toContain('Написать нам');
-  for (const screen of ['shops', 'map', 'feed']) expect(html).toContain(`/images/app-screenshots/${screen}-dark.png`);
+  for (const screen of ['shops', 'map', 'feed']) expect(html).toContain(`/images/app-screenshots/${screen}-dark.webp`);
   expect(html).not.toContain('Скриншот приложения');
   expect(html).not.toContain('<footer');
 });

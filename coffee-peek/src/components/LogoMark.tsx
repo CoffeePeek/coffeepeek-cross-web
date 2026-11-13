@@ -53,7 +53,7 @@ const LogoMark: React.FC<LogoMarkProps> = ({
       }}
     >
       <img
-        src={LOGO_SRC}
+        src={size <= HEADER_LOGO_SIZE ? '/logo/logo-160.webp' : LOGO_SRC}
         alt={alt}
         width={size}
         height={size}
