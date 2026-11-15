@@ -673,13 +673,14 @@ function buildStatusParams(id: string, status: ModerationStatus, comment?: strin
 // ==================== Shop moderation ====================
 
 export async function getModerationShops(
-  params: ListParams = {}
+  params: ListParams = {},
+  signal?: AbortSignal,
 ): Promise<ApiResponse<PaginatedResult<AdminCoffeeShop>>> {
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;
   const response = await httpClient.get<GetAllModerationShopsResponse>(
     API_ENDPOINTS.MODERATION.SHOPS,
-    { params }
+    { params, signal, cache: 'no-store' }
   );
   const raw = response.data as unknown as GetAllModerationShopsResponse;
 
@@ -738,8 +739,11 @@ export async function updateCoffeeShop(
 
 // ==================== Check-in moderation ====================
 
-export async function getModerationCheckIns(params: ListParams & { userId?: string } = {}): Promise<ApiResponse<PaginatedResult<ModerationCheckIn>>> {
-  const response = await httpClient.get<ModerationCheckInsPage>(API_ENDPOINTS.MODERATION.CHECK_INS, { params });
+export async function getModerationCheckIns(
+  params: ListParams & { userId?: string } = {},
+  signal?: AbortSignal,
+): Promise<ApiResponse<PaginatedResult<ModerationCheckIn>>> {
+  const response = await httpClient.get<ModerationCheckInsPage>(API_ENDPOINTS.MODERATION.CHECK_INS, { params, signal, cache: 'no-store' });
   const raw = response.data;
   return { ...response, data: {
     items: raw.items,
@@ -793,9 +797,10 @@ interface ShopReportListParams {
 }
 
 export async function getShopIssueReports(
-  params: ShopReportListParams = {}
+  params: ShopReportListParams = {},
+  signal?: AbortSignal,
 ): Promise<ApiResponse<PaginatedResponse<AdminShopIssueReport>>> {
-  return httpClient.get<PaginatedResponse<AdminShopIssueReport>>(API_ENDPOINTS.ADMIN.SHOP_REPORTS, { params });
+  return httpClient.get<PaginatedResponse<AdminShopIssueReport>>(API_ENDPOINTS.ADMIN.SHOP_REPORTS, { params, signal, cache: 'no-store' });
 }
 
 export async function updateShopIssueReportStatus(

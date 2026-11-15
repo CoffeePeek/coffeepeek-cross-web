@@ -21,9 +21,11 @@ let submission = { id: 'submission-id', checkInId: 'published', contentRevision:
 let report = { id: 'report-id', checkInId: null, reportedByUserId: 'me-id', text: 'Историческая жалоба', status: 'Pending', createdAtUtc: at, resolvedByAdminId: null, resolvedAtUtc: null };
 const unratedReport = { id: 'unrated-report-id', checkInId: 'published', reportedByUserId: 'me-id', text: 'Жалоба на чекин без оценки', status: 'Pending', createdAtUtc: at, resolvedByAdminId: null, resolvedAtUtc: null };
 const unratedCheckIn = { id: 'published', shopId: 'shop-id', userId: 'other-id', username: 'Другой автор', text: 'Чекин без оценки', visitedAt: at, ratingPlace: null, ratingService: null, ratingCoffee: null, deletedAtUtc: null, isPubliclyVisible: true };
+const shopReport = { id: 'shop-report-id', shopId: 'shop-id', reportedByUserId: 'me-id', category: 'IncorrectAddress', description: 'Изменился адрес кофейни', status: 'Submitted', reviewedBy: null, reviewedAt: null, createdAtUtc: at };
+const shopReports = [shopReport, { ...shopReport, id: 'reviewed-shop-report', description: 'Старая ошибка в адресе', status: 'Reviewed' }];
 const requests = [], errors = [];
 const token = roles => ['e30', Buffer.from(JSON.stringify({ sub: 'me-id', roles, email: 'me@example.test', email_verified: true, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url'), 'fixture'].join('.');
-async function setup(isAdmin = false) {
+async function setup(role = 'User') {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   await context.addInitScript(() => { localStorage.setItem('theme', 'light'); });
   await context.route(/\/realtime\//, route => /^\/(?:backend\/)?realtime\//.test(new URL(route.request().url()).pathname) ? route.abort() : route.continue());
@@ -41,7 +43,7 @@ async function setup(isAdmin = false) {
     const body = request.postData() ? request.postDataJSON() : undefined;
     requests.push({ api, method, body, params: Object.fromEntries(url.searchParams), headers: request.headers() });
     const reply = (data, extra = {}) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data, isSuccess: true, message: '', statusCode: null, ...extra }) });
-    if (api === '/api/tokens') return reply({ accessToken: token(isAdmin ? ['Admin'] : ['User']) });
+    if (api === '/api/tokens') return reply({ accessToken: token([role]) });
     if (api === '/api/users/me') return reply({ address: address('users', 'me'), userName: 'Я', email: 'me@example.test', checkInCount: 1, coffeeShopsCount: 0 });
     if (api === '/api/catalogs/drinks') return reply([{ slug: 'cappuccino', nameRu: 'Капучино', nameEn: 'Cappuccino', category: null }, { slug: 'other', nameRu: 'Другое', nameEn: 'Other', category: null }]);
     if (api === '/api/Photos/check-in') {
@@ -70,10 +72,31 @@ async function setup(isAdmin = false) {
       assert.equal(url.searchParams.get('status'), 'Pending');
       return reply({ items: submission.moderationStatus === 'Pending' ? [submission] : [], totalItems: submission.moderationStatus === 'Pending' ? 1 : 0, totalPages: 1, currentPage: 1, pageSize: 15 });
     }
-    if (api === '/api/admin/check-in-reports') { assert.equal(url.searchParams.get('status'), 'Pending'); const items = [...(report.status === 'Pending' ? [report] : []), unratedReport]; return reply({ items, totalCount: items.length, page: 1, pageSize: 20 }); }
+    if (api === '/api/admin/check-in-reports') {
+      assert.equal(role, 'Admin');
+      assert.equal(url.searchParams.get('status'), 'Pending');
+      const items = [...(report.status === 'Pending' ? [report] : []), unratedReport];
+      const pageSize = Number(url.searchParams.get('pageSize'));
+      return reply({ items: items.slice(0, pageSize), totalCount: items.length, page: 1, pageSize });
+    }
     if (api === '/api/admin/check-in-reports/report-id') return reply({ report, checkIn: null });
     if (api === '/api/admin/check-in-reports/unrated-report-id') return reply({ report: unratedReport, checkIn: unratedCheckIn });
     if (api === '/api/admin/check-in-reports/report-id/resolution') { assert.deepEqual(body, { deleteCheckIn: false }); report = { ...report, status: 'Dismissed', resolvedAtUtc: at }; return reply(report); }
+    if (api === '/api/admin/shop-reports') {
+      const status = url.searchParams.get('status');
+      const pageSize = Number(url.searchParams.get('pageSize'));
+      if (pageSize === 1) assert.equal(status, 'Submitted');
+      const items = shopReports.filter(item => !status || item.status === status);
+      return reply({ items: items.slice(0, pageSize), totalItems: items.length, totalPages: Math.ceil(items.length / pageSize), currentPage: 1, pageSize });
+    }
+    if (api === '/api/admin/shop-reports/shop-report-id/status') {
+      assert.equal(method, 'PUT');
+      assert.deepEqual(body, { status: 'Reviewed' });
+      shopReport.status = body.status;
+      return reply(body.status);
+    }
+    if (api === '/api/ModerationShops') return reply({ moderationShops: [], totalItems: 0 });
+    if (api === '/api/ShopChangeRequests' || api === '/api/ModerationRoasters') return reply({ items: [], totalItems: 0 });
     // Secondary catalogs and telemetry stay inside the fixture environment too.
     return reply([]);
   });
@@ -86,6 +109,39 @@ async function screenshot(page, name) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
   assert(!overflow, `${name}: horizontal viewport overflow`);
 }
+
+function moderationBadge(page, href) {
+  return page.locator(`#admin-sidebar a[href="${href}"] .tabular-nums`);
+}
+
+async function verifyShopReportBadges() {
+  const page = await setup('Moderator');
+  await page.clock.install();
+  await page.goto(`${admin}/shop-reports`);
+  await page.getByText(shopReport.description, { exact: true }).waitFor();
+  const badge = moderationBadge(page, '/shop-reports');
+  await badge.getByText('1', { exact: true }).waitFor();
+  assert.equal(await page.locator('#admin-sidebar a[href="/check-in-reports"]').count(), 0);
+
+  const newReport = { ...shopReport, id: 'new-shop-report', description: 'Обновились часы работы' };
+  shopReports.push(newReport);
+  await page.clock.fastForward(15_000);
+  await badge.getByText('2', { exact: true }).waitFor({ timeout: 5_000 });
+  await page.getByText(newReport.description, { exact: true }).waitFor({ timeout: 5_000 });
+
+  await page.getByRole('row').filter({ hasText: shopReport.description }).getByRole('button', { name: 'Посмотрено' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Подтвердить' }).click();
+  await badge.getByText('1', { exact: true }).waitFor({ timeout: 5_000 });
+  await page.getByRole('row').filter({ hasText: shopReport.description }).getByText('Просмотрена', { exact: true }).waitFor();
+
+  const reportWhileAway = { ...newReport, id: 'shop-report-while-away', description: 'Ошибка в номере телефона' };
+  shopReports.push(reportWhileAway);
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })));
+  await badge.getByText('2', { exact: true }).waitFor({ timeout: 5_000 });
+  await page.getByText(reportWhileAway.description, { exact: true }).waitFor({ timeout: 5_000 });
+  await page.context().close();
+}
+
 async function verifyCustomerFlow() {
   const page = await setup();
   await page.goto(`${customer}/feed`);
@@ -151,9 +207,10 @@ async function verifyCustomerFlow() {
 try {
   if (process.env.CHECK_INS_ADMIN_ONLY !== '1') await verifyCustomerFlow();
 
-  const mod = await setup(true);
+  const mod = await setup('Admin');
   await mod.goto(`${admin}/check-ins`);
   await mod.getByText(submission.text, { exact: true }).waitFor();
+  await moderationBadge(mod, '/check-ins').getByText('1', { exact: true }).waitFor();
   await mod.getByText('Без оценки', { exact: true }).waitFor();
   await mod.getByRole('list', { name: 'Чекины на проверке' }).locator('article img').waitFor();
   await screenshot(mod, 'moderation-desktop');
@@ -165,7 +222,10 @@ try {
   await dialog.getByRole('textbox').fill('Недостаточно информации о посещении');
   await dialog.getByRole('button', { name: 'Отклонить', exact: true }).click();
   await mod.getByText('Чекины не найдены', { exact: true }).waitFor();
+  await moderationBadge(mod, '/check-ins').waitFor({ state: 'detached', timeout: 5_000 });
   await mod.goto(`${admin}/check-in-reports`);
+  const reportBadge = moderationBadge(mod, '/check-in-reports');
+  await reportBadge.getByText('2', { exact: true }).waitFor();
   await mod.getByRole('row').filter({ hasText: report.text }).getByRole('button', { name: 'Рассмотреть', exact: true }).click();
   await mod.getByText('Чекин недоступен', { exact: true }).waitFor();
   assert(await mod.getByRole('button', { name: 'Принять и удалить чекин' }).isDisabled());
@@ -174,11 +234,15 @@ try {
   await mod.getByRole('button', { name: 'Отклонить жалобу', exact: true }).click();
   await mod.getByRole('button', { name: 'Да, отклонить жалобу', exact: true }).click();
   await mod.getByText('Жалоба отклонена. Чекин сохранён.', { exact: true }).waitFor();
+  await mod.setViewportSize({ width: 1440, height: 1000 });
+  await reportBadge.getByText('1', { exact: true }).waitFor({ timeout: 5_000 });
   await mod.goto(`${admin}/check-in-reports`);
   await mod.getByRole('row').filter({ hasText: unratedReport.text }).getByRole('button', { name: 'Рассмотреть', exact: true }).click();
   await mod.getByText(unratedCheckIn.text, { exact: true }).waitFor();
   await mod.getByText('Без оценки', { exact: true }).waitFor();
   assert(!(await mod.getByRole('dialog').innerText()).includes('NaN'), 'unrated report must not display NaN');
+  await mod.context().close();
+  await verifyShopReportBadges();
   assert.equal(errors.length, 0, errors.join('\n'));
   assert(!requests.some(r => /ModerationReviews|review-reports|\/reviews\b|Photos\/review/.test(r.api)), 'obsolete review endpoints must not be called');
   console.log(`Check-in browser flows passed; screenshots: ${output}`);

@@ -156,6 +156,7 @@ export const AdminStatsPanel: React.FC<{ overview: OverviewStats; canManageShops
     queryKey: ['admin', 'stats', 'moderation-insights'],
     queryFn: () => getModerationInsights().then(response => response.data),
     staleTime: 60_000,
+    refetchInterval: 60_000,
     enabled: overview.moderationAvailable,
   });
   const pendingQueues = moderation.data?.queues.filter(queue => queue.pending > 0) ?? [];

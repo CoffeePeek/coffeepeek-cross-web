@@ -193,6 +193,7 @@ export const ShopChangeRequestDetailPage: React.FC = () => {
         await updateShopChangeRequest(id, { section, payload: payloadForSection(section, parsed) });
       }
       await reviewShopChangeRequest(id, status, reason || null);
+      void qc.invalidateQueries({ queryKey: ['admin', 'shop-change-requests'] });
       if (request?.shopId) {
         await Promise.all([
           qc.invalidateQueries({ queryKey: ['admin', 'published-shop', request.shopId] }),

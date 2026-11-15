@@ -3,6 +3,12 @@ import { QueryClient } from '@tanstack/react-query';
 const RETRY_DELAYS_MS = [1_000, 3_000, 5_000] as const;
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
+export const moderationQueueRefresh = {
+  staleTime: 0,
+  refetchInterval: 15_000,
+  refetchOnWindowFocus: true,
+};
+
 const isInternalServerError = (error: unknown): boolean =>
   typeof error === 'object' &&
   error !== null &&

@@ -17,6 +17,7 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { moderationQueueRefresh } from '../lib/queryClient';
 import { getErrorMessage } from '../utils/errors';
 
 const PAGE_SIZE = 20;
@@ -70,13 +71,14 @@ export const ShopReportsPage: React.FC = () => {
   const [pendingAction, setPendingAction] = useState<{ id: string; status: ActionStatus } | null>(null);
 
   const { data, isLoading } = useQuery({
+    ...moderationQueueRefresh,
     queryKey: ['admin', 'shop-reports', { status, page }],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       getShopIssueReports({
         status: status || undefined,
         page,
         pageSize: PAGE_SIZE,
-      }).then((r) => r.data),
+      }, signal).then((r) => r.data),
   });
 
   const statusMutation = useMutation({

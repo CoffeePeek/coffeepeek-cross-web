@@ -107,13 +107,14 @@ function mapModerationRoaster(raw: BackendModerationRoaster): ModerationRoaster 
 }
 
 export async function getModerationRoasters(
-  params: ListParams = {}
+  params: ListParams = {},
+  signal?: AbortSignal,
 ): Promise<ApiResponse<PaginatedResult<ModerationRoaster>>> {
   const page = params.page ?? 1;
   const pageSize = params.pageSize ?? 20;
   const response = await httpClient.get<GetAllModerationRoastersResponse>(
     API_ENDPOINTS.MODERATION.ROASTERS,
-    { params: { status: params.status, page, pageSize } }
+    { params: { status: params.status, page, pageSize }, signal, cache: 'no-store' }
   );
   const raw = response.data as unknown as GetAllModerationRoastersResponse;
 

@@ -12,6 +12,7 @@ import { Card } from '../components/ui/Card';
 import { Pagination } from '../components/ui/Pagination';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../components/ui/Dialog';
 import { useToast } from '../contexts/ToastContext';
+import { moderationQueueRefresh } from '../lib/queryClient';
 import { getErrorMessage } from '../utils/errors';
 import { checkInDate, checkInKind, homeRecipe } from '../utils/checkInKind';
 
@@ -34,7 +35,12 @@ export function CheckInReportsPage() {
   const [decision, setDecision] = useState<boolean | null>(null);
   const qc = useQueryClient();
   const { showToast } = useToast();
-  const list = useQuery({ queryKey: ['admin', 'check-in-reports', status, page], queryFn: () => getCheckInReports(status, page).then(r => r.data), staleTime: 0, gcTime: 0, refetchOnWindowFocus: true });
+  const list = useQuery({
+    ...moderationQueueRefresh,
+    queryKey: ['admin', 'check-in-reports', status, page],
+    queryFn: ({ signal }) => getCheckInReports(status, page, { signal }).then(r => r.data),
+    gcTime: 0,
+  });
   const detail = useQuery({ queryKey: ['admin', 'check-in-reports', 'detail', selected], queryFn: () => getCheckInReport(selected!).then(r => r.data), enabled: !!selected, staleTime: 0, gcTime: 0, refetchOnWindowFocus: true });
   const resolution = useMutation({
     mutationFn: ({ id, deleteCheckIn }: { id: string; deleteCheckIn: boolean }) => resolveCheckInReport(id, deleteCheckIn),
@@ -78,7 +84,7 @@ export function CheckInReportsPage() {
   return <div className="mx-auto w-full max-w-[1600px] space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><div className="mb-2 flex items-center gap-3"><span className="rounded-xl bg-primary/15 p-2.5 text-amber-600 dark:text-primary"><Flag className="h-5 w-5" /></span><h2 className="font-display text-2xl font-bold">Жалобы на чекины</h2></div><p className="text-sm text-text-muted">Проверьте сообщение пользователя и решите, стоит ли удалять чекин.</p></div>
-      <Button variant="secondary" disabled={list.isFetching} onClick={() => void list.refetch()}><RefreshCw className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />Обновить</Button>
+      <Button variant="secondary" disabled={list.isFetching} onClick={() => void qc.invalidateQueries({ queryKey: ['admin', 'check-in-reports'] })}><RefreshCw className={`h-4 w-4 ${list.isFetching ? 'animate-spin' : ''}`} />Обновить</Button>
     </div>
     <div className="flex flex-wrap gap-2">{statuses.map(item => <Button key={item.value} size="sm" variant={status === item.value ? 'primary' : 'secondary'} onClick={() => { const next = new URLSearchParams(); next.set('status', item.value); setParams(next); }}>{item.label}</Button>)}</div>
     {list.error ? <p role="alert">{getErrorMessage(list.error, 'Не удалось загрузить жалобы')}</p> : <Card>

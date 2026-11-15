@@ -71,8 +71,8 @@ export interface ShopChangeRequestQuery {
   submittedByUserId?: string;
 }
 
-export function getShopChangeRequests(query: ShopChangeRequestQuery = {}) {
-  return httpClient.get<ShopChangeRequestPageDto>(API_ENDPOINTS.SHOP_CHANGE_REQUESTS.BASE, { params: query });
+export function getShopChangeRequests(query: ShopChangeRequestQuery = {}, signal?: AbortSignal) {
+  return httpClient.get<ShopChangeRequestPageDto>(API_ENDPOINTS.SHOP_CHANGE_REQUESTS.BASE, { params: query, signal, cache: 'no-store' });
 }
 
 export function getShopChangeRequest(id: string) {

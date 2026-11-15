@@ -1,11 +1,17 @@
 jest.mock('../src/api/admin', () => ({
   getOverviewStats: jest.fn(), getUsersTimeseries: jest.fn(), getShopsTimeseries: jest.fn(),
   getShopsInsights: jest.fn(), getModerationInsights: jest.fn(),
+  getModerationShops: jest.fn().mockResolvedValue({ data: { totalCount: 3 } }),
+  getModerationCheckIns: jest.fn().mockResolvedValue({ data: { totalCount: 2 } }),
+  getShopIssueReports: jest.fn().mockResolvedValue({ data: { totalItems: 0 } }),
   getAdminUsers: jest.fn(), getUserStats: jest.fn(), updateUserRole: jest.fn(),
   blockUser: jest.fn(), deleteAdminUser: jest.fn(), getUserSessions: jest.fn(),
   revokeUserSession: jest.fn(), revokeAllUserSessions: jest.fn(),
 }));
 jest.mock('../src/api/import', () => ({ getImportStats: jest.fn() }));
+jest.mock('../src/api/checkInReports', () => ({ getCheckInReports: jest.fn().mockResolvedValue({ data: { totalCount: 0 } }) }));
+jest.mock('../src/api/roasters', () => ({ getModerationRoasters: jest.fn().mockResolvedValue({ data: { totalCount: 0 } }) }));
+jest.mock('../src/api/shopChangeRequests', () => ({ getShopChangeRequests: jest.fn().mockResolvedValue({ data: { totalItems: 0 } }) }));
 jest.mock('../src/api/users', () => ({ getUserPublicProfile: jest.fn() }));
 let mockRole = 'Moderator';
 jest.mock('../src/contexts/UserContext', () => ({ useUser: () => ({

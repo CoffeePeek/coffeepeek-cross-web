@@ -5,9 +5,9 @@ import {
   AppWindow, BookOpen, ChevronDown, ChevronLeft, CircleGauge, Coffee,
   Flag, History, Logs, LogOut, Map, MessageSquareText, Tags, Trophy, Upload, UserRound, Users,
 } from 'lucide-react';
-import { getModerationInsights, type AdminModerationQueueName } from '../../api/admin';
 import { getImportStats } from '../../api/import';
 import { useUser } from '../../contexts/UserContext';
+import { useModerationBadges } from '../../hooks/useModerationBadges';
 import { cn } from '../../lib/utils';
 import LogoMark from '../LogoMark';
 import { Button } from '../ui/Button';
@@ -77,37 +77,16 @@ const NAV_SECTIONS: NavSection[] = [
 
 const pathActive = (pathname: string, path: string) => pathname === path || pathname.startsWith(`${path}/`);
 
-const QUEUE_PATHS: Record<AdminModerationQueueName, string> = {
-  shops: '/shops',
-  checkIns: '/check-ins',
-  roasters: '/roasters',
-  changeRequests: '/shop-change-requests',
-  issueReports: '/shop-reports',
-};
-const BADGE_POLL_MS = 60_000;
-
-/** Pending counts per nav path. Query keys are shared with the dashboard and import stats pages. */
-function useNavBadges(isModerator: boolean): Record<string, number> {
-  const moderation = useQuery({
-    queryKey: ['admin', 'stats', 'moderation-insights'],
-    queryFn: () => getModerationInsights().then((r) => r.data),
-    enabled: isModerator,
-    refetchInterval: BADGE_POLL_MS,
-  });
+function useNavBadges(isAdmin: boolean, isModerator: boolean): Record<string, number> {
+  const moderation = useModerationBadges(isAdmin, isModerator);
   const importStats = useQuery({
     queryKey: ['admin', 'import', 'stats'],
     queryFn: () => getImportStats().then((r) => r.data),
     enabled: isModerator,
-    refetchInterval: BADGE_POLL_MS,
+    refetchInterval: 60_000,
   });
-  return useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const { queue, pending } of moderation.data?.queues ?? []) {
-      if (QUEUE_PATHS[queue]) counts[QUEUE_PATHS[queue]] = pending;
-    }
-    if (importStats.data) counts['/import'] = importStats.data.pending + importStats.data.pendingDuplicates;
-    return counts;
-  }, [moderation.data, importStats.data]);
+  const importCount = importStats.data ? importStats.data.pending + importStats.data.pendingDuplicates : 0;
+  return { ...moderation, '/import': importCount };
 }
 
 const CountBadge = ({ count }: { count: number }) => (
@@ -147,7 +126,7 @@ export const Sidebar = ({ collapsed, mobileOpen, isDesktop, onNavigate, onToggle
   const [openSection, setOpenSection] = useState<string | null>('moderation');
   const showLabels = !collapsed || mobileOpen;
   const roles = useMemo(() => ({ isAdmin, isModerator, isOwner }), [isAdmin, isModerator, isOwner]);
-  const badges = useNavBadges(isModerator);
+  const badges = useNavBadges(isAdmin, isModerator);
   const visibleSections = useMemo(
     () => NAV_SECTIONS.map((section) => ({ ...section, items: section.items.filter((item) => canSee(item, roles)) }))
       .filter((section) => section.items.length),

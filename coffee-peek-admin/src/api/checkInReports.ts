@@ -33,8 +33,8 @@ export interface ReportedCheckIn extends CheckInKindFields {
   isPubliclyVisible: boolean;
 }
 const base = '/api/admin/check-in-reports';
-export const getCheckInReports = async (status: string, page: number) => {
-  const response = await httpClient.get<{ items: CheckInReport[]; totalCount: number; page: number; pageSize: number }>(base, { params: { status, page, pageSize: 20 }, cache: 'no-store' });
+export const getCheckInReports = async (status: string, page: number, { pageSize = 20, signal }: { pageSize?: number; signal?: AbortSignal } = {}) => {
+  const response = await httpClient.get<{ items: CheckInReport[]; totalCount: number; page: number; pageSize: number }>(base, { params: { status, page, pageSize }, signal, cache: 'no-store' });
   return { ...response, data: { ...response.data, items: response.data.items.map(normalizeReport) } };
 };
 export const getCheckInReport = async (id: string) => {
