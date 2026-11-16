@@ -7,6 +7,7 @@ import { ChatCenteredText, MagnifyingGlass, GearSix, SignOut, CaretDown, User, L
 import { CoffeeBean } from '@phosphor-icons/react';
 import LogoMark, { HEADER_LOGO_SIZE } from './LogoMark';
 import Button from './Button';
+import HeaderCityPicker from './HeaderCityPicker';
 
 const FEED_NAV = { id: 'feed', label: 'Лента', route: '/feed', Icon: ChatCenteredText, match: (p: string) => p.startsWith('/feed') } as const;
 const DISCOVERY_NAV = { id: 'discovery', label: 'Поиск', route: '/search', Icon: MagnifyingGlass, match: (p: string) => ['/shops', '/coffee-shops', '/search', '/roasters', '/map'].some(route => p.startsWith(route)) } as const;
@@ -77,18 +78,19 @@ const Header: React.FC = () => {
     <>
     <header className="border-b" style={{ background: bg, borderColor, position: 'sticky', top: 0, zIndex: 1100, paddingTop: 'env(safe-area-inset-top)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' }}>
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div style={{ display: 'flex', alignItems: 'center', height: 64, gap: 12 }}>
+        <div className="flex h-16 items-center gap-2 sm:gap-3">
 
           {/* Left: logo — flex:1 so nav sits on the true horizontal center */}
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-start', minWidth: 0 }}>
             <button
               type="button"
-              className="logo-btn"
+              className="logo-btn shrink-0"
+              aria-label="CoffeePeek"
               onClick={() => navigate(user ? '/shops' : '/')}
               style={{ display: 'flex', height: 48, alignItems: 'center', gap: 8, cursor: 'pointer' }}
             >
-              <LogoMark size={HEADER_LOGO_SIZE} />
-              <span style={{ fontFamily: '"Manrope"', fontWeight: 800, fontSize: 20, letterSpacing: '-0.045em', color: textColor }}>
+              <LogoMark size={HEADER_LOGO_SIZE} className="max-sm:max-h-10 max-sm:max-w-10" />
+              <span className="text-base sm:text-xl" style={{ fontFamily: '"Manrope"', fontWeight: 800, letterSpacing: '-0.045em', color: textColor }}>
                 Coffee<span style={{ color: gold }}>Peek</span>
               </span>
             </button>
@@ -108,8 +110,8 @@ const Header: React.FC = () => {
             ))}
           </nav>
 
-          {/* Right: actions — matching flex:1 keeps Кофейни/Карта centered vs. the heading */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 }}>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2 lg:min-w-max">
+            <HeaderCityPicker {...{ textColor, borderColor, surfaceBg, mutedColor, hoverBg }} />
             {user ? (
               /* ── Profile dropdown: desktop only; on smaller screens this is in the hamburger ── */
               <div className="hidden lg:block" style={{ position: 'relative' }}>
@@ -201,7 +203,7 @@ const Header: React.FC = () => {
                 </button>
               </div>
             )}
-            <Button variant="ghost" className="h-11 w-11 rounded-full p-0 lg:hidden" popoverTarget="mobile-navigation"
+            <Button variant="ghost" className="h-11 w-11 shrink-0 rounded-full p-0 lg:hidden" popoverTarget="mobile-navigation"
               aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'} aria-controls="mobile-navigation" aria-expanded={menuOpen}>
               {menuOpen ? <X size={24} /> : <List size={24} />}
             </Button>

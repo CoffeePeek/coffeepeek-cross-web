@@ -3,6 +3,7 @@ jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'da
 jest.mock('../src/contexts/UserContext', () => ({ useUser: jest.fn(() => ({ isLoading: false })) }));
 jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: jest.fn() }));
 jest.mock('../src/hooks/useNearViewport', () => ({ useNearViewport: jest.fn(() => ({ ref: { current: null }, nearViewport: true })) }));
+jest.mock('../src/hooks/useLocalCity', () => ({ useLocalCity: jest.fn() }));
 jest.mock('../src/hooks/queries/useCheckIns', () => ({ usePublicCheckIns: jest.fn() }));
 jest.mock('../src/lib/catalogSession', () => ({ getCatalogScope: () => 'guest:1' }));
 jest.mock('../src/components/Header', () => ({ __esModule: true, default: () => null }));
@@ -24,6 +25,7 @@ import { renderToPipeableStream } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { usePublicCheckIns } from '../src/hooks/queries/useCheckIns';
+import { useLocalCity } from '../src/hooks/useLocalCity';
 import { useUser } from '../src/contexts/UserContext';
 import { useNearViewport } from '../src/hooks/useNearViewport';
 import LandingPage from '../src/pages/LandingPage';
@@ -33,7 +35,7 @@ const render = () => new Promise<string>((resolve, reject) => {
   output.setEncoding('utf8');
   let html = '';
   output.on('data', chunk => { html += chunk; });
-  output.on('end', () => resolve(html));
+  output.on('end', () => resolve(html.replaceAll('<!-- -->', '')));
   output.on('error', reject);
   const stream = renderToPipeableStream(React.createElement(MemoryRouter, {}, React.createElement(LandingPage)), {
     onAllReady: () => stream.pipe(output),
@@ -47,12 +49,16 @@ beforeEach(() => {
   jest.clearAllMocks();
   query.mockReturnValue({ data: { items: [] }, isPending: false, isError: false });
   checkIns.mockReturnValue({ data: { pages: [{ items: [] }] }, isPending: false, isError: false });
+  (useLocalCity as jest.Mock).mockReturnValue({ city: { id: 'minsk', name: 'Минск' } });
+  jest.mocked(useNearViewport).mockReturnValue({ ref: { current: null }, nearViewport: true });
 });
 
 test('empty catalog and community keep navigation usable without invented products or reviews', async () => {
   const html = await render();
   expect(html).toContain('В каталоге пока нет кофе.');
-  expect(html).toContain('Поделись первым впечатлением о кофейнях Минска.');
+  expect(html).toContain('Поделись первым впечатлением о местных кофейнях.');
+  expect(html).toContain('Карта кофеен · Минск');
+  expect(html).toContain('href="/cities/minsk"');
   for (const href of ['/map', '/coffees', '/roasters', '/feed']) expect(html).toContain(`href="${href}"`);
   expect(html.match(/<details /g)).toHaveLength(4);
   expect(html).toContain('aria-hidden="true" inert=""');
@@ -70,6 +76,16 @@ test('renders the returned coffee and public check-in through existing cards', a
   expect(html).toContain('Публичный чекин из API');
   expect(html).not.toContain('В каталоге пока нет кофе.');
   expect(checkIns).toHaveBeenCalledWith({ citySlug: 'minsk', pageSize: 1 }, true);
+});
+
+test('a selected city supplies the home map and check-in labels and the public check-in filter', async () => {
+  (useLocalCity as jest.Mock).mockReturnValue({ city: { id: 'grodno', name: 'Гродно' } });
+  const html = await render();
+  expect(html).toContain('Кофейный гид · Гродно');
+  expect(html).toContain('Карта кофеен · Гродно');
+  expect(html).toContain('Чекины · Гродно');
+  expect(html).not.toContain('Минск');
+  expect(checkIns).toHaveBeenCalledWith({ citySlug: 'grodno', pageSize: 1 }, true);
 });
 
 test('request failures show retry actions instead of an empty catalog', async () => {

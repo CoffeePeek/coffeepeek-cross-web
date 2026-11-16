@@ -6,7 +6,7 @@ export function getLocationLifetime(timestamp: number, now: number = Date.now())
 }
 
 export interface DeviceLocation {
-  coords: { latitude: number; longitude: number };
+  coords: { latitude: number; longitude: number; accuracy?: number };
   timestamp: number;
 }
 
@@ -66,7 +66,7 @@ export async function getDeviceLocation({
       navigator.geolocation.getCurrentPosition(position => {
         if (getLocationLifetime(position.timestamp) === 0) return fail();
         cachedLocation = {
-          coords: { latitude: position.coords.latitude, longitude: position.coords.longitude },
+          coords: { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy },
           timestamp: position.timestamp,
         };
         try { globalThis.sessionStorage?.setItem(LOCATION_CACHE_KEY, JSON.stringify(cachedLocation)); } catch { /* Keep the in-memory cache. */ }

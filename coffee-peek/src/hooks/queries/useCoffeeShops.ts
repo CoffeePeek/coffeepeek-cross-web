@@ -49,12 +49,13 @@ export function useSearchCoffeeShops(
   searchQuery: string,
   page: number = 1,
   pageSize: number = 10,
-  enabled: boolean = true
+  enabled: boolean = true,
+  cityId?: string,
 ) {
   const q = searchQuery.trim();
   return useQuery({
-    queryKey: [...coffeeShopKeys.search(q, page, pageSize), getCatalogScope()],
-    queryFn: ({ signal }) => searchShops({ q, filters: {}, page, pageSize }, signal),
+    queryKey: [...coffeeShopKeys.search(q, page, pageSize), getCatalogScope(), cityId],
+    queryFn: ({ signal }) => searchShops({ q, filters: cityId ? { city: cityId } : {}, page, pageSize }, signal),
     enabled: enabled && !!q,
   });
 }

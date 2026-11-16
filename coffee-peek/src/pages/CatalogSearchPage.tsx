@@ -18,7 +18,6 @@ import { CoffeeCatalogCard, RoasterCatalogCard, ShopCatalogCard, CatalogPaginati
 import { Shimmer, ShopCardSkeleton } from '../components/skeletons';
 import { useFavorites } from '../hooks/useFavorites';
 import { useLocalCity } from '../hooks/useLocalCity';
-import { useCities } from '../hooks/queries/useCatalogs';
 import { useLoadMoreOnScroll } from '../hooks/useLoadMoreOnScroll';
 import { useDiscoveryAnalytics } from '../hooks/useDiscoveryAnalytics';
 import { useFeatureExposure } from '../hooks/useFeatureExposure';
@@ -31,8 +30,7 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   const navigate = useNavigate();
   const location = useLocation();
   const favorites = useFavorites();
-  const { cityId } = useLocalCity();
-  const cities = useCities(false);
+  const { city, catalog } = useLocalCity();
   const { user, isLoading: authLoading } = useUser();
   const { requireAuth } = useRequireAuth();
   const { theme } = useTheme();
@@ -42,11 +40,11 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   const parsed = useMemo(() => {
     try {
       const restored = new URLSearchParams(params);
-      if (kind === 'shops' && !params.has('filters') && !params.has('citySlug') && !params.has('city') && cityId) restored.set('city', cityId);
+      if (kind === 'shops' && !params.has('filters') && !params.has('citySlug') && !params.has('city')) restored.set('city', city.id);
       return { state: readSearchState(restored, kind), error: '' };
     }
     catch { return { state: readSearchState(new URLSearchParams(), kind), error: 'Фильтры в адресе повреждены. Сбросьте их и повторите поиск.' }; }
-  }, [params, kind, cityId]);
+  }, [params, kind, city.id]);
   const state = parsed.state;
   const [input, setInput] = useState(state.q);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -58,7 +56,6 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   usePageTitle(titles[kind]);
   useEffect(() => { setInput(state.q); }, [state.q]);
   const update = (next: SearchState, replace = false) => setParams(writeSearchState(next, kind), { replace });
-  useEffect(() => { if (kind === 'shops' && cityId && !params.has('filters') && !params.has('city') && !params.has('citySlug')) update(state, true); }, [kind, cityId, params]);
   useEffect(() => {
     if (input === state.q) return;
     const timer = setTimeout(() => update(applyCriteria(state, { q: input.trim().replace(/\s+/g, ' '), sort: ['recommended', 'relevance', 'name_asc'].includes(state.sort) ? (input.trim() ? 'relevance' : kind === 'shops' ? 'recommended' : 'name_asc') : state.sort })), 300);
@@ -127,7 +124,7 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   const hidden = pendingFavorites.filter(change => kind === 'shops' && !change.favorite && change.kind === 'coffee_shop' && favorites.isFavorite('coffee_shop', change.address.slug, true) === false);
   const page = rawPage && state.filters.favoritesOnly && hidden.length ? { ...rawPage, items: rawPage.items.filter(item => !hidden.some(change => change.address.slug === item.address.slug)), totalItems: Math.max(0, rawPage.totalItems - hidden.length) } : rawPage;
   const analytics = useDiscoveryAnalytics({ catalog: kind, state, enabled, source: state.filters.favoritesOnly ? 'favorites' : 'list',
-    citySlug: state.filters.city ? cities.data?.find(city => city.id === state.filters.city || city.publicAddress?.slug === state.filters.city)?.publicAddress?.slug : undefined,
+    citySlug: state.filters.city ? catalog.find(city => city.id === state.filters.city || city.publicAddress?.slug === state.filters.city)?.publicAddress?.slug : undefined,
     ready: resultsQuery.isSuccess && !resultsQuery.isFetching && (kind === 'roasters' || !query.isPlaceholderData),
     resultCount: page?.totalItems ?? 0,
     error: resultsQuery.isError ? resultsQuery.error : undefined,

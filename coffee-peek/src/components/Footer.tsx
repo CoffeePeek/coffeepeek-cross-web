@@ -68,8 +68,8 @@ export default function Footer() {
           <FooterLink href="/" className="site-footer-brand">
             <LogoMark size={40} /><span>Coffee<span style={{ color: brand.primary }}>Peek</span></span>
           </FooterLink>
-          <p className="site-footer-tagline">Твой кофейный Минск.</p>
-          <p className="site-footer-copyright">© 2026 CoffeePeek · Минск</p>
+          <p className="site-footer-tagline">Твой кофейный гид.</p>
+          <p className="site-footer-copyright">© 2026 CoffeePeek</p>
         </div>
         <div className="site-footer-columns">
           {footerCols.map(col => <nav key={col.title} aria-label={col.title}>

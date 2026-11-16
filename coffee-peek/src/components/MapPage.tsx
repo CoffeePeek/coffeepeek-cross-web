@@ -2,6 +2,9 @@ import { useSearchParams } from 'react-router-dom';
 import { usePublicNavigate } from '../hooks/usePublicNavigate';
 import React, { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { searchShops } from '../api/discovery';
+import { useBrowseCity } from '../hooks/useBrowseCity';
+import { getCityCenter } from '../utils/cityGeography';
 import { distanceKm, formatDistance, nearbyBounds } from '../utils/distance';
 import { closestCardIndex } from '../utils/carousel';
 import * as maplibregl from 'maplibre-gl';
@@ -34,10 +37,55 @@ import { useFeatureExposure } from '../hooks/useFeatureExposure';
 import type { CatalogAnalyticsContext } from '../utils/discoveryAnalytics';
 import { createMapMarkerLayer } from '../map/markerTransitions';
 import type { MapMarkerSpec } from '../map/markerTransitions';
+import WobbleRing from './WobbleRing';
 
-const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean; fillContainer?: boolean; showSearch?: boolean; compactPreview?: boolean; analyticsVisible?: boolean; analytics?: CatalogAnalyticsContext }> = ({ embedded = false, autoPreview = false, reduceMotion = false, fillContainer = false, showSearch = true, compactPreview = false, analyticsVisible = true, analytics }) => {
-  const openPublic = usePublicNavigate();
+type MapOptions = {
+  embedded?: boolean; autoPreview?: boolean; reduceMotion?: boolean; fillContainer?: boolean;
+  showSearch?: boolean; compactPreview?: boolean; analyticsVisible?: boolean; analytics?: CatalogAnalyticsContext;
+};
+type Coordinates = [number, number];
+
+async function getCityShopCenter(cityId: string, signal: AbortSignal): Promise<Coordinates | null> {
+  const shops = await searchShops({ filters: { city: cityId }, page: 1, pageSize: 3 }, signal);
+  const details = await Promise.allSettled(shops.items.map(shop => getCoffeeShopBySlug(shop.address.slug, signal)));
+  for (const result of details) {
+    if (result.status !== 'fulfilled') continue;
+    const { latitude, longitude } = result.value.data?.location ?? {};
+    if (latitude != null && longitude != null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180) return [longitude, latitude];
+  }
+  const failed = details.find(result => result.status === 'rejected');
+  if (failed) throw failed.reason;
+  return null;
+}
+
+function MapPage(options: MapOptions) {
+  const { city } = useBrowseCity();
   const [searchParams] = useSearchParams();
+  const latitude = Number(searchParams.get('lat'));
+  const longitude = Number(searchParams.get('lon'));
+  const hasCenter = !options.embedded && searchParams.has('lat') && searchParams.has('lon') &&
+    Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+  const knownCenter: Coordinates | undefined = hasCenter ? [longitude, latitude] : getCityCenter(city);
+  const cityCenter = useQuery({
+    queryKey: ['map', 'city-center', city.id],
+    queryFn: ({ signal }) => getCityShopCenter(city.id, signal),
+    enabled: !knownCenter,
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const center = knownCenter ?? cityCenter.data;
+  if (!center) return <div role="status" className="flex min-h-52 h-full flex-col items-center justify-center gap-3 px-6 text-center">
+    {cityCenter.isPending ? <WobbleRing /> : cityCenter.isError ? <>
+      <p>Не удалось открыть карту города {city.name}.</p>
+      <button type="button" className="min-h-11 underline" onClick={() => void cityCenter.refetch()}>Попробовать ещё раз</button>
+    </> : <p>Для города {city.name} пока нет кофеен с точкой на карте.</p>}
+  </div>;
+  return <CityMap key={`${city.id}:${center.join(',')}`} {...options} cityId={city.id} center={center}
+    zoom={hasCenter ? 14 : options.embedded ? 13 : 12} />;
+}
+
+const CityMap: React.FC<MapOptions & { cityId: string; center: Coordinates; zoom: number }> = ({ cityId, center, zoom, embedded = false, autoPreview = false, reduceMotion = false, fillContainer = false, showSearch = true, compactPreview = false, analyticsVisible = true, analytics }) => {
+  const openPublic = usePublicNavigate();
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -90,7 +138,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
     const timer = setTimeout(() => setSearchQuery(query.trim()), 300);
     return () => clearTimeout(timer);
   }, [query]);
-  const search = useSearchCoffeeShops(searchQuery, 1, 3);
+  const search = useSearchCoffeeShops(searchQuery, 1, 3, showSearch, cityId);
   const searchResults = searchQuery && query.trim() === searchQuery ? (search.data?.items ?? []).slice(0, 3) : [];
   const searchAnalytics = useDiscoveryAnalytics({ catalog: 'shops', state: { q: searchQuery, filters: {}, sort: 'relevance' }, source: 'map',
     enabled: analyticsVisible && showSearch && !!searchQuery && query.trim() === searchQuery,
@@ -204,14 +252,14 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
 
   useEffect(() => () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); }, []);
 
-  const handleLocate = async (requestPermission = true) => {
+  const handleLocate = async () => {
     const map = mapInstanceRef.current;
     if (!map) return;
     setIsLocating(true);
     const startedAt = performance.now();
-    const pos = await getDeviceLocation({ requestPermission, enableHighAccuracy: true, timeout: 10000, ...(requestPermission ? { maximumAge: 0 } : {}) });
+    const pos = await getDeviceLocation({ requestPermission: true, enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     if (map !== mapInstanceRef.current) return;
-    if (mapVisible.current) captureAnalyticsEvent('geolocation_result', { placement: 'map', trigger: requestPermission ? 'user' : 'automatic', outcome: pos && getLocationLifetime(pos.timestamp) > 0 ? 'available' : 'unavailable', duration_ms: Math.round(performance.now() - startedAt) });
+    if (mapVisible.current) captureAnalyticsEvent('geolocation_result', { placement: 'map', trigger: 'user', outcome: pos && getLocationLifetime(pos.timestamp) > 0 ? 'available' : 'unavailable', duration_ms: Math.round(performance.now() - startedAt) });
     if (pos && getLocationLifetime(pos.timestamp) > 0) {
       const { latitude, longitude } = pos.coords;
       userPosRef.current = { lat: latitude, lon: longitude };
@@ -301,19 +349,15 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
     };
     paintMapRef.current = paintMap;
 
-    const latitude = Number(searchParams.get('lat'));
-    const longitude = Number(searchParams.get('lon'));
-    const hasCenter = !embedded && searchParams.has('lat') && searchParams.has('lon') && Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
     const map = createOsmMap(container, {
-      center: hasCenter ? [longitude, latitude] : undefined,
-      zoom: hasCenter ? 14 : embedded ? 13 : 12,
+      center,
+      zoom,
       dark: theme === 'dark',
       zoomControl: false,
     });
     mapInstanceRef.current = map;
     markerLayer = createMapMarkerLayer(map);
     setIsLoading(false);
-    if (!hasCenter && !embedded) void handleLocate(false);
     const resizeObserver = new ResizeObserver(() => map.resize());
     resizeObserver.observe(container);
     map.on('style.load', () => paintMap(mapDataRef.current));
@@ -497,7 +541,7 @@ const MapPage: React.FC<{ embedded?: boolean; autoPreview?: boolean; reduceMotio
       </div>
 
       <div className="coffee-map-controls absolute right-4 z-[500] flex items-center gap-2" style={{ bottom: carouselItems.length ? 128 : 16 }}>
-        {!embedded && !isLoading && mapInstanceRef.current && <MapCheckInHeatmap map={mapInstanceRef.current} />}
+        {!embedded && !isLoading && mapInstanceRef.current && <MapCheckInHeatmap map={mapInstanceRef.current} cityId={cityId} />}
         <div className={`flex overflow-hidden rounded-full border shadow-lg ${themeClasses.bg.card} ${themeClasses.border.default}`}>
           <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomIn(); }} aria-label="Приблизить карту" className={`flex h-11 w-11 items-center justify-center ${themeClasses.text.primary}`}><Plus size={24} className="h-6 w-6 shrink-0" /></button>
           <button type="button" onClick={() => { captureAnalyticsEvent('map_interaction', { action: 'zoomed' }); mapInstanceRef.current?.zoomOut(); }} aria-label="Отдалить карту" className={`flex h-11 w-11 items-center justify-center border-l ${themeClasses.border.default} ${themeClasses.text.primary}`}><Minus size={24} className="h-6 w-6 shrink-0" /></button>

@@ -15,9 +15,8 @@ jest.mock('../src/api/core/interceptors', () => ({ normalizeResponseData: (data:
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }));
 jest.mock('../src/contexts/UserContext', () => ({ useUser: () => ({ user: null, isLoading: false }) }));
 jest.mock('../src/contexts/ToastContext', () => ({ useToast: () => ({ showToast: jest.fn() }) }));
-jest.mock('../src/hooks/queries/useCatalogs', () => ({ useCities: (enabled: boolean) => ({ data: enabled ? [{ id: 'minsk' }] : [], isPending: false }) }));
+jest.mock('../src/hooks/queries/useCatalogs', () => ({ useCities: () => ({ data: [{ id: 'minsk', name: 'Минск' }], isPending: false }) }));
 jest.mock('../src/hooks/useFavorites', () => ({ useFavorites: () => ({ isFavorite: () => false }) }));
-jest.mock('../src/hooks/useLocalCity', () => ({ useLocalCity: () => ({ cityId: 'minsk' }) }));
 jest.mock('../src/hooks/usePageTitle', () => ({ usePageTitle: () => {} }));
 jest.mock('../src/hooks/useRequireAuth', () => ({ useRequireAuth: () => ({ requireAuth: jest.fn() }) }));
 jest.mock('../src/hooks/useLoadMoreOnScroll', () => ({ useLoadMoreOnScroll: () => undefined }));

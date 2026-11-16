@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCities, type City } from '../api/coffeeshop';
 import WobbleRing from '../components/WobbleRing';
 import GuestAuthCard from '../components/GuestAuthCard';
 import { MobileAppDownload } from '../components/mobile-app';
@@ -9,8 +8,6 @@ import { useUser } from '../contexts/UserContext';
 import { useLocalCity } from '../hooks/useLocalCity';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { usePageAnchor } from '../hooks/usePageAnchor';
-import { getErrorMessage } from '../utils/errorHandler';
-import { logger } from '../utils/logger';
 import {
   CaretRight, ChatCenteredText, CoffeeBean, Lock, MapPin, Moon, Plus, ShareNetwork,
 } from '@phosphor-icons/react';
@@ -22,29 +19,10 @@ const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { user, isLoading: isUserLoading } = useUser();
-  const { cityId, setCityId } = useLocalCity();
-  const [cities, setCities] = useState<City[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { city, cities, setCity } = useLocalCity();
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  usePageAnchor(!isLoading && !isUserLoading);
-
-  useEffect(() => {
-    if (isUserLoading) return;
-    setIsLoading(true);
-    getCities()
-      .then(citiesResponse => {
-        const raw = citiesResponse.data as unknown;
-        const list = Array.isArray(raw) ? raw : ((raw as { cities?: City[] })?.cities ?? []);
-        setCities(list);
-        if (!cityId && list[0]) setCityId(list[0].id);
-      })
-      .catch(cause => {
-        logger.error('Error loading settings:', cause);
-        setError(getErrorMessage(cause));
-      })
-      .finally(() => setIsLoading(false));
-  }, [cityId, isUserLoading, setCityId]);
+  usePageAnchor(!isUserLoading);
 
   const isDark = theme === 'dark';
   const colors: Colors = {
@@ -72,7 +50,7 @@ const SettingsPage: React.FC = () => {
     }
   };
 
-  if (isLoading || isUserLoading) {
+  if (isUserLoading) {
     return <div className="flex min-h-[70vh] items-center justify-center" style={{ background: colors.bg }}><WobbleRing size={48} /></div>;
   }
 
@@ -91,9 +69,12 @@ const SettingsPage: React.FC = () => {
         </SettingsSection>}
 
         <SettingsSection title="Настройки" colors={colors}>
-          <SettingsRow title="Город" subtitle="Определяет, какие кофейни показывать в первую очередь" Icon={MapPin} color="#71D5D0" iconBg="rgba(38,170,166,.17)" colors={colors}>
-            <select aria-label="Город" value={cityId} onChange={event => setCityId(event.target.value)} className="max-w-[145px] cursor-pointer bg-transparent text-right text-base outline-none" style={{ color: colors.muted }}>
-              {cities.map(city => <option key={city.id} value={city.id}>{city.name}</option>)}
+          <SettingsRow title="Город" subtitle="Город для поиска, карты и ленты" Icon={MapPin} color="#71D5D0" iconBg="rgba(38,170,166,.17)" colors={colors}>
+            <select aria-label="Город" value={city.id} onChange={event => {
+              const next = cities.find(item => item.id === event.target.value);
+              if (next) setCity(next);
+            }} className="max-w-[145px] cursor-pointer bg-transparent text-right text-base outline-none" style={{ color: colors.muted }}>
+              {cities.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
             <CaretRight size={20} color={colors.muted} />
           </SettingsRow>

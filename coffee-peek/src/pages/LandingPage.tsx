@@ -9,6 +9,7 @@ import { brand, card, dark, light, getThemeColors, shadow } from '../design-syst
 import { getCatalogScope } from '../lib/catalogSession';
 import { usePageTitle } from '../hooks/usePageTitle';
 import minsk from '../constants/minskCatalog.json';
+import { useLocalCity } from '../hooks/useLocalCity';
 import { usePublicCheckIns } from '../hooks/queries/useCheckIns';
 import { useNearViewport } from '../hooks/useNearViewport';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
@@ -28,14 +29,17 @@ const CoffeeCatalogCard = lazyWithRetry(() => import('../components/CatalogCards
 const CheckInCard = lazyWithRetry(() => import('../components/CheckInCard'));
 
 const questions = [
-  { title: 'Что такое CoffeePeek?', answer: 'Кофейный гид по Минску: карта кофеен, каталог кофе и обжарщиков, чекины и впечатления сообщества.' },
+  { title: 'Что такое CoffeePeek?', answer: 'Кофейный гид с картой кофеен, каталогом кофе и обжарщиков и чекинами посетителей.' },
   { title: 'Можно пользоваться без регистрации?', answer: 'Да. Кофейни, карта, каталог кофе и публичная лента доступны без аккаунта. Войди, чтобы сохранять любимые места и оставлять чекины.' },
   { title: 'Как добавить кофейню?', answer: 'Войди в аккаунт и выбери «Добавить кофейню». Заполни информацию о месте и отправь её на модерацию.' },
   { title: 'Как оставить чекин?', answer: 'Открой страницу кофейни и отметь свой визит: выбери напиток, поставь оценку и поделись впечатлениями. Для этого понадобится аккаунт.' },
 ];
 
 const LandingPage: React.FC = () => {
-  usePageTitle('Кофейни Минска, карта и отзывы');
+  const { city } = useLocalCity();
+  usePageTitle(`Кофейни, карта и отзывы · ${city.name}`, {
+    description: `Кофейни на карте · ${city.name}. Адреса, часы работы, меню и отзывы посетителей на CoffeePeek.`,
+  });
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { isLoading: authLoading } = useUser();
@@ -65,7 +69,7 @@ const LandingPage: React.FC = () => {
     queryFn: ({ signal }) => getCoffeeFilterValues(signal),
     enabled: coffeeSection.nearViewport,
   });
-  const checkIns = usePublicCheckIns({ citySlug: 'minsk', pageSize: 1 }, communitySection.nearViewport);
+  const checkIns = usePublicCheckIns({ citySlug: city.id, pageSize: 1 }, communitySection.nearViewport);
   const latestCheckIn = checkIns.data?.pages[0]?.items[0];
 
   return (
@@ -81,9 +85,9 @@ const LandingPage: React.FC = () => {
       <main id="main-content">
         <section className="landing-container landing-hero" aria-labelledby="landing-title">
           <div className="min-w-0">
-            <p className="landing-eyebrow">Кофейный гид по Минску</p>
+            <p className="landing-eyebrow">Кофейный гид · {city.name}</p>
             <h1 id="landing-title" className="landing-title mt-6 font-extended font-black">
-              Хороший кофе.<br /><span className="landing-accent">В твоём Минске.</span>
+              Хороший кофе.<br /><span className="landing-accent">В твоём городе.</span>
             </h1>
             <p className="landing-description mt-6 max-w-[520px]">
               Находи кофейни, выбирай зерно и делись впечатлениями. Всё о кофе в одном городе.
@@ -107,19 +111,13 @@ const LandingPage: React.FC = () => {
           </div>
         </section>
 
-        <div className="landing-districts border-y" style={{ borderColor: c.border }}>
-          <p className="landing-container flex flex-wrap items-center justify-center gap-x-6 gap-y-2 py-5 text-xs sm:text-sm">
-            {['Динамо', 'Восток', 'Минск Мир', 'Немига', 'Новая Боровая', 'Октябрьская', 'Осмоловка', 'Площадь Победы'].map(place => <span key={place}>{place}</span>)}
-          </p>
-        </div>
-
-        <section className="landing-container landing-feature" aria-labelledby="shops-title">
+        <section className="landing-container landing-feature border-t" style={{ borderColor: c.border }} aria-labelledby="shops-title">
           <div>
-            <p className="landing-eyebrow">Кофейни</p>
+            <p className="landing-eyebrow">Карта кофеен · {city.name}</p>
             <h2 id="shops-title" className="landing-heading mt-5 font-extended font-bold">
               Твоя следующая чашка — где-то <span className="landing-accent">рядом.</span>
             </h2>
-            <p className="landing-description mt-5">Смотри кофейни на карте Минска, сравнивай оценки и находи места, куда хочется вернуться.</p>
+            <p className="landing-description mt-5">Сравнивай оценки кофеен и находи места, куда хочется вернуться.</p>
             <ul className="my-6 space-y-3 text-sm sm:text-base">
               {['Карта и удобные фильтры', 'Часы работы и способы заваривания', 'Любимые места в избранном'].map(text => (
                 <li key={text} className="flex items-start gap-3"><AppIcon name="check" size={20} color={brand.primary} className="shrink-0" /><span>{text}</span></li>
@@ -127,7 +125,7 @@ const LandingPage: React.FC = () => {
             </ul>
             <div className="flex flex-wrap gap-3">
               <Link to="/map" className="landing-link">Исследовать карту <AppIcon name="arrow_forward" size={18} /></Link>
-              <a href={minsk.path} className="landing-link">{minsk.heading}</a>
+              {city.id === minsk.slug && <a href={minsk.path} className="landing-link">{minsk.heading}</a>}
             </div>
           </div>
           <div ref={mapSection.ref} className="min-w-0 overflow-hidden rounded-[28px] border" style={{ borderColor: c.border }}>
@@ -163,7 +161,7 @@ const LandingPage: React.FC = () => {
 
         <section className="landing-container landing-feature" aria-labelledby="community-title">
           <div>
-            <p className="landing-eyebrow">Чекины и сообщество</p>
+            <p className="landing-eyebrow">Чекины · {city.name}</p>
             <h2 id="community-title" className="landing-heading mt-5 font-extended font-bold">
               У каждой чашки <span className="landing-accent">своя история.</span>
             </h2>
@@ -175,7 +173,7 @@ const LandingPage: React.FC = () => {
               {!communitySection.nearViewport || checkIns.isPending ? <CheckInCardSkeleton count={1} />
                 : checkIns.isError ? <div className="landing-empty" role="status"><p>Не удалось загрузить чекины.</p><Button variant="secondary" onClick={() => void checkIns.refetch()}>Попробовать ещё раз</Button></div>
                 : latestCheckIn ? <CheckInCard item={latestCheckIn} />
-                : <div className="landing-empty"><Mascot pose="cup" size={160} /><p>Поделись первым впечатлением о кофейнях Минска.</p></div>}
+                : <div className="landing-empty"><Mascot pose="cup" size={160} /><p>Поделись первым впечатлением о местных кофейнях.</p></div>}
             </Suspense>
           </div>
         </section>
@@ -197,7 +195,7 @@ const LandingPage: React.FC = () => {
 
         <section id="application" className="landing-container scroll-mt-24 pb-12 lg:pb-20" aria-labelledby="application-title">
           <div className="landing-cta rounded-[28px] border px-6 py-12 sm:px-8 lg:py-20" style={{ background: dark.background, color: dark.textPrimary, borderColor: dark.border }}>
-            <h2 id="application-title" className="landing-download-title font-extended font-extrabold">Кофейный Минск.<br /><span className="landing-accent">Всегда под рукой.</span></h2>
+            <h2 id="application-title" className="landing-download-title font-extended font-extrabold">Любимые кофейни.<br /><span className="landing-accent">Всегда под рукой.</span></h2>
             <p className="mt-5 max-w-3xl text-base leading-relaxed" style={{ color: dark.textSecondary }}>Находи кофейни, выбирай зерно и сохраняй впечатления в CoffeePeek.</p>
             <MobileAppDownload variant="inline" className="mt-8" />
             <p className="mt-6 text-sm" style={{ color: dark.textSecondary }}>Карта, кофе и сообщество — в одном приложении.</p>

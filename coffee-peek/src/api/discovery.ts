@@ -49,9 +49,9 @@ const read = async <T>(path: string, body: unknown, signal?: AbortSignal): Promi
   (await httpClient.post<T>(path, body, { requiresAuth: false, signal })).data;
 export const searchShops = (body: SearchRequest<ShopFilters>, signal?: AbortSignal) => read<Page<ShopCard>>('/api/v1/coffee-shops/search', body, signal);
 
-export async function getShopCheckInCounts(signal?: AbortSignal): Promise<Record<string, number>> {
+export async function getShopCheckInCounts(cityId: string, signal?: AbortSignal): Promise<Record<string, number>> {
   const counts: Record<string, number> = Object.create(null);
-  const request = { filters: {}, sort: 'name_asc', pageSize: 100 };
+  const request = { filters: { city: cityId }, sort: 'name_asc', pageSize: 100 };
   let page = 1;
   let result: Page<ShopCard>;
   do {

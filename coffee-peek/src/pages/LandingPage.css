@@ -123,7 +123,6 @@
   transform: translateX(-50%);
 }
 
-.landing-districts { color: var(--landing-muted); }
 .landing-section-border { border-top: 1px solid; }
 
 .landing-map-placeholder {

@@ -1,5 +1,8 @@
 jest.mock('../src/contexts/ThemeContext', () => ({ useTheme: jest.fn(() => ({ theme: 'dark' })) }));
 jest.mock('../src/contexts/UserContext', () => ({ useUser: jest.fn(() => ({ user: null, logout: jest.fn() })) }));
+jest.mock('../src/hooks/queries/useCatalogs', () => ({
+  useCities: () => ({ data: [{ id: 'grodno', name: 'Гродно' }, { id: 'minsk', name: 'Минск' }] }),
+}));
 
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -11,6 +14,14 @@ import Header from '../src/components/Header';
 const render = (route = '/') => renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: [route] }, React.createElement(Header)));
 
 beforeEach(() => jest.clearAllMocks());
+
+test('city picker starts with Minsk regardless of catalog ordering and shows a linked feed city', () => {
+  const home = render();
+  expect(home).toContain('aria-label="Выбрать город, сейчас Минск"');
+  expect(home).toContain('Определить мой город');
+  expect(render('/feed?citySlug=grodno')).toContain('aria-label="Выбрать город, сейчас Гродно"');
+  expect(render('/cities/minsk/specialty')).toContain('aria-label="Выбрать город, сейчас Минск"');
+});
 
 test('mobile menu uses a native disclosure and retains every former navigation destination', () => {
   const html = render();

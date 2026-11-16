@@ -27,7 +27,7 @@ function coverViewport(viewport: MapBoundsBox, bounds?: MapBoundsBox): MapBounds
   };
 }
 
-export default function MapCheckInHeatmap({ map }: { map: MapLibreMap }) {
+export default function MapCheckInHeatmap({ map, cityId }: { map: MapLibreMap; cityId: string }) {
   const { theme } = useTheme();
   const themeClasses = getThemeClasses(theme);
   const [visible, setVisible] = useState(false);
@@ -51,8 +51,8 @@ export default function MapCheckInHeatmap({ map }: { map: MapLibreMap }) {
   }, [map, visible]);
 
   const counts = useQuery({
-    queryKey: ['map', 'shop-check-in-counts'],
-    queryFn: ({ signal }) => getShopCheckInCounts(signal),
+    queryKey: ['map', 'shop-check-in-counts', cityId],
+    queryFn: ({ signal }) => getShopCheckInCounts(cityId, signal),
     staleTime: 5 * 60_000,
     enabled: visible,
   });

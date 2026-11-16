@@ -4,6 +4,7 @@ import type { TouchEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useFeed } from '../hooks/queries/useCheckIns';
 import { usePageTitle } from '../hooks/usePageTitle';
+import { useBrowseCity } from '../hooks/useBrowseCity';
 import { useTheme } from '../contexts/ThemeContext';
 import { getThemeClasses } from '../utils/theme';
 import { getErrorMessage } from '../utils/errorHandler';
@@ -15,18 +16,23 @@ import { useFeatureExposure } from '../hooks/useFeatureExposure';
 import './FeedPage.css';
 
 export default function FeedPage() {
-  usePageTitle('Лента');
+  const { city, override } = useBrowseCity();
   const [params] = useSearchParams();
+  const coffeeShopSlug = params.get('coffeeShopSlug') || undefined;
+  const authorSlug = params.get('authorSlug') || undefined;
+  const citySlug = override || (!coffeeShopSlug && !authorSlug ? city.id : undefined);
+  const title = citySlug ? `Лента · ${city.name}` : 'Лента';
+  usePageTitle(title);
   const client = useQueryClient();
   const { theme } = useTheme();
   const classes = getThemeClasses(theme);
-  const feed = useFeed({ citySlug: params.get('citySlug') || undefined, coffeeShopSlug: params.get('coffeeShopSlug') || undefined, authorSlug: params.get('authorSlug') || undefined });
+  const feed = useFeed({ citySlug, coffeeShopSlug, authorSlug });
   const items = feed.data?.pages.flatMap(page => page.items) ?? [];
   const marker = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ id: number; x: number; y: number } | null>(null);
   const refreshing = useRef(false);
   const viewedQuery = useRef<string | null>(null);
-  const queryIdentity = params.toString();
+  const queryIdentity = JSON.stringify({ citySlug, coffeeShopSlug, authorSlug });
   const exposureRef = useFeatureExposure<HTMLHeadingElement>('feed', 'feed');
   const firstPageCount = feed.data?.pages[0]?.items.length;
   useEffect(() => {
@@ -90,7 +96,7 @@ export default function FeedPage() {
     return () => observer.disconnect();
   }, [feed.hasNextPage, feed.isFetchingNextPage, feed.fetchNextPage]);
   return <main onTouchStart={startRefreshGesture} onTouchMove={moveRefreshGesture} onTouchEnd={endRefreshGesture} onTouchCancel={() => { touchStart.current = null; }} className={`min-h-screen px-4 pb-32 pt-3 sm:py-8 ${classes.bg.primary} ${classes.text.primary}`}><div className="mx-auto max-w-3xl">
-    <h1 ref={exposureRef} className="mb-4 text-2xl font-bold">Лента</h1>
+    <h1 ref={exposureRef} className="mb-4 text-2xl font-bold">{title}</h1>
     {feed.isLoading && <div className="flex justify-center py-10"><WobbleRing /></div>}
     {feed.error && <p role="alert" className="text-red-500">{getErrorMessage(feed.error)}</p>}
     {!feed.isLoading && !feed.error && !items.length && <div className="py-8 text-center"><Mascot pose="book" size={120} /><p>Пока нет опубликованных чек-инов.</p></div>}

@@ -30,7 +30,7 @@ test('same footer renders all four sections in the app and on standalone support
   expect(html).toContain('href="/privacy#analytics-settings"');
   expect(html).not.toContain('mailto:');
   expect(html).not.toContain('Написать нам');
-  expect(html.indexOf('Твой кофейный Минск.')).toBeLessThan(html.indexOf('© 2026'));
+  expect(html.indexOf('Твой кофейный гид.')).toBeLessThan(html.indexOf('© 2026'));
   expect(html.indexOf('© 2026')).toBeLessThan(html.indexOf('Открывай'));
   (Link as unknown as jest.Mock).mockClear();
   const supportHtml = renderToStaticMarkup(React.createElement(Footer));

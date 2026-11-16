@@ -13,8 +13,7 @@ import { captureAnalyticsEvent } from '../lib/analytics';
 import { analyticsFilterKeys, changedAnalyticsFilterKeys } from '../utils/discoveryAnalytics';
 import { useDiscoveryAnalytics } from '../hooks/useDiscoveryAnalytics';
 import { useFeatureExposure } from '../hooks/useFeatureExposure';
-import { useLocalCity } from '../hooks/useLocalCity';
-import { useCities } from '../hooks/queries/useCatalogs';
+import { useBrowseCity } from '../hooks/useBrowseCity';
 import { useFavorites } from '../hooks/useFavorites';
 import { useLoadMoreOnScroll } from '../hooks/useLoadMoreOnScroll';
 import { lazyWithRetry } from '../utils/lazyWithRetry';
@@ -36,10 +35,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { cityId } = useLocalCity();
-  const usesDefaultCity = !params.has('filters') && !params.has('citySlug') && !params.has('city');
-  const cities = useCities(!cityId);
-  const defaultCity = cityId || cities.data?.[0]?.id || '';
+  const { city, catalog, override } = useBrowseCity();
   const { theme } = useTheme();
   const colors = getThemeColors(theme);
   const { user, isLoading: authLoading } = useUser();
@@ -47,13 +43,13 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const scope = getCatalogScope();
   const parsed = useMemo(() => {
     try {
-      const restored = new URLSearchParams(params);
-      if (usesDefaultCity && defaultCity) restored.set('city', defaultCity);
-      return { state: readSearchState(restored, 'shops'), error: '' };
+      const state = readSearchState(params, 'shops');
+      const cityFilter = state.filters.origin && !state.filters.city ? undefined : city.id;
+      return { state: { ...state, filters: { ...state.filters, city: cityFilter } }, error: '' };
     } catch {
       return { state: readSearchState(new URLSearchParams(), 'shops'), error: 'Фильтры в адресе повреждены. Сбросьте их и повторите поиск.' };
     }
-  }, [params, defaultCity, usesDefaultCity]);
+  }, [params, city.id]);
   const state = parsed.state;
   const sectionParam = params.get('section');
   const section: Section = sectionParam === 'shops' || sectionParam === 'roasters' || sectionParam === 'all' ? sectionParam : initialSection;
@@ -85,12 +81,12 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const filtering = section !== 'all' || isDiscoveryFiltering(input, filters, defaultCity);
+  const filtering = section !== 'all' || isDiscoveryFiltering(input, filters, city.id);
   const mapHidden = filtering || showFilters;
   const mapVisibleExpanded = mapExpanded && !mapHidden;
   const overview = !filtering;
   const update = (next: typeof state, nextSection = section) => {
-    const nextParams = writeSearchState(next, 'shops');
+    const nextParams = writeSearchState({ ...next, filters: { ...next.filters, city: override ? next.filters.city : undefined } }, 'shops');
     if (nextSection !== 'all' || initialSection !== 'all') nextParams.set('section', nextSection);
     setParams(nextParams);
   };
@@ -116,7 +112,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     if (!mapVisibleExpanded) return;
     expandButton.current?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeMap();
+      if (event.key === 'Escape' && !document.querySelector(':popover-open')) closeMap();
     };
     window.addEventListener('keydown', onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -125,7 +121,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   }, [mapVisibleExpanded]);
   const personal = filters.favoritesOnly || filters.visitedOnly;
   const errors = validateSearch(state, 'shops');
-  const enabled = !authLoading && (!usesDefaultCity || !!filters.origin || !!defaultCity || !cities.isPending) && !parsed.error && !Object.keys(errors).length && (!personal || !!user);
+  const enabled = !authLoading && !parsed.error && !Object.keys(errors).length && (!personal || !!user);
   const query = useInfiniteQuery({
     queryKey: ['catalog', scope, 'shops', state.q, filters, state.sort, state.page],
     initialPageParam: state.page,
@@ -146,7 +142,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
   const analytics = useDiscoveryAnalytics({
     catalog: section === 'all' ? 'discovery' : section, state, enabled,
     source: filters.favoritesOnly ? 'favorites' : 'list',
-    citySlug: filters.city ? cities.data?.find(city => city.id === filters.city || city.publicAddress?.slug === filters.city)?.publicAddress?.slug : undefined,
+    citySlug: catalog.find(item => item.id === city.id)?.publicAddress?.slug ?? city.id,
     ready: allLoaded && (section === 'roasters' || !query.isFetching) && (section === 'shops' || !roasters.isFetching),
     resultCount: (section === 'roasters' ? 0 : total) + (section === 'shops' ? 0 : localRoasters.length),
     error: section !== 'roasters' && query.isError ? query.error : section !== 'shops' && roasters.isError ? roasters.error : undefined,
@@ -167,7 +163,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
     }
   };
   const reset = () => {
-    const nextFilters = defaultCity ? { city: defaultCity } : {};
+    const nextFilters = { city: city.id };
     captureAnalyticsEvent('filters_applied', { catalog: section === 'all' ? 'discovery' : section, filter_keys: analyticsFilterKeys(nextFilters), changed_filter_keys: changedAnalyticsFilterKeys(filters, nextFilters), action: 'reset' });
     setInput(''); update(applyCriteria(state, { filters: nextFilters, q: '', sort: 'recommended' }), 'all');
   };
@@ -198,7 +194,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
       </div>
       <div ref={content} className="discovery-content" inert={mapVisibleExpanded} aria-hidden={mapVisibleExpanded || undefined}>
         <div className="discovery-results" aria-live="polite" aria-busy={query.isFetching || roasters.isFetching}>
-          {location.pathname === '/shops' && <a href={minsk.path} className="inline-flex min-h-11 items-center self-start font-semibold underline underline-offset-4 hover:text-primary">{minsk.heading}</a>}
+          {location.pathname === '/shops' && city.id === minsk.slug && <a href={minsk.path} className="inline-flex min-h-11 items-center self-start font-semibold underline underline-offset-4 hover:text-primary">{minsk.heading}</a>}
           {section !== 'shops' && (localRoasters.length > 0 || roasters.isPending && enabled) && <section aria-label="Обжарщики" className="discovery-roasters">
             {sectionHeading('Обжарщики', localRoasters.length, 'roasters')}
             <div className="discovery-cards discovery-cards--roasters" role="group" aria-label="Карточки обжарщиков" tabIndex={overview && !desktop ? 0 : undefined}>{roasters.isPending && enabled ? <ShopCardSkeleton variant="roaster" count={columns} /> : (overview && desktop ? localRoasters.slice(0, columns) : localRoasters).map((roaster, index) => <RoasterCatalogCard key={roaster.address.slug ?? index} roaster={roaster} analytics={{ ...analytics, position: index + 1 }} />)}</div>
@@ -211,7 +207,7 @@ export default function CoffeeShopList({ initialSection = 'all', initialMapExpan
         </div>
         <div ref={loadMoreRef} className="py-6">{(desktop || !overview) && query.isFetchingNextPage && <div className="discovery-cards discovery-cards--shops"><ShopCardSkeleton count={columns} /></div>}</div>
       </div>
-      <section className={`discovery-map ${mapHidden ? 'discovery-map--hidden' : ''}`} aria-label="Карта кофеен" inert={mapHidden} aria-hidden={mapHidden || undefined}>
+      <section className={`discovery-map ${mapHidden ? 'discovery-map--hidden' : ''}`} aria-label={`Карта кофеен · ${city.name}`} inert={mapHidden} aria-hidden={mapHidden || undefined}>
         <div className="discovery-map-frame" style={{ borderColor: colors.border }}>
           <Suspense fallback={<div className="flex h-full items-center justify-center"><WobbleRing size={48} /></div>}><MapPage fillContainer showSearch={false} compactPreview={!mapVisibleExpanded} analyticsVisible={!mapHidden} analytics={analytics} /></Suspense>
           <div className="pointer-events-none absolute right-4 top-4 z-[600]">

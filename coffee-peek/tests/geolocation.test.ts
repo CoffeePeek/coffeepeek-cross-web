@@ -1,10 +1,22 @@
 import { getLocationLifetime, USER_LOCATION_TTL_MS } from '../src/utils/geolocation';
+import { findCityAtLocation, getCityCenter } from '../src/utils/cityGeography';
 
 test('location expires five minutes after it was measured', () => {
   const now = 1_000_000;
   expect(getLocationLifetime(now, now)).toBe(USER_LOCATION_TTL_MS);
   expect(getLocationLifetime(now - USER_LOCATION_TTL_MS + 1, now)).toBe(1);
   expect(getLocationLifetime(now - USER_LOCATION_TTL_MS, now)).toBe(0);
+});
+
+test('city detection uses a published catalog slug and rejects unsupported or imprecise locations', () => {
+  const grodno = { id: 'hrodna', name: 'Гродно' };
+  const minsk = { id: 'minsk', name: 'Минск' };
+  const point = { coords: { latitude: 53.678, longitude: 23.828, accuracy: 25 }, timestamp: 1000 };
+  expect(findCityAtLocation([minsk, grodno], point)).toBe(grodno);
+  expect(getCityCenter(grodno)).toEqual([23.829, 53.676]);
+  expect(findCityAtLocation([minsk], point)).toBeUndefined();
+  expect(findCityAtLocation([minsk, grodno], { ...point, coords: { ...point.coords, accuracy: 9000 } })).toBeUndefined();
+  expect(findCityAtLocation([minsk, grodno], { ...point, coords: { latitude: 54.69, longitude: 25.28, accuracy: 25 } })).toBeUndefined();
 });
 
 describe('shared device location', () => {

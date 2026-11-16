@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCatalogScope } from '../../lib/catalogSession';
 import { useUser } from '../../contexts/UserContext';
 import {
+  type City,
   getCities,
   getEquipments,
   getCoffeeBeans,
@@ -34,7 +35,8 @@ export function useCities(enabled: boolean = true) {
       if (!response.success) {
         throw new Error(response.message || 'Failed to fetch cities');
       }
-      return response.data;
+      const data = response.data as City[] | { cities?: City[] } | undefined;
+      return Array.isArray(data) ? data : data?.cities ?? [];
     },
     enabled,
     staleTime: Infinity, // Cities rarely change, cache forever
