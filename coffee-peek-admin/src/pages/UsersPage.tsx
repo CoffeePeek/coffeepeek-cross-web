@@ -1,5 +1,5 @@
 import { Input } from '@/src/components/ui/Input';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Ban, Bell, LogOut, Monitor, Search, ShieldCheck, Trash2 } from 'lucide-react';
@@ -105,7 +105,11 @@ function sessionStatus(session: UserSession, now: number): keyof typeof SESSION_
   return expiresAt <= now ? 'expired' : 'valid';
 }
 
-const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
+const UserSessionsPanel: React.FC<{
+  user: AdminUser;
+  headingRef: React.RefObject<HTMLHeadingElement | null>;
+  scrollOnOpen: boolean;
+}> = ({ user, headingRef, scrollOnOpen }) => {
   const { showToast } = useToast();
   const qc = useQueryClient();
   const [confirmRevokeAll, setConfirmRevokeAll] = useState(false);
@@ -122,6 +126,13 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
     queryKey: ['admin', 'users', user.id, 'sessions'],
     queryFn: () => getUserSessions(user.id).then((r) => r.data ?? []),
   });
+
+  useEffect(() => {
+    const heading = headingRef.current;
+    if (scrollOnOpen && !isLoading && heading && document.activeElement === heading) {
+      heading.scrollIntoView?.({ block: 'start' });
+    }
+  }, [headingRef, isLoading, scrollOnOpen]);
 
   const revokeOneMutation = useMutation({
     mutationFn: (sessionId: string) => revokeUserSession(user.id, sessionId),
@@ -154,12 +165,11 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
 
   return (
     <>
-      <div id={`user-sessions-${user.id}`} className="space-y-4 p-3 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="font-display text-base font-semibold text-text-main dark:text-white">Сессии пользователя</h3>
-            <p className="break-all font-body text-xs text-text-muted dark:text-stone-400">{user.email}</p>
-          </div>
+      <section id={`user-sessions-${user.id}`} aria-labelledby={`user-sessions-title-${user.id}`} className="mt-5 space-y-4 border-t border-border-light pt-5 dark:border-border-dark">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 id={`user-sessions-title-${user.id}`} ref={headingRef} tabIndex={-1} className="scroll-mt-4 font-display text-base font-semibold outline-none">
+            Устройства и сессии
+          </h3>
           <Button
             variant="danger"
             size="sm"
@@ -180,10 +190,10 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
           <div className="space-y-2">
             {list.map((session) => {
               const status = sessionStatus(session, now);
-              return <div key={session.id} className="grid min-w-0 gap-3 rounded-lg border border-border-light bg-white p-3 font-body text-sm dark:border-border-dark dark:bg-surface-dark sm:grid-cols-2 xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
-                <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+              return <div key={session.id} className="grid min-w-0 grid-cols-2 gap-3 rounded-lg border border-border-light bg-white p-3 font-body text-sm dark:border-border-dark dark:bg-surface-dark xl:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))_auto]">
+                <div className="col-span-2 min-w-0 xl:col-span-1">
                   <p className="mb-1 text-xs text-text-muted dark:text-stone-400">Устройство</p>
-                  <p className="break-all text-text-main dark:text-white">{session.deviceName || 'Неизвестное устройство'}</p>
+                  <p className="text-text-main [overflow-wrap:anywhere] dark:text-white">{session.deviceName || 'Неизвестное устройство'}</p>
                 </div>
                 <div className="min-w-0">
                   <p className="mb-1 text-xs text-text-muted dark:text-stone-400">IP</p>
@@ -197,7 +207,7 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
                   <p className="mb-1 text-xs text-text-muted dark:text-stone-400">Истекает</p>
                   <p className="text-text-main dark:text-white">{session.expiryDate ? formatSessionDate(session.expiryDate) : '—'}</p>
                 </div>
-                <div className="flex items-start justify-between gap-2 sm:col-span-2 xl:col-span-1 xl:flex-col xl:items-end">
+                <div className="col-span-2 flex items-start justify-between gap-2 xl:col-span-1 xl:flex-col xl:items-end">
                   <Badge variant={SESSION_BADGES[status].variant}>{SESSION_BADGES[status].label}</Badge>
                   {canRevoke(session) && (
                     <Button variant="ghost" size="sm" className="text-red-500" loading={revokingSessionId === session.id && revokeOneMutation.isPending} onClick={() => setConfirmSessionId(session.id)}>
@@ -209,7 +219,7 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
             })}
           </div>
         )}
-      </div>
+      </section>
 
       <ConfirmDialog
         isOpen={confirmRevokeAll}
@@ -240,6 +250,67 @@ const UserSessionsPanel: React.FC<{ user: AdminUser }> = ({ user }) => {
     </>
   );
 };
+
+type ProfileSection = 'profile' | 'sessions';
+
+function UserProfileDialog({ user, initialSection, canManageSessions, onClose }: {
+  user: AdminUser;
+  initialSection: ProfileSection;
+  canManageSessions: boolean;
+  onClose: () => void;
+}) {
+  const profileTitle = useRef<HTMLHeadingElement>(null);
+  const sessionsTitle = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLElement | null>(null);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        className={`flex flex-col gap-0 overflow-hidden p-0 text-text-main dark:text-white ${canManageSessions ? 'max-w-4xl' : ''}`}
+        onOpenAutoFocus={(event) => {
+          opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          const title = initialSection === 'sessions' ? sessionsTitle.current ?? profileTitle.current : profileTitle.current;
+          if (!title) return;
+          event.preventDefault();
+          title.focus();
+          if (title === sessionsTitle.current) title.scrollIntoView?.({ block: 'start' });
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!opener.current?.isConnected) return;
+          event.preventDefault();
+          opener.current.focus();
+        }}
+      >
+        <DialogHeader className="shrink-0 border-b border-border-light px-4 py-4 pr-12 text-left dark:border-border-dark sm:px-6 sm:pr-12">
+          <DialogTitle ref={profileTitle} tabIndex={-1} className="outline-none">Профиль пользователя</DialogTitle>
+          <DialogDescription className="sr-only">
+            {canManageSessions ? 'Данные учётной записи и управление сессиями' : 'Данные учётной записи'}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="min-h-0 overflow-y-auto overscroll-contain p-4 text-sm sm:p-6">
+          <div className="flex items-start gap-3">
+            <UserAvatar user={user} />
+            <div className="min-w-0">
+              <p className="font-semibold [overflow-wrap:anywhere]">{user.userName || 'Без имени'}</p>
+              <p className="text-text-muted [overflow-wrap:anywhere] dark:text-stone-400">{user.email}</p>
+              <div className="mt-2"><UserRoles user={user} /></div>
+            </div>
+          </div>
+          <dl className={`mt-4 grid grid-cols-2 gap-3 ${canManageSessions ? 'sm:grid-cols-3' : ''}`}>
+            <div><dt className="text-xs text-text-muted">Статус</dt><dd>{user.isBlocked ? 'Заблокирован' : 'Доступен'}</dd></div>
+            <div><dt className="text-xs text-text-muted">Регистрация</dt><dd>{formatSessionDate(user.createdAtUtc)}</dd></div>
+            <div><dt className="text-xs text-text-muted">Последняя активность</dt><dd><LastActiveTime value={user.lastActiveAtUtc} /></dd></div>
+            <div><dt className="text-xs text-text-muted">Чекины</dt><dd>{user.checkInCount ?? '—'}</dd></div>
+            <div><dt className="text-xs text-text-muted">Добавленные кофейни</dt><dd>{user.addedShopsCount ?? '—'}</dd></div>
+            <div className="col-span-full"><dt className="text-xs text-text-muted">О себе</dt><dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">{user.about || 'Не указано'}</dd></div>
+            <div className="col-span-full"><dt className="text-xs text-text-muted">ID</dt><dd className="select-all break-all font-mono text-xs">{user.id}</dd></div>
+          </dl>
+          {canManageSessions && <UserSessionsPanel user={user} headingRef={sessionsTitle} scrollOnOpen={initialSection === 'sessions'} />}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 const EditRoleModal: React.FC<{
   user: AdminUser | null;
@@ -321,9 +392,8 @@ export const UsersPage: React.FC = () => {
   const roleFilter = (searchParams.get('role') ?? '') as UserRole | '';
   const activity = ACTIVITY_OPTIONS.find(({ value }) => value === searchParams.get('activity'))?.value ?? '';
   const [localSearch, setLocalSearch] = useState(search);
-  const [detailsUser, setDetailsUser] = useState<AdminUser | null>(null);
+  const [profile, setProfile] = useState<{ user: AdminUser; section: ProfileSection } | null>(null);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  const [sessionsUser, setSessionsUser] = useState<AdminUser | null>(null);
   const [kickingUser, setKickingUser] = useState<AdminUser | null>(null);
   const [blockingUser, setBlockingUser] = useState<AdminUser | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
@@ -373,9 +443,6 @@ export const UsersPage: React.FC = () => {
       showToast('Все сессии отозваны. Пользователь будет разлогинен.', 'success');
       qc.invalidateQueries({ queryKey: ['admin', 'users'] });
       setKickingUser(null);
-      if (sessionsUser) {
-        qc.invalidateQueries({ queryKey: ['admin', 'users', sessionsUser.id, 'sessions'] });
-      }
     },
     onError: (err) => showToast(getErrorMessage(err, 'Ошибка'), 'error'),
   });
@@ -394,7 +461,7 @@ export const UsersPage: React.FC = () => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value); else next.delete(key);
     if (key !== 'page') next.delete('page');
-    setSessionsUser(null);
+    setProfile(null);
     setSearchParams(next);
   };
 
@@ -475,13 +542,13 @@ export const UsersPage: React.FC = () => {
                     <div className="flex min-w-0 items-start gap-2.5">
                       <UserAvatar user={user} />
                       <div className="min-w-0">
-                        <button type="button" onClick={() => setDetailsUser(user)} className="block max-w-full rounded text-left text-sm font-semibold text-text-main underline-offset-2 [overflow-wrap:anywhere] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-white" aria-label={`Профиль: ${user.userName || user.email}`}>{user.userName || user.email}</button>
+                        <button type="button" onClick={() => setProfile({ user, section: 'profile' })} className="block max-w-full rounded text-left text-sm font-semibold text-text-main underline-offset-2 [overflow-wrap:anywhere] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-white" aria-label={`Профиль: ${user.userName || user.email}`}>{user.userName || user.email}</button>
                         {user.userName && <p className="text-xs text-text-muted [overflow-wrap:anywhere] dark:text-stone-400">{user.email}</p>}
                       </div>
                     </div>
                     {isAdmin && <div className="col-start-2 row-start-1 -my-1 xl:col-start-4"><UserActionsMenu name={user.userName || user.email} actions={[
                       { label: 'Отправить уведомление', icon: Bell, onSelect: () => navigate(`/notifications?userId=${encodeURIComponent(user.id)}`) },
-                      { label: 'Сессии', icon: Monitor, onSelect: () => setSessionsUser(user) },
+                      { label: 'Сессии', icon: Monitor, onSelect: () => setProfile({ user, section: 'sessions' }) },
                       { label: 'Изменить роль', icon: ShieldCheck, onSelect: () => setEditingUser(user) },
                       { label: 'Оборвать все сессии', icon: LogOut, onSelect: () => setKickingUser(user) },
                       { label: user.isBlocked ? 'Разблокировать' : 'Заблокировать', icon: Ban, onSelect: () => setBlockingUser(user) },
@@ -510,31 +577,15 @@ export const UsersPage: React.FC = () => {
         </Card>
       )}
 
-      <Dialog open={Boolean(detailsUser)} onOpenChange={(open) => !open && setDetailsUser(null)}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Профиль пользователя</DialogTitle><DialogDescription>Данные учётной записи</DialogDescription></DialogHeader>
-          {detailsUser && <div className="space-y-4 text-sm">
-            <div className="flex items-start gap-3"><UserAvatar user={detailsUser} /><div className="min-w-0"><p className="font-semibold [overflow-wrap:anywhere]">{detailsUser.userName || 'Без имени'}</p><p className="text-text-muted [overflow-wrap:anywhere] dark:text-stone-400">{detailsUser.email}</p></div></div>
-            <UserRoles user={detailsUser} />
-            <dl className="grid grid-cols-2 gap-3">
-              <div><dt className="text-xs text-text-muted">Статус</dt><dd>{detailsUser.isBlocked ? 'Заблокирован' : 'Доступен'}</dd></div>
-              <div><dt className="text-xs text-text-muted">Регистрация</dt><dd>{formatSessionDate(detailsUser.createdAtUtc)}</dd></div>
-              <div><dt className="text-xs text-text-muted">Последняя активность</dt><dd><LastActiveTime value={detailsUser.lastActiveAtUtc} /></dd></div>
-              <div><dt className="text-xs text-text-muted">Чекины</dt><dd>{detailsUser.checkInCount ?? '—'}</dd></div>
-              <div><dt className="text-xs text-text-muted">Добавленные кофейни</dt><dd>{detailsUser.addedShopsCount ?? '—'}</dd></div>
-              <div className="col-span-2"><dt className="text-xs text-text-muted">О себе</dt><dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">{detailsUser.about || 'Не указано'}</dd></div>
-              <div className="col-span-2"><dt className="text-xs text-text-muted">ID</dt><dd className="select-all break-all font-mono text-xs">{detailsUser.id}</dd></div>
-            </dl>
-          </div>}
-        </DialogContent>
-      </Dialog>
-
-      {isAdmin && <Dialog open={Boolean(sessionsUser)} onOpenChange={(open) => !open && setSessionsUser(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader><DialogTitle>Устройства и сессии</DialogTitle><DialogDescription>Управление входами пользователя</DialogDescription></DialogHeader>
-          {sessionsUser && <UserSessionsPanel user={sessionsUser} />}
-        </DialogContent>
-      </Dialog>}
+      {profile && (
+        <UserProfileDialog
+          key={profile.user.id}
+          user={profile.user}
+          initialSection={profile.section}
+          canManageSessions={isAdmin}
+          onClose={() => setProfile(null)}
+        />
+      )}
 
       {isAdmin && editingUser && (
         <EditRoleModal

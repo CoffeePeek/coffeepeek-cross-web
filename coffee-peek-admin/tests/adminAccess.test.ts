@@ -240,6 +240,11 @@ test('moderator opens the users route, searches, filters and paginates without a
   await act(async () => document.querySelector('form')!.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true })));
   await settle();
   expect(api.getAdminUsers).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'coffee', role: 'Admin' });
+  await act(async () => (document.querySelector('[aria-label="Профиль: Coffee Lover"]') as HTMLButtonElement).click());
+  const profile = document.querySelector('[role="dialog"]')!;
+  expect(profile.textContent).toContain('Профиль пользователя');
+  expect(profile.textContent).toContain('coffee@example.com');
+  expect(profile.querySelector('#user-sessions-listed-user')).toBeNull();
   expectNoPrivilegedRequests();
 });
 
@@ -253,10 +258,24 @@ test('admin retains all user controls and session access; changing to moderator 
     expect(button(label, actions)).toBeDefined();
   }
   expect(api.getUserSessions).not.toHaveBeenCalled();
+  const profileButton = row.querySelector<HTMLButtonElement>('[aria-label="Профиль: Coffee Lover"]')!;
+  await act(async () => { profileButton.focus(); profileButton.click(); });
+  await settle();
+  const profile = document.querySelector('[role="dialog"]')!;
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+  expect(profile.textContent).toContain('coffee@example.com');
+  expect(profile.querySelector('#user-sessions-listed-user')?.textContent).toContain('Test Browser');
+  expect(document.activeElement?.textContent).toBe('Профиль пользователя');
+  await act(async () => button('Закрыть', profile).click());
+  await settle();
+  expect(document.activeElement).toBe(profileButton);
+
   await act(async () => button('Сессии', actions).click());
   await settle();
   expect(api.getUserSessions).toHaveBeenCalledWith(listedUser.id);
-  expect(document.body.textContent).toContain('Test Browser');
+  expect(document.querySelectorAll('[role="dialog"]')).toHaveLength(1);
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Профиль пользователя');
+  expect(document.activeElement?.id).toBe('user-sessions-title-listed-user');
   expect(document.querySelector('#user-sessions-listed-user')!.textContent).toContain('Действует');
   expect(button('Отозвать все')).toBeDefined();
   mockRole = 'Moderator';
