@@ -33,7 +33,7 @@ const queues: {
   {
     path: '/check-ins',
     key: ['admin', 'moderation', 'checkIns'],
-    queryFn: ({ signal }) => getModerationCheckIns(pending, signal).then(({ data }) => data.totalCount),
+    queryFn: ({ signal }) => getModerationCheckIns({ ...firstItem, currentState: 'Pending' }, signal).then(({ data }) => data.totalCount),
   },
   {
     path: '/check-in-reports',

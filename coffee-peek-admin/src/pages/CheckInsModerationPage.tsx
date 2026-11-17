@@ -3,7 +3,7 @@ import { Input } from '@/src/components/ui/Input';
 import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { getModerationCheckIns, approveCheckIn, rejectCheckIn, ModerationStatus } from '../api/admin';
+import { getModerationCheckIns, approveCheckIn, rejectCheckIn, type CheckInCurrentState, type CurrentModerationCheckIn } from '../api/admin';
 import { useToast } from '../contexts/ToastContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -11,14 +11,17 @@ import { Pagination } from '../components/ui/Pagination';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { getErrorMessage } from '../utils/errors';
 import { LoadError } from '../components/ui/LoadError';
+import { RemoveCheckInDialog } from '../components/RemoveCheckInDialog';
+import { moderationQueueRefresh } from '../lib/queryClient';
 
 const PAGE_SIZE = 15;
 
-const STATUS_OPTIONS: { value: ModerationStatus | ''; label: string }[] = [
+const STATUS_OPTIONS: { value: CheckInCurrentState | ''; label: string }[] = [
   { value: '', label: 'Все' },
   { value: 'Pending', label: 'На модерации' },
-  { value: 'Approved', label: 'Одобренные' },
+  { value: 'Published', label: 'Опубликованные' },
   { value: 'Rejected', label: 'Отклонённые' },
+  { value: 'Deleted', label: 'Удалённые' },
 ];
 
 export const CheckInsModerationPage: React.FC = () => {
@@ -26,22 +29,25 @@ export const CheckInsModerationPage: React.FC = () => {
   const qc = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const status = (searchParams.get('status') ?? 'Pending') as ModerationStatus | '';
+  const statusParam = searchParams.get('status');
+  const status = STATUS_OPTIONS.find((option) => option.value === (statusParam === 'Approved' ? 'Published' : statusParam))?.value ?? 'Pending';
   const page = parseInt(searchParams.get('page') ?? '1');
   const search = searchParams.get('search') ?? '';
   const [localSearch, setLocalSearch] = useState(search);
   useEffect(() => setLocalSearch(search), [search]);
   const [pendingAction, setPendingAction] = useState<{ id: string; type: 'approve' | 'reject' } | null>(null);
+  const [checkInToRemove, setCheckInToRemove] = useState<CurrentModerationCheckIn | null>(null);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
+    ...moderationQueueRefresh,
     queryKey: ['admin', 'moderation', 'checkIns', { status, page, search }],
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       getModerationCheckIns({
-        status: status || undefined,
+        currentState: status || undefined,
         page,
         pageSize: PAGE_SIZE,
         search: search || undefined,
-      }).then((r) => r.data),
+      }, signal).then((r) => r.data),
   });
 
   const approveMutation = useMutation({
@@ -96,10 +102,10 @@ export const CheckInsModerationPage: React.FC = () => {
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-3 sm:space-y-4">
       <div>
         <h2 className="font-display text-xl font-bold sm:text-2xl tracking-tight text-text-main dark:text-white">
-          Чекины на проверке
+          Модерация чекинов
         </h2>
         <p className="text-sm text-text-muted dark:text-stone-400 font-body mt-0.5">
-          {data ? `${status === 'Pending' ? 'Ожидают решения' : status === 'Approved' ? 'Одобренные чекины' : status === 'Rejected' ? 'Отклонённые чекины' : 'Все чекины'} · ${data.totalCount}` : 'Загрузка...'}
+          {data ? `Найдено: ${data.totalCount}` : 'Загрузка...'}
         </p>
       </div>
 
@@ -145,10 +151,10 @@ export const CheckInsModerationPage: React.FC = () => {
               {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg bg-stone-100 dark:bg-white/5" />)}
             </div>
           ) : data?.items.length ? (
-            <ul aria-label="Чекины на проверке" className="divide-y divide-border-light dark:divide-border-dark">
+            <ul aria-label="Чекины" className="divide-y divide-border-light dark:divide-border-dark">
               {data.items.map((checkIn) => (
-                <li key={checkIn.id}>
-                  <CheckInModerationCard checkIn={checkIn} onApprove={() => openAction(checkIn.id, 'approve')} onReject={() => openAction(checkIn.id, 'reject')} />
+                <li key={checkIn.checkInId}>
+                  <CheckInModerationCard checkIn={checkIn} onApprove={() => openAction(checkIn.id, 'approve')} onReject={() => openAction(checkIn.id, 'reject')} onRemove={() => setCheckInToRemove(checkIn)} />
                 </li>
               ))}
             </ul>
@@ -172,6 +178,7 @@ export const CheckInsModerationPage: React.FC = () => {
         }}
         onCancel={() => setPendingAction(null)}
       />
+      {checkInToRemove && <RemoveCheckInDialog checkIn={checkInToRemove} onClose={() => setCheckInToRemove(null)} />}
 
       <ConfirmDialog
         isOpen={pendingAction?.type === 'reject'}

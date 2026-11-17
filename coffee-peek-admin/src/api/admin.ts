@@ -71,6 +71,8 @@ interface BackendModerationShop {
   menu?: unknown;
 }
 
+export type CheckInCurrentState = 'Pending' | 'Published' | 'Rejected' | 'Deleted';
+
 export interface ModerationCheckIn extends CheckInKindFields {
   id: string;
   checkInId: string;
@@ -99,6 +101,14 @@ export interface ModerationCheckIn extends CheckInKindFields {
   photos: PhotoMetadataDto[];
 }
 
+export interface CurrentModerationCheckIn extends ModerationCheckIn {
+  currentState: CheckInCurrentState;
+  hasCurrentSubmission: boolean;
+  deletedAtUtc: string | null;
+  deletedByModeratorId: string | null;
+  deletionReason: string | null;
+}
+
 export interface PhotoMetadataDto {
   id: string;
   fileName: string;
@@ -120,7 +130,7 @@ interface GetAllModerationShopsResponse {
 }
 
 interface ModerationCheckInsPage {
-  items: ModerationCheckIn[];
+  items: CurrentModerationCheckIn[];
   totalItems: number;
   totalPages: number;
   currentPage: number;
@@ -740,10 +750,10 @@ export async function updateCoffeeShop(
 // ==================== Check-in moderation ====================
 
 export async function getModerationCheckIns(
-  params: ListParams & { userId?: string } = {},
+  params: Omit<ListParams, 'status'> & { currentState?: CheckInCurrentState; userId?: string } = {},
   signal?: AbortSignal,
-): Promise<ApiResponse<PaginatedResult<ModerationCheckIn>>> {
-  const response = await httpClient.get<ModerationCheckInsPage>(API_ENDPOINTS.MODERATION.CHECK_INS, { params, signal, cache: 'no-store' });
+): Promise<ApiResponse<PaginatedResult<CurrentModerationCheckIn>>> {
+  const response = await httpClient.get<ModerationCheckInsPage>(`${API_ENDPOINTS.MODERATION.CHECK_INS}/current`, { params, signal, cache: 'no-store' });
   const raw = response.data;
   return { ...response, data: {
     items: raw.items,
@@ -752,6 +762,12 @@ export async function getModerationCheckIns(
     page: response.meta?.currentPage ?? raw.currentPage,
     pageSize: response.meta?.pageSize ?? raw.pageSize,
   } };
+}
+
+export async function removeCheckIn(checkInId: string, expectedRevision: number, reason: string): Promise<ApiResponse<null>> {
+  return httpClient.put<null>(`/api/admin/check-ins/${encodeURIComponent(checkInId)}/removal`, {
+    expectedRevision, reason: reason.trim(),
+  });
 }
 
 export async function getModerationCheckIn(id: string): Promise<ApiResponse<ModerationCheckIn>> {

@@ -1,7 +1,7 @@
 jest.mock('../src/api/core/httpClient', () => ({ httpClient: { get: jest.fn(), put: jest.fn() } }));
 jest.mock('../src/api/core/apiConfig', () => ({ API_ENDPOINTS: { MODERATION: { CHECK_INS: '/api/v1/moderation/check-ins' }, ADMIN: { AUDIT_MODERATION: '/api/admin/audit/moderation' }, LEADERBOARD: '/api/v1/leaderboard' } }));
 import { httpClient } from '../src/api/core/httpClient';
-import { getModerationCheckIns, approveCheckIn, rejectCheckIn, setCheckInLeaderboardDecision, getModerationAuditLog, type ModerationCheckIn } from '../src/api/admin';
+import { getModerationCheckIns, approveCheckIn, rejectCheckIn, removeCheckIn, setCheckInLeaderboardDecision, getModerationAuditLog, type ModerationCheckIn } from '../src/api/admin';
 import { getLeaderboard } from '../src/api/leaderboard';
 import { getCheckInReport, resolveCheckInReport } from '../src/api/checkInReports';
 
@@ -45,12 +45,26 @@ test('leaderboard passes period and paging without recomputing server scores or 
 test('moderation list reads items and body pagination; decision uses submission ID and named status', async () => {
   const item = { id: 'submission', checkInId: 'check-in', contentRevision: 2, text: 'Coffee', moderationStatus: 'Pending' };
   jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [item], totalItems: 31, totalPages: 3, currentPage: 2, pageSize: 15 } } as never);
-  expect((await getModerationCheckIns({ status: 'Pending', page: 2, pageSize: 15 })).data).toEqual({ items: [item], totalCount: 31, totalPages: 3, page: 2, pageSize: 15 });
+  const params = { currentState: 'Pending' as const, page: 2, pageSize: 15 };
+  expect((await getModerationCheckIns(params)).data).toEqual({ items: [item], totalCount: 31, totalPages: 3, page: 2, pageSize: 15 });
+  expect(httpClient.get).toHaveBeenLastCalledWith('/api/v1/moderation/check-ins/current', { params, signal: undefined, cache: 'no-store' });
   await approveCheckIn('submission');
   expect(httpClient.put).toHaveBeenLastCalledWith('/api/v1/moderation/check-ins', { submissionId: 'submission', moderationStatus: 'Approved', comment: null, rejectReason: null });
   await rejectCheckIn('submission', { comment: '  Спам  ' });
   expect(httpClient.put).toHaveBeenLastCalledWith('/api/v1/moderation/check-ins', { submissionId: 'submission', moderationStatus: 'Rejected', comment: null, rejectReason: 'Спам' });
   for (const reason of ['', 'x', 'x'.repeat(1001)]) await expect(rejectCheckIn('submission', { comment: reason })).rejects.toThrow(/2 до 1000/);
+});
+
+test('removal addresses the canonical check-in and deleted results preserve the audit fields', async () => {
+  await removeCheckIn('check-in', 4, '  Дублирует опубликованный чекин  ');
+  expect(httpClient.put).toHaveBeenCalledWith('/api/admin/check-ins/check-in/removal', {
+    expectedRevision: 4, reason: 'Дублирует опубликованный чекин',
+  });
+
+  const item = { checkInId: 'check-in', currentState: 'Deleted', deletedByModeratorId: 'moderator',
+    deletedAtUtc: '2026-11-17T14:00:00Z', deletionReason: 'Дублирует опубликованный чекин' };
+  jest.mocked(httpClient.get).mockResolvedValue({ data: { items: [item], totalItems: 1, totalPages: 1, currentPage: 1, pageSize: 15 } } as never);
+  expect((await getModerationCheckIns({ currentState: 'Deleted' })).data.items).toEqual([item]);
 });
 
 test('historical reports preserve null target, with explicit boolean resolutions', async () => {
@@ -69,6 +83,6 @@ test('moderation and report details keep home kind and recipe without a shop', a
   jest.mocked(httpClient.get).mockResolvedValueOnce({ data: { items: [{ ...home, checkInId: home.id, id: 'submission' }],
     totalItems: 1, totalPages: 1, currentPage: 1, pageSize: 15 } } as never)
     .mockResolvedValueOnce({ data: { report: { status: 'Pending' }, checkIn: home } } as never);
-  expect((await getModerationCheckIns({ status: 'Pending' })).data.items[0]).toMatchObject({ kind: 'Home', shopId: null, home: { tasteScore: 5 } });
+  expect((await getModerationCheckIns({ currentState: 'Pending' })).data.items[0]).toMatchObject({ kind: 'Home', shopId: null, home: { tasteScore: 5 } });
   expect((await getCheckInReport('report-id')).data.checkIn).toMatchObject({ kind: 'Home', shopId: null, home: { beanName: 'Руанда' } });
 });

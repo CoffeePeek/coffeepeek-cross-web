@@ -18,6 +18,7 @@ let own = { id: 'own', shop: address('coffee-shops', 'sample'), author: address(
 let published = { ...own, id: 'published', author: address('users', 'other'), username: 'Другой автор', text: 'Публичный визит с хорошим кофе', visibility: 'Public', moderationState: 'Approved', photos: [] };
 const second = { ...published, id: 'second', text: 'Повторное посещение на второй странице' };
 let submission = { id: 'submission-id', checkInId: 'published', contentRevision: 4, visitedAtUtc: at, createdAt: at, text: 'Новая ревизия публичного визита', rating: null, userId: 'other-id', userName: 'Другой автор', shopId: 'shop-id', drinkSlug: 'cappuccino', drinkNameRu: 'Капучино', drinkNameEn: 'Cappuccino', customDrinkName: null, rejectedReason: null, moderatedBy: null, moderatedAt: null, moderationStatus: 'Pending', photos: [{ ...photo, fullUrl: '/api/v1/check-ins/published/moderation-photos/photo-id?revision=4', urls: null, ownerId: 'other-id', uploadedAt: at }] };
+const historical = { ...submission, id: 'old-submission', checkInId: 'old-visit', text: 'Ранее удалённый чекин', currentState: 'Deleted', deletedAtUtc: at, photos: [] };
 let report = { id: 'report-id', checkInId: null, reportedByUserId: 'me-id', text: 'Историческая жалоба', status: 'Pending', createdAtUtc: at, resolvedByAdminId: null, resolvedAtUtc: null };
 const unratedReport = { id: 'unrated-report-id', checkInId: 'published', reportedByUserId: 'me-id', text: 'Жалоба на чекин без оценки', status: 'Pending', createdAtUtc: at, resolvedByAdminId: null, resolvedAtUtc: null };
 const unratedCheckIn = { id: 'published', shopId: 'shop-id', userId: 'other-id', username: 'Другой автор', text: 'Чекин без оценки', visitedAt: at, ratingPlace: null, ratingService: null, ratingCoffee: null, deletedAtUtc: null, isPubliclyVisible: true };
@@ -67,10 +68,24 @@ async function setup(role = 'User') {
     if (api === '/api/v1/check-ins' && method === 'POST') return reply({ ...published, ...body, id: 'new' });
     if (api === '/api/CoffeeShops/by-slug/sample') return reply({ shopDto: { address: address('coffee-shops', 'sample'), name: 'Тестовая кофейня', description: 'Кофе для теста', location: { address: 'Минск, Тестовая, 1' }, checkInCount: 1, rating: 4.7, checkIns: [published], userCheckIns: own ? [own] : [], photos: [], equipments: [], beans: [], roasters: [], brewMethods: [], schedules: [], menu: { items: [], photos: [] } } });
     if (api === '/api/admin/shops/shop-id/public-address') return reply({ entityId: 'shop-id', ...address('coffee-shops', 'sample') });
-    if (api === '/api/v1/moderation/check-ins') {
-      if (method === 'PUT') { assert.equal(body.submissionId, 'submission-id'); submission = { ...submission, moderationStatus: body.moderationStatus }; return reply(body.moderationStatus, { oldEntity: 'Pending' }); }
-      assert.equal(url.searchParams.get('status'), 'Pending');
-      return reply({ items: submission.moderationStatus === 'Pending' ? [submission] : [], totalItems: submission.moderationStatus === 'Pending' ? 1 : 0, totalPages: 1, currentPage: 1, pageSize: 15 });
+    if (api === '/api/v1/moderation/check-ins' && method === 'PUT') {
+      assert.equal(body.submissionId, 'submission-id');
+      submission = { ...submission, moderationStatus: body.moderationStatus };
+      return reply(body.moderationStatus, { oldEntity: 'Pending' });
+    }
+    if (api === '/api/v1/moderation/check-ins/current') {
+      const currentState = submission.deletedAtUtc ? 'Deleted' : submission.moderationStatus === 'Approved' ? 'Published' : submission.moderationStatus;
+      const state = url.searchParams.get('currentState');
+      const items = [{ ...submission, currentState, hasCurrentSubmission: currentState !== 'Deleted' }, historical].filter(item => !state || item.currentState === state);
+      const pageSize = Number(url.searchParams.get('pageSize'));
+      return reply({ items: items.slice(0, pageSize), totalItems: items.length, totalPages: 1, currentPage: 1, pageSize });
+    }
+    if (api === '/api/admin/check-ins/published/removal') {
+      assert.equal(role, 'Moderator');
+      assert.equal(method, 'PUT');
+      assert.deepEqual(body, { expectedRevision: 4, reason: 'Повторная публикация' });
+      submission = { ...submission, deletedAtUtc: at, deletionReason: body.reason, deletedByModeratorId: 'me-id', photos: [] };
+      return reply(null);
     }
     if (api === '/api/admin/check-in-reports') {
       assert.equal(role, 'Admin');
@@ -212,7 +227,7 @@ try {
   await mod.getByText(submission.text, { exact: true }).waitFor();
   await moderationBadge(mod, '/check-ins').getByText('1', { exact: true }).waitFor();
   await mod.getByText('Без оценки', { exact: true }).waitFor();
-  await mod.getByRole('list', { name: 'Чекины на проверке' }).locator('article img').waitFor();
+  await mod.getByRole('list', { name: 'Чекины', exact: true }).locator('article img').waitFor();
   await screenshot(mod, 'moderation-desktop');
   await mod.getByRole('button', { name: 'Отклонить', exact: true }).click();
   const dialog = mod.getByRole('alertdialog');
@@ -242,6 +257,24 @@ try {
   await mod.getByText('Без оценки', { exact: true }).waitFor();
   assert(!(await mod.getByRole('dialog').innerText()).includes('NaN'), 'unrated report must not display NaN');
   await mod.context().close();
+  submission.moderationStatus = 'Approved';
+  const moderator = await setup('Moderator');
+  await moderator.setViewportSize({ width: 390, height: 844 });
+  await moderator.goto(`${admin}/check-ins?status=Published`);
+  await moderator.getByRole('button', { name: 'Удалить', exact: true }).click();
+  const removal = moderator.getByRole('dialog', { name: 'Удалить чекин?' });
+  await removal.getByRole('button', { name: 'Удалить', exact: true }).click();
+  await removal.getByText('Укажите причину удаления', { exact: true }).waitFor();
+  assert(!requests.some(r => r.api.endsWith('/removal')), 'empty deletion reason must not reach server');
+  await removal.getByRole('textbox', { name: 'Причина удаления' }).fill('  Повторная публикация  ');
+  await removal.getByRole('button', { name: 'Удалить', exact: true }).click();
+  await moderator.getByText('Чекины не найдены', { exact: true }).waitFor();
+  await moderator.getByRole('button', { name: 'Удалённые', exact: true }).click();
+  await moderator.getByText('Причина удаления · Повторная публикация', { exact: true }).waitFor();
+  await moderator.getByText('Причина удаления · Не указана', { exact: true }).waitFor();
+  assert.equal(await moderator.getByRole('button', { name: 'Удалить', exact: true }).count(), 0);
+  await screenshot(moderator, 'deleted-check-ins-mobile');
+  await moderator.context().close();
   await verifyShopReportBadges();
   assert.equal(errors.length, 0, errors.join('\n'));
   assert(!requests.some(r => /ModerationReviews|review-reports|\/reviews\b|Photos\/review/.test(r.api)), 'obsolete review endpoints must not be called');

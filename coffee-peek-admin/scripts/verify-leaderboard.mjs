@@ -44,7 +44,11 @@ async function setup(role) {
         checkIn.moderationStatus = body.moderationStatus;
         return reply(checkIn.moderationStatus);
       }
-      const items = !url.searchParams.get('status') || url.searchParams.get('status') === checkIn.moderationStatus ? [checkIn] : [];
+    }
+    if (api === '/api/v1/moderation/check-ins/current') {
+      const state = url.searchParams.get('currentState');
+      const currentState = checkIn.moderationStatus === 'Approved' ? 'Published' : checkIn.moderationStatus;
+      const items = !state || state === currentState ? [{ ...checkIn, currentState, hasCurrentSubmission: true }] : [];
       return reply({ items, totalItems: items.length, totalPages: 1, currentPage: 1, pageSize: 15 });
     }
     if (api === '/api/admin/audit/moderation') {
@@ -148,6 +152,7 @@ try {
   await screenshot(admin, 'audit-mobile');
   await admin.setViewportSize({ width: 1440, height: 1000 });
 
+  await admin.getByRole('button', { name: 'Пользователи и доступ', exact: true }).click();
   await admin.locator('nav a[href="/leaderboard"]').click();
   await admin.getByRole('cell', { name: 'Анна', exact: true }).waitFor();
   assert.deepEqual(await admin.locator('tbody tr td:first-child').allTextContents(), ['1', '1', '3']);
@@ -189,6 +194,7 @@ try {
   await moderator.getByText('Чекины не найдены', { exact: true }).waitFor();
   const publication = requests.filter(r => r.role === 'Moderator' && r.method === 'PUT' && r.api.endsWith('/check-ins')).at(-1).body;
   assert.deepEqual(publication, { submissionId: 'submission', moderationStatus: 'Approved', comment: null, rejectReason: null });
+  await moderator.getByRole('button', { name: 'Пользователи и доступ', exact: true }).click();
   await moderator.locator('nav a[href="/leaderboard"]').click();
   await moderator.getByRole('cell', { name: 'Анна', exact: true }).waitFor();
   assert.deepEqual(errors, []);
