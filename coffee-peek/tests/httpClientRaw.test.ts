@@ -8,9 +8,14 @@ jest.mock('../src/api/core/interceptors', () => ({
 jest.mock('../src/realtime/forceLogout', () => ({ emitSessionInvalidated: jest.fn() }));
 import HttpClient from '../src/api/core/httpClient';
 import { responseInterceptor, TokenManager } from '../src/api/core/interceptors';
+import { classifyServerChecks, getServerAvailability, setServerAvailability, subscribeToServerAvailability } from '../src/lib/serverAvailability';
 const client = new HttpClient('https://api.example');
 const original = globalThis.fetch;
-afterEach(() => { globalThis.fetch = original; jest.mocked(TokenManager.getAccessToken).mockReturnValue(null); });
+afterEach(() => {
+  globalThis.fetch = original;
+  jest.mocked(TokenManager.getAccessToken).mockReturnValue(null);
+  setServerAvailability('idle');
+});
 test('raw GET preserves envelope, metadata and array and disables fetch caching', async () => {
   for (const body of [{ data: { shopDto: { name: 'Coffee' } }, address: { entityId: 'id' } }, { entityId: 'id' }, []]) {
     globalThis.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify(body)));
@@ -23,6 +28,37 @@ test('raw GET uses HTTP status even for empty or non-JSON gateway errors', async
     globalThis.fetch = jest.fn().mockResolvedValue(new Response(body, { status: 429, headers: { 'Retry-After': '30' } }));
     await expect(client.getRaw('/address')).rejects.toMatchObject({ status: 429, retryAfter: '30' });
   }
+});
+
+test('simultaneous 5xx responses request one availability check, including raw endpoints', async () => {
+  const listener = jest.fn();
+  const unsubscribe = subscribeToServerAvailability(listener);
+  try {
+    globalThis.fetch = jest.fn(async () => new Response('Bad gateway', { status: 502 }));
+    await Promise.allSettled([client.getRaw('/address'), client.getRaw('/collections')]);
+    expect(getServerAvailability()).toBe('checking');
+    expect(listener).toHaveBeenCalledTimes(1);
+  } finally {
+    unsubscribe();
+  }
+});
+
+test('a failed availability probe does not schedule another check through the HTTP client', async () => {
+  globalThis.fetch = jest.fn(async () => new Response('', { status: 503 }));
+  jest.mocked(responseInterceptor).mockRejectedValueOnce({ status: 503 }).mockRejectedValueOnce({ status: 503 });
+  await expect(client.get('/api/Catalogs/cities', { skipServerStatusCheck: true })).rejects.toMatchObject({ status: 503 });
+  await expect(client.post('/api/v1/coffee-shops/search', {}, { skipServerStatusCheck: true })).rejects.toMatchObject({ status: 503 });
+  expect(getServerAvailability()).toBe('idle');
+});
+
+test('only a full set of 5xx responses confirms a service outage', () => {
+  const failure = { status: 'rejected', reason: { status: 500 } } as const;
+  const success = { status: 'fulfilled', value: {} } as const;
+  expect(classifyServerChecks([failure, ...Array(9).fill(success)])).toBe('available');
+  expect(classifyServerChecks([failure, failure, success])).toBe('available');
+  expect(classifyServerChecks([failure, failure, { status: 'rejected', reason: { status: 503 } }])).toBe('unavailable');
+  expect(classifyServerChecks([failure, { status: 'rejected', reason: { status: 429 } }])).toBe('unknown');
+  expect(classifyServerChecks([failure, { status: 'rejected', reason: new TypeError('Failed to fetch') }])).toBe('unknown');
 });
 
 test('raw connections GET retains pagination query parameters', async () => {

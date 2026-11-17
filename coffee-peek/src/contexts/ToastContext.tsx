@@ -4,7 +4,6 @@ import ToastComponent from '../components/Toast';
 
 interface ToastContextType {
   showToast: (message: string, type?: 'error' | 'success' | 'info' | 'warning', duration?: number, imageUrl?: string) => void;
-  showServerError: () => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -19,17 +18,12 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setToasts((prev) => [...prev, newToast]);
   }, []);
 
-  const showServerError = useCallback(() => {
-    const serverErrorGifUrl = '/server-error.gif'; // Добавьте файл в coffee-peek/public/
-    showToast('Сервер сейчас недоступен. Пожалуйста, попробуйте позже.', 'error', 7000, serverErrorGifUrl);
-  }, [showToast]);
-
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   return (
-    <ToastContext.Provider value={{ showToast, showServerError }}>
+    <ToastContext.Provider value={{ showToast }}>
       {children}
       <div className="fixed top-4 right-4 z-[1200] flex flex-col items-end">
         {toasts.map((toast) => (

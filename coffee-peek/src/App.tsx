@@ -6,7 +6,6 @@ import { UserProvider, useUser } from './contexts/UserContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AppRoutes } from './routes/AppRoutes';
-import { useToast } from './contexts/ToastContext';
 import { queryClient } from './lib/queryClient';
 import CookieBanner from './components/CookieBanner';
 import Footer from './components/Footer';
@@ -18,24 +17,10 @@ import { getLandingRedirect } from './utils/landingRedirect';
 import ProductAnalytics from './components/ProductAnalytics';
 import NotificationActivity from './components/NotificationActivity';
 import { usePageTitle } from './hooks/usePageTitle';
+import ServerAvailabilityGate from './components/ServerAvailabilityGate';
 
 const RouteMetadata = () => {
   usePageTitle('');
-  return null;
-};
-
-// Component to initialize global error handler
-const GlobalErrorHandler: React.FC = () => {
-  const { showServerError } = useToast();
-  
-  useEffect(() => {
-    import('./utils/globalErrorHandler').then(({ setGlobalErrorHandler }) => {
-      setGlobalErrorHandler(() => {
-        showServerError();
-      });
-    });
-  }, [showServerError]);
-  
   return null;
 };
 
@@ -59,7 +44,6 @@ const AppContent: React.FC = () => {
     <>
       <RouteMetadata />
       <ScrollToTop />
-      <GlobalErrorHandler />
       <AuthRedirect />
       <SessionRealtime />
       <ProductAnalytics />
@@ -77,13 +61,15 @@ const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <UserProvider>
-          <ToastProvider>
-            <BrowserRouter>
-              <AppContent />
-            </BrowserRouter>
-          </ToastProvider>
-        </UserProvider>
+        <BrowserRouter>
+          <ServerAvailabilityGate>
+            <UserProvider>
+              <ToastProvider>
+                <AppContent />
+              </ToastProvider>
+            </UserProvider>
+          </ServerAvailabilityGate>
+        </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );

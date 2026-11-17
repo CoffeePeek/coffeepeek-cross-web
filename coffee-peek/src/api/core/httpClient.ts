@@ -24,8 +24,9 @@ import { getAnalyticsError } from '../../lib/analyticsError';
 import { getPhotoSession } from '../../lib/photoSession';
 import type { PhotoResponse } from '../../lib/photoResponse';
 import { parseJWT } from '../../utils/jwt';
+import { reportServerFailure } from '../../lib/serverAvailability';
 
-type InternalRequestOptions = RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean; photoMetadata?: boolean };
+type InternalRequestOptions = RequestOptions & { _retry?: boolean; raw?: boolean; binary?: boolean; photoMetadata?: boolean; skipServerStatusCheck?: boolean };
 
 /**
  * Базовый HTTP клиент
@@ -112,7 +113,7 @@ class HttpClient {
     options: InternalRequestOptions,
     trace: { authRetried: boolean },
   ): Promise<ApiResponse<T>> {
-    const { params, requiresAuth = true, skipAuthHeader, _retry, raw, binary, photoMetadata, ...fetchOptions } = options;
+    const { params, requiresAuth = true, skipAuthHeader, _retry, raw, binary, photoMetadata, skipServerStatusCheck, ...fetchOptions } = options;
     const scope = getCatalogScope();
     const photoSession = getPhotoSession();
     const checkSession = () => { if (scope !== getCatalogScope() || fetchOptions.signal?.aborted || photoMetadata && photoSession !== getPhotoSession()) throw new DOMException('Session changed or request cancelled', 'AbortError'); };
@@ -143,6 +144,7 @@ class HttpClient {
       const requestMono = performance.now();
       const response = await fetch(fullUrl, requestOptions);
       checkSession();
+      if (!skipServerStatusCheck) reportServerFailure(response.status);
 
       const canRefresh =
         response.status === 401 &&
@@ -256,6 +258,7 @@ class HttpClient {
       credentials: config?.credentials,
       cache: config?.cache,
       signal: config?.signal,
+      skipServerStatusCheck: config?.skipServerStatusCheck,
     });
   }
 
@@ -302,7 +305,9 @@ class HttpClient {
       requiresAuth: config?.requiresAuth,
       skipAuthHeader: config?.skipAuthHeader,
       credentials: config?.credentials,
+      cache: config?.cache,
       signal: config?.signal,
+      skipServerStatusCheck: config?.skipServerStatusCheck,
     });
   }
 

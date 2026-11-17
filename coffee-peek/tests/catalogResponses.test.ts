@@ -9,6 +9,10 @@ test('favorite PUT/DELETE 204 does not try to parse an empty JSON body', async (
   await expect(responseInterceptor(response, '/api/v1/favorites/roaster/sample')).resolves.toEqual({});
   expect(json).not.toHaveBeenCalled();
 });
+test.each(['', '{invalid json'])('a malformed gateway response preserves its HTTP status: %p', async body => {
+  const response = new Response(body, { status: 500, headers: { 'content-type': 'application/json' } });
+  await expect(responseInterceptor(response, '/api/Catalogs/cities')).rejects.toMatchObject({ status: 500, message: 'HTTP 500' });
+});
 test('slow refresh from A cannot overwrite token for B', async () => {
   TokenManager.setAccessToken('A');
   let finish!: (r: Response) => void;

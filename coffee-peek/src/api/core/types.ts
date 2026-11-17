@@ -24,6 +24,8 @@ export interface ApiConfig {
   /** Privacy-sensitive projections may bypass the browser HTTP cache. */
   cache?: RequestCache;
   signal?: AbortSignal;
+  /** The availability probe handles its own failure. */
+  skipServerStatusCheck?: boolean;
 }
 
 export interface PaginationParams {

@@ -11,6 +11,7 @@ import { isTokenExpired } from '../../utils/jwt';
 import { normalizeCheckInDto } from './checkInNormalize';
 import { invalidateProtectedPhotos } from '../../lib/photoSession';
 import { normalizeDayOfWeek } from '../../utils/shopUtils';
+import { reportServerFailure } from '../../lib/serverAvailability';
 
 /**
  * Token Manager для работы с токенами аутентификации
@@ -97,6 +98,7 @@ async function performRefresh(baseURL: string): Promise<RefreshResult> {
       credentials: 'include',
     });
     if (revision !== TokenManager.getRevision()) return 'error';
+    reportServerFailure(response.status);
     if (response.status === 401 || response.status === 403) {
       sessionAbsent = true;
       return 'rejected';
@@ -191,25 +193,20 @@ export async function responseInterceptor<T>(
       return {} as T;
     }
 
-    if (response.status >= 500 && response.status < 600) {
-      handleServerError();
-    }
-
     throw createApiError(response.status, getErrorMessageByStatus(response.status));
   }
 
-  const data = await response.json();
+  const data = await response.json().catch(error => {
+    if (response.ok) throw error;
+    return null;
+  });
 
   if (!response.ok) {
-    if (response.status >= 500 && response.status < 600) {
-      handleServerError();
-    }
-
     const errorBody: ApiErrorResponse = {
       isSuccess: false,
-      message: data.message || getErrorMessageByStatus(response.status),
-      errorCode: data.errorCode,
-      errors: data.errors,
+      message: data?.message || getErrorMessageByStatus(response.status),
+      errorCode: data?.errorCode,
+      errors: data?.errors,
     };
 
     throw new ApiRequestError(response.status, errorBody);
@@ -391,16 +388,6 @@ function normalizeCoffeeShopData(shop: BackendShopData | unknown): Record<string
   }
 
   return normalized;
-}
-
-function handleServerError(): void {
-  import('../../utils/globalErrorHandler')
-    .then(({ showServerErrorNotification }) => {
-      showServerErrorNotification();
-    })
-    .catch((err) => {
-      logger.error('[Interceptor] Failed to show server error notification:', err);
-    });
 }
 
 function createApiError(status: number, message: string): ApiError {
