@@ -99,7 +99,7 @@ export const CheckInsModerationPage: React.FC = () => {
   }, [data, page, searchParams, setSearchParams]);
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-3 sm:space-y-4">
+    <div className="mx-auto w-full min-w-0 max-w-[1200px] space-y-4">
       <div>
         <h2 className="font-display text-xl font-bold sm:text-2xl tracking-tight text-text-main dark:text-white">
           Модерация чекинов
@@ -145,22 +145,22 @@ export const CheckInsModerationPage: React.FC = () => {
       </div>
 
       {error ? <LoadError message={getErrorMessage(error, 'Не удалось загрузить чекины')} onRetry={() => void refetch()} retrying={isFetching} /> : (
-        <Card className="overflow-hidden">
+        <div className="space-y-4">
           {isLoading ? (
-            <div role="status" aria-label="Загрузка чекинов" className="space-y-3 p-3">
-              {Array.from({ length: 5 }, (_, index) => <div key={index} className="h-28 animate-pulse rounded-lg bg-stone-100 dark:bg-white/5" />)}
+            <div role="status" aria-label="Загрузка чекинов" className="space-y-4">
+              {Array.from({ length: 5 }, (_, index) => <Card key={index} className="h-52 animate-pulse bg-stone-100 dark:bg-white/5" />)}
             </div>
           ) : data?.items.length ? (
-            <ul aria-label="Чекины" className="divide-y divide-border-light dark:divide-border-dark">
+            <ul aria-label="Чекины" className="space-y-4">
               {data.items.map((checkIn) => (
                 <li key={checkIn.checkInId}>
                   <CheckInModerationCard checkIn={checkIn} onApprove={() => openAction(checkIn.id, 'approve')} onReject={() => openAction(checkIn.id, 'reject')} onRemove={() => setCheckInToRemove(checkIn)} />
                 </li>
               ))}
             </ul>
-          ) : <p className="p-8 text-center text-sm text-text-muted dark:text-stone-400">Чекины не найдены</p>}
-          {data && data.totalPages > 1 && <div className="border-t border-border-light px-3 py-2 dark:border-border-dark"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}
-        </Card>
+          ) : <Card className="p-8 text-center text-sm text-text-muted dark:text-stone-400">Чекины не найдены</Card>}
+          {data && data.totalPages > 1 && <div className="py-2"><Pagination page={page} totalPages={data.totalPages} onPageChange={(nextPage) => setParam('page', String(nextPage))} /></div>}
+        </div>
       )}
 
       <ConfirmDialog

@@ -1,4 +1,4 @@
-import { CalendarDays, Coffee, House, Trash2, UserRound } from 'lucide-react';
+import { CalendarDays, Coffee, House, Star, Trash2, UserRound } from 'lucide-react';
 import type { CurrentModerationCheckIn, ModerationCheckIn } from '../api/admin';
 import { checkInDate, checkInKind, homeRecipe } from '../utils/checkInKind';
 import { CheckInLeaderboard } from './CheckInLeaderboard';
@@ -15,23 +15,11 @@ function displayDrinkName(checkIn: ModerationCheckIn): string {
     || (isEnglish ? 'Not specified' : 'Не указан');
 }
 
-function displayRating(checkIn: ModerationCheckIn): string {
-  const kind = checkInKind(checkIn);
-  if (kind === 'Home') {
-    const score = homeRecipe(checkIn).tasteScore;
-    return score == null ? 'Без оценки' : `Вкус ${score}/5`;
-  }
-  if (kind !== 'Shop') return 'Без оценки';
-  const rating = checkIn.rating;
-  if (rating?.coffee == null || rating.service == null || rating.place == null) return 'Без оценки';
-  return `Кофе ${rating.coffee} · Сервис ${rating.service} · Место ${rating.place}`;
-}
-
 function displayRecipe(checkIn: ModerationCheckIn): string {
   const recipe = homeRecipe(checkIn);
   return [recipe.beanName, recipe.brewMethodCode,
     recipe.doseGrams != null ? `${recipe.doseGrams} г` : '',
-    recipe.brewDurationSeconds != null ? `${recipe.brewDurationSeconds} с` : ''].filter(Boolean).join(' · ') || 'Без деталей рецепта';
+    recipe.brewDurationSeconds != null ? `${recipe.brewDurationSeconds} с` : ''].filter(Boolean).join(' · ');
 }
 
 export function CheckInModerationCard({ checkIn, onApprove, onReject, onRemove }: {
@@ -45,59 +33,81 @@ export function CheckInModerationCard({ checkIn, onApprove, onReject, onRemove }
   const deleted = checkIn.currentState === 'Deleted';
   const canReview = checkIn.currentState === 'Pending' && checkIn.hasCurrentSubmission && checkIn.moderationStatus === 'Pending';
   const status = checkIn.currentState === 'Published' ? 'Approved' : checkIn.currentState === 'Rejected' ? 'Rejected' : 'Pending';
+  const ratings = kind === 'Home' ? [{ label: 'Вкус', value: homeRecipe(checkIn).tasteScore }]
+    : kind === 'Shop' ? [
+      { label: 'Кофе', value: checkIn.rating?.coffee },
+      { label: 'Сервис', value: checkIn.rating?.service },
+      { label: 'Место', value: checkIn.rating?.place },
+    ] : [];
+  const hasRating = ratings.some(rating => rating.value != null);
+  const recipe = kind === 'Home' ? displayRecipe(checkIn) : '';
+  const removalAction = <Button variant="ghost" size="sm" className="min-h-11 text-red-700 hover:bg-red-50 hover:text-red-800 dark:text-red-300 dark:hover:bg-red-500/10 dark:hover:text-red-200 sm:min-h-10" onClick={onRemove}>
+    <Trash2 className="h-4 w-4" aria-hidden="true" /> Удалить
+  </Button>;
 
   return (
-    <article aria-label={`Чекин: ${checkIn.userName || 'Неизвестный автор'}`} className="min-w-0">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-3 sm:p-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(180px,0.7fr)] xl:gap-x-5">
-        <header className="min-w-0 space-y-2 xl:row-span-2">
-          <div className="flex min-w-0 items-start gap-2">
-            <KindIcon className="mt-0.5 h-4 w-4 shrink-0 text-text-muted dark:text-stone-400" aria-hidden="true" />
-            <div className="min-w-0 text-sm [overflow-wrap:anywhere]">
-              {kind === 'Home' ? <h3 className="font-semibold">Кофе дома</h3> : checkIn.shopId ? (
-                <PublishedShopLink shopId={checkIn.shopId} className="font-semibold text-blue-600 hover:underline dark:text-blue-400" />
-              ) : <h3 className="font-semibold">{kind === 'Shop' ? 'Кофейня недоступна' : 'Тип не указан'}</h3>}
+    <article aria-label={`Чекин: ${checkIn.userName || 'Неизвестный автор'}`} className="min-w-0 overflow-hidden rounded-2xl border border-border-light bg-white text-text-main shadow-sm dark:border-border-dark dark:bg-surface-dark dark:text-white">
+      <header className="flex flex-col gap-3 px-4 pb-3 pt-4 sm:flex-row sm:items-start sm:justify-between sm:px-5 sm:pt-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 text-stone-600 dark:bg-white/5 dark:text-stone-300">
+            <KindIcon className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 space-y-2 [overflow-wrap:anywhere]">
+            <h3 className="text-base font-semibold leading-6">
+              {kind === 'Home' ? 'Кофе дома' : checkIn.shopId ? (
+                <PublishedShopLink shopId={checkIn.shopId} className="block hover:text-amber-700 dark:hover:text-primary" />
+              ) : kind === 'Shop' ? 'Кофейня недоступна' : 'Тип не указан'}
+            </h3>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-text-muted dark:text-stone-400">
+              <span className="flex min-w-0 items-center gap-1.5"><UserRound className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{checkIn.userName || 'Неизвестный автор'}</span>
+              <span className="flex items-center gap-1.5 tabular-nums"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{checkInDate(checkIn)}</span>
+              <span>Ревизия {checkIn.contentRevision}</span>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted dark:text-stone-400">
-            <span className="flex min-w-0 items-center gap-1.5 [overflow-wrap:anywhere]"><UserRound className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{checkIn.userName || 'Неизвестный автор'}</span>
-            <span className="flex items-center gap-1.5 tabular-nums"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{checkInDate(checkIn)}</span>
-          </div>
-        </header>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 sm:flex-col sm:items-end">
+          <Badge className="shrink-0" variant={deleted ? 'default' : statusToBadgeVariant(status)}>{deleted ? 'Удалён' : status === 'Approved' ? 'Опубликован' : statusLabels[status]}</Badge>
+          {!deleted && !canReview && removalAction}
+        </div>
+      </header>
 
-        <div className="col-span-2 row-start-2 flex min-w-0 flex-col items-start gap-3 sm:flex-row sm:justify-between xl:col-span-1 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-          <div className="min-w-0 space-y-1 [overflow-wrap:anywhere]">
-            <p className="whitespace-pre-wrap text-sm text-text-main dark:text-white">{checkIn.text || 'Без заметки'}</p>
-            {kind === 'Home' && <p className="text-xs text-text-muted dark:text-stone-400">{displayRecipe(checkIn)}</p>}
-            <p className="text-xs text-text-muted dark:text-stone-400">Напиток: {displayDrinkName(checkIn)} · Ревизия {checkIn.contentRevision}</p>
-            {deleted ? (
-              <div className="space-y-1 text-xs text-text-muted dark:text-stone-400">
-                <p className="whitespace-pre-wrap"><span className="font-semibold">Причина удаления</span> · {checkIn.deletionReason || 'Не указана'}</p>
-                {checkIn.deletedAtUtc && <p>Дата удаления · <time dateTime={checkIn.deletedAtUtc}>{new Date(checkIn.deletedAtUtc).toLocaleString('ru-RU')}</time></p>}
-                {checkIn.deletedByModeratorId && <p>ID модератора · {checkIn.deletedByModeratorId}</p>}
-              </div>
-            ) : checkIn.rejectedReason && <p className="whitespace-pre-wrap text-xs text-red-700 dark:text-red-300">Причина отклонения: {checkIn.rejectedReason}</p>}
+      <div className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5">
+        <div className="flex min-w-0 flex-col items-start justify-between gap-4 md:flex-row md:gap-6">
+          <div className="min-w-0 flex-1 space-y-3 [overflow-wrap:anywhere]">
+            <p className={`whitespace-pre-wrap text-[15px] leading-relaxed ${checkIn.text?.trim() ? '' : 'text-text-muted dark:text-stone-400'}`}>{checkIn.text?.trim() ? checkIn.text : 'Без заметки'}</p>
+            <div className="space-y-1 text-sm text-text-muted dark:text-stone-400">
+              <p><span className="font-medium">Напиток</span> · {displayDrinkName(checkIn)}</p>
+              {recipe && <p>{recipe}</p>}
+            </div>
+            <section aria-label="Оценки автора" className="w-fit max-w-full rounded-xl bg-stone-50 px-3 py-2.5 dark:bg-white/5">
+              <h4 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-text-muted dark:text-stone-400"><Star className="h-3.5 w-3.5 text-amber-600 dark:text-primary" aria-hidden="true" />Оценки автора</h4>
+              {hasRating ? <dl className="flex flex-wrap gap-x-6 gap-y-2">
+                {ratings.map(rating => <div key={rating.label} className="flex items-baseline gap-2">
+                  <dt className="text-xs text-text-muted dark:text-stone-400">{rating.label}</dt>
+                  <dd className="text-base font-semibold tabular-nums">{rating.value == null ? '—' : <>{rating.value}<span className="ml-0.5 text-xs font-normal text-text-muted dark:text-stone-400">/5</span></>}</dd>
+                </div>)}
+              </dl> : <p className="text-sm text-text-muted dark:text-stone-400">Без оценки</p>}
+            </section>
           </div>
-          <ModerationPhotos photos={checkIn.photos || []} compact />
+          {!!checkIn.photos?.length && <div aria-label="Фотографии чекина" className="max-w-full shrink-0 md:max-w-72"><ModerationPhotos photos={checkIn.photos} /></div>}
         </div>
 
-        <div className="col-start-2 row-start-1 max-w-32 space-y-1.5 text-right xl:col-start-3 xl:max-w-none xl:text-left">
-          <Badge variant={deleted ? 'default' : statusToBadgeVariant(status)}>{deleted ? 'Удалён' : status === 'Approved' ? 'Опубликован' : statusLabels[status]}</Badge>
-          <p className="text-xs text-text-muted dark:text-stone-400">{displayRating(checkIn)}</p>
-        </div>
-        {!deleted && (
-          <div className="col-span-2 flex flex-wrap gap-1.5 xl:col-span-1 xl:col-start-3 xl:row-start-2">
-            {canReview && (
-              <>
-                <Button variant="success" size="sm" className="min-h-11 sm:min-h-8" onClick={onApprove}>Одобрить</Button>
-                <Button variant="danger" size="sm" className="min-h-11 sm:min-h-8" onClick={onReject}>Отклонить</Button>
-              </>
-            )}
-            <Button variant="secondary" size="sm" className="min-h-11 text-red-700 dark:text-red-300 sm:min-h-8" onClick={onRemove}>
-              <Trash2 className="h-4 w-4" aria-hidden="true" /> Удалить
-            </Button>
+        {deleted ? (
+          <div className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm dark:border-border-dark dark:bg-white/5">
+            <p className="whitespace-pre-wrap [overflow-wrap:anywhere]"><span className="font-semibold">Причина удаления</span> · {checkIn.deletionReason || 'Не указана'}</p>
+            {checkIn.deletedAtUtc && <p className="text-xs text-text-muted dark:text-stone-400">Дата удаления · <time dateTime={checkIn.deletedAtUtc}>{new Date(checkIn.deletedAtUtc).toLocaleString('ru-RU')}</time></p>}
+            {checkIn.deletedByModeratorId && <details className="text-xs text-text-muted dark:text-stone-400"><summary className="w-fit cursor-pointer rounded py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Кто удалил</summary><p className="mt-1 [overflow-wrap:anywhere]">ID модератора · {checkIn.deletedByModeratorId}</p></details>}
           </div>
-        )}
+        ) : checkIn.rejectedReason && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm dark:border-red-500/20 dark:bg-red-500/10"><p className="mb-1 font-semibold text-red-800 dark:text-red-300">Причина отклонения</p><p className="whitespace-pre-wrap text-red-800 [overflow-wrap:anywhere] dark:text-red-200">{checkIn.rejectedReason}</p></div>}
       </div>
+
+      {canReview && <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-light px-4 py-3 dark:border-border-dark sm:px-5">
+        <div className="mr-auto flex flex-wrap gap-2">
+          <Button variant="success" size="sm" className="min-h-11 px-4 sm:min-h-10" onClick={onApprove}>Одобрить</Button>
+          <Button variant="secondary" size="sm" className="min-h-11 px-4 sm:min-h-10" onClick={onReject}>Отклонить</Button>
+        </div>
+        {removalAction}
+      </div>}
       {!deleted && checkIn.hasCurrentSubmission && <CheckInLeaderboard checkIn={checkIn} />}
     </article>
   );

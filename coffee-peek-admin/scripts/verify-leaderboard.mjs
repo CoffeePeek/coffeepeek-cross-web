@@ -85,9 +85,9 @@ async function screenshot(page, name) {
 try {
   const admin = await setup('Admin');
   await admin.goto(origin + '/check-ins?status=Approved');
-  const block = admin.getByRole('region', { name: 'Участие в рейтинге' });
-  await block.getByText('Геопроверка: Дальше 50 м от кофейни').waitFor();
+  const block = admin.getByRole('region', { name: 'Рейтинг активности' });
   await block.locator('summary').click();
+  await block.getByText('Геопроверка: Дальше 50 м от кофейни').waitFor();
   await block.getByText('85,4 м', { exact: true }).waitFor();
   await block.getByText('12 м', { exact: true }).waitFor();
   await block.getByRole('button', { name: 'Засчитать', exact: true }).click();
@@ -130,8 +130,8 @@ try {
   assert(await block.getByRole('button', { name: 'Засчитать', exact: true }).isDisabled());
   checkIn = { ...original, kind: 'Home', shopId: null, home: { beanName: 'Эфиопия', preparedOn: '2026-10-26' } };
   await admin.goto(origin + '/check-ins?status=Approved');
-  await block.getByText('Домашние чекины не участвуют в рейтинге').waitFor();
   await block.locator('summary').click();
+  await block.getByText('Домашние чекины не участвуют в рейтинге').waitFor();
   assert(await block.getByRole('button', { name: 'Засчитать', exact: true }).isDisabled());
 
   await admin.goto(origin + '/audit?entityType=CheckIn');
@@ -185,7 +185,7 @@ try {
   checkIn = { ...original, moderationStatus: 'Pending' };
   const moderator = await setup('Moderator');
   await moderator.goto(origin + '/check-ins');
-  await moderator.getByRole('region', { name: 'Участие в рейтинге' }).waitFor();
+  await moderator.getByRole('region', { name: 'Рейтинг активности' }).waitFor();
   assert.equal(await moderator.getByRole('button', { name: 'Засчитать', exact: true }).count(), 0);
   assert.equal(await moderator.getByRole('button', { name: 'Не засчитывать', exact: true }).count(), 0);
   await screenshot(moderator, 'check-in-moderator');
