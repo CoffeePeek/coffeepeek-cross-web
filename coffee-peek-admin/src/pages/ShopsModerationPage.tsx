@@ -1,6 +1,5 @@
 import { DataTable } from '@/src/components/ui/DataTable';
 import { Input } from '@/src/components/ui/Input';
-import { NativeSelect } from '@/src/components/ui/NativeSelect';
 import type { ColumnDef } from '@tanstack/react-table';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -187,18 +186,21 @@ export const ShopsModerationPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-border-light bg-white p-3 shadow-sm dark:border-border-dark dark:bg-surface-dark sm:flex-row sm:flex-wrap sm:items-center">
-        <label className="flex items-center gap-2 text-sm text-text-muted dark:text-stone-400 font-body">
-          <span className="shrink-0">Статус</span>
-          <NativeSelect
-            value={status}
-            onChange={(event) => setParam('status', event.target.value)}
-
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </NativeSelect>
-        </label>
+        <div role="group" aria-label="Статус заявок" className="grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap">
+          {STATUS_OPTIONS.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              size="sm"
+              variant={status === option.value ? 'primary' : 'secondary'}
+              aria-pressed={status === option.value}
+              className="min-h-11 sm:min-h-8"
+              onClick={() => setParam('status', option.value)}
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
         <form onSubmit={handleSearch} className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
           <Input
             type="text"
