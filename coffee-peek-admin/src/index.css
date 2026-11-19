@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./components/notifications/NotificationPreview.css";
 @config "../tailwind.config.js";
 @custom-variant dark (&:where(.dark, .dark *));
 

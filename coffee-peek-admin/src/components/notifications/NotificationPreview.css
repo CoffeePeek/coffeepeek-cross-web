@@ -1,0 +1,250 @@
+.push-preview__screen {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 222px;
+  margin-inline: auto;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid #ffffff12;
+  border-radius: 28px;
+  padding: 58px 12px 46px;
+  color: #fff;
+  color-scheme: dark;
+}
+
+.push-preview__screen--ios {
+  background: radial-gradient(ellipse at 15% 0%, #554237 0%, transparent 65%),
+    radial-gradient(ellipse at 100% 100%, #48554a 0%, transparent 65%), #1a1b1b;
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.push-preview__screen--android {
+  max-width: 360px;
+  background: #242428;
+  font-family: Roboto, "Segoe UI", sans-serif;
+}
+
+.push-preview__status-bar {
+  position: absolute;
+  inset: 15px 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.push-preview__system-icons {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.push-preview__home-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  width: 84px;
+  height: 4px;
+  transform: translateX(-50%);
+  border-radius: 99px;
+  background: #ffffffd9;
+}
+
+.push-preview__ios-notification {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #ffffff26;
+  border-radius: 24px;
+  padding: 13px;
+  background: linear-gradient(160deg, #292928c9, #101110e8);
+  box-shadow: inset 0 1px 1px #ffffff1f, 0 3px 12px #00000024;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.push-preview__ios-icon {
+  position: relative;
+  display: block;
+  width: 38.333px;
+  height: 38.333px;
+  flex: none;
+  overflow: hidden;
+}
+
+.push-preview__ios-icon img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.push-preview__ios-app-icon {
+  border-radius: 9px;
+}
+
+.push-preview__ios-message {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  font-size: 15px;
+  letter-spacing: -0.23px;
+}
+
+.push-preview__ios-title,
+.push-preview__ios-body {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.push-preview__ios-title {
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 600;
+  line-height: 17.5px;
+}
+
+.push-preview__ios-body {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-weight: 400;
+  line-height: 18px;
+}
+
+.push-preview__ios-time {
+  align-self: start;
+  grid-column: 2;
+  grid-row: 1;
+  padding-top: 1px;
+  color: #ffffff66;
+  font-size: 13px;
+  line-height: 17.5px;
+}
+
+.push-preview__ios-notification--expanded {
+  align-items: flex-start;
+}
+
+.push-preview__ios-notification--expanded .push-preview__ios-title,
+.push-preview__ios-notification--expanded .push-preview__ios-body {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.push-preview__ios-notification--expanded .push-preview__ios-body {
+  margin-top: 4px;
+  line-height: 20px;
+}
+
+.push-preview__android-notification {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 14px;
+  border-radius: 24px;
+  padding: 16px;
+  background: #1b1b1e;
+  color: #e8e5eb;
+}
+
+.push-preview__android-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.push-preview__android-content {
+  min-width: 0;
+  flex: 1;
+  padding-right: 19px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.push-preview__android-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: #c9c5cf;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.push-preview__android-header svg {
+  flex: none;
+}
+
+.push-preview__android-title,
+.push-preview__android-body {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.push-preview__android-title {
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.push-preview__android-body {
+  margin-top: 4px;
+}
+
+.push-preview__android-toggle {
+  position: absolute;
+  top: 14px;
+  right: 12px;
+  display: flex;
+  width: 28px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 99px;
+  background: #343337;
+  color: #d5d1db;
+  cursor: pointer;
+}
+
+.push-preview__android-toggle::after {
+  position: absolute;
+  inset: -11px -8px;
+  content: "";
+}
+
+.push-preview__android-toggle:focus-visible {
+  outline: 2px solid #eab308;
+  outline-offset: 4px;
+}
+
+.push-preview__android-notification--expanded .push-preview__android-title,
+.push-preview__android-notification--expanded .push-preview__android-body {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.push-preview__android-notification--expanded .push-preview__android-body {
+  margin-top: 8px;
+}
+
+.push-preview__android-snooze {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  color: #c9c5cf;
+}

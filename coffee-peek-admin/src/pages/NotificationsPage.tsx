@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Bell } from 'lucide-react';
 import { getNotificationTemplates, saveNotificationTemplate, sendNotification, getNotificationAudience, getNotificationBroadcasts, sendNotificationBroadcast, type NotificationMessage, type NotificationTemplate } from '../api/notifications';
 import { customNotificationSchema, notificationMessageSchema, notificationTemplateSchema, renderNotificationPreview } from '../utils/notificationTemplates';
 import { Card } from '../components/ui/Card';
@@ -12,18 +11,10 @@ import { Input } from '../components/ui/Input';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { useToast } from '../contexts/ToastContext';
 import { getErrorMessage } from '../utils/errors';
+import { NotificationPreview } from '../components/notifications/NotificationPreview';
 
 const templatesKey = ['admin', 'notification-templates'];
 const fieldClass = 'w-full rounded-md border border-border-light bg-white p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 dark:border-border-dark dark:bg-surface-dark dark:text-white';
-
-function Preview({ message }: { message: NotificationMessage }) {
-  return <aside aria-label="Предпросмотр уведомления" className="rounded-2xl border border-border-light bg-stone-50 p-4 dark:border-border-dark dark:bg-white/5">
-    <div className="mb-3 flex items-center gap-2 text-xs text-text-muted dark:text-stone-400"><Bell size={16} aria-hidden="true" /> CoffeePeek · сейчас</div>
-    <p className="break-words font-semibold">{message.title || 'Заголовок уведомления'}</p>
-    <p className="mt-1 whitespace-pre-wrap break-words text-sm">{message.body || 'Текст уведомления'}</p>
-    <p className="mt-4 text-xs text-text-muted dark:text-stone-400">Пример. Внешний вид зависит от устройства и его настроек.</p>
-  </aside>;
-}
 
 function TemplateEditor({ template }: { template: NotificationTemplate }) {
   const qc = useQueryClient();
@@ -48,7 +39,7 @@ function TemplateEditor({ template }: { template: NotificationTemplate }) {
       {save.isError && <p role="alert" className="text-sm text-red-500">{getErrorMessage(save.error, 'Не удалось сохранить шаблон')}</p>}
       <Button type="submit" loading={save.isPending} disabled={!isDirty}>Сохранить шаблон</Button>
       <p className="text-xs text-text-muted dark:text-stone-400">Изменится текст новых уведомлений. Уже поставленные в очередь сообщения сохранят прежний текст.</p>
-    </form><Preview message={renderNotificationPreview(watch(), template.category)} /></div>
+    </form><NotificationPreview message={renderNotificationPreview(watch(), template.category)} /></div>
   </Card>;
 }
 
@@ -75,7 +66,7 @@ function CustomMessage({ userId }: { userId: string }) {
       {sent ? <><p role="status" className="text-sm text-emerald-600">Сообщение поставлено в очередь. Это ещё не подтверждение доставки на устройство.</p><Button onClick={() => { setRequestId(crypto.randomUUID()); setSent(false); setSubmitted(null); send.reset(); reset({ userId: value.userId, title: '', body: '' }); }}>Новое сообщение</Button></>
         : submitted ? <Button type="button" loading={send.isPending} onClick={() => send.mutate(submitted)}>Повторить отправку</Button>
         : <Button type="submit">Отправить уведомление</Button>}
-    </form><Preview message={value} /></div>
+    </form><NotificationPreview message={value} /></div>
   </Card>;
 }
 
@@ -136,7 +127,7 @@ function BroadcastMessage() {
           ? <Button loading={send.isPending} onClick={() => send.mutate(submitted)}>Повторить отправку</Button>
           : <Button type="submit" disabled={!audience.data?.users || audience.isFetching}>Проверить и отправить всем</Button>}
       </form>
-      <Preview message={value} />
+      <NotificationPreview message={value} />
     </div>
     <ConfirmDialog isOpen={review !== null} title="Отправить уведомление всем пользователям?"
       message={'Получателей в приложении — ' + (audience.data?.users ?? 0) + '.\n\n' + (review?.title ?? '') + '\n' + (review?.body ?? '')}
