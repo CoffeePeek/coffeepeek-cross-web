@@ -5,7 +5,7 @@ const SITE_URL = 'https://coffeepeek.by';
 const escapeXml = value => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 
 export async function renderSitemap() {
-  const urls = new Set(['/', '/shops', '/map', '/coffees', '/roasters', '/feed', '/privacy', '/terms', '/support', minsk.path, ...Object.values(minsk.collections).map(collection => collection.path)].map(path => SITE_URL + path));
+  const urls = new Set(['/', '/shops', '/coffees', '/roasters', '/support', minsk.path, ...Object.values(minsk.collections).map(collection => collection.path)].map(path => SITE_URL + path));
   const addItems = (items, prefix) => {
     if (!Array.isArray(items)) throw new Error('Invalid public catalog');
     for (const item of items) {

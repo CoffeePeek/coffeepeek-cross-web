@@ -79,6 +79,12 @@ test('coffee facets retain their values during filtering only within the same se
   expect(placeholder(previous, { queryKey: ['catalog', options.queryKey![1], 'shops', 'facets'] })).toBeUndefined();
 });
 
+test('opening a linked coffee catalog page starts loading at that page', () => {
+  mockInfiniteQuery.mockClear();
+  renderToStaticMarkup(React.createElement(MemoryRouter, { initialEntries: ['/coffees?page=2'] }, React.createElement(CatalogSearchPage, { kind: 'coffees' })));
+  expect(mockInfiniteQuery).toHaveBeenCalledWith(expect.objectContaining({ initialPageParam: 2 }));
+});
+
 test('failed catalog loads stay silent; empty results require success and loaded shops stay visible', () => {
   const shops = React.createElement(CoffeeShopList);
   const render = (element = shops) => renderToStaticMarkup(React.createElement(MemoryRouter, {}, element));

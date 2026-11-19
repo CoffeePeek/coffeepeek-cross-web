@@ -1,26 +1,36 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { LEGAL } from '../constants/legal';
+import catalogPages from '../seo/catalogMetadata.json';
 
 interface PageMetadata {
   description?: string | null;
   canonicalPath?: string;
+  search?: string;
 }
 
 const descriptions: Record<string, string> = {
   '/': 'Кофейни на карте, меню и отзывы. Находите новые места, выбирайте кофе и делитесь впечатлениями в CoffeePeek.',
-  '/shops': 'Каталог кофеен CoffeePeek: адреса, часы работы, рейтинги, меню и фотографии.',
   '/search': 'Поиск кофеен и обжарщиков: адреса, рейтинги и фильтры на CoffeePeek.',
   '/map': 'Карта кофеен: адреса, часы работы и оценки посетителей на CoffeePeek.',
-  '/coffees': 'Каталог кофе: обжарщики, вкусовые ноты, способы приготовления и предложения на CoffeePeek.',
-  '/roasters': 'Обжарщики кофе: ассортимент, кофейни и контакты на CoffeePeek.',
   '/feed': 'Публичные чекины, фотографии и впечатления посетителей кофеен на CoffeePeek.',
 };
 
-export function updatePageMetadata(title: string, pathname: string, { description, canonicalPath }: PageMetadata = {}): void {
-  const fullTitle = title ? `CoffeePeek | ${title}` : 'CoffeePeek';
-  const canonical = LEGAL.siteUrl + ((canonicalPath ?? pathname).replace(/\/$/, '') || '/');
-  const pageDescription = description?.trim() || descriptions[pathname] || `${title || 'Кофейни, кофе и обжарщики'} на CoffeePeek.`;
+export function updatePageMetadata(title: string, pathname: string, { description, canonicalPath, search = '' }: PageMetadata = {}): void {
+  const catalog = Object.values(catalogPages).find(page => page.path === pathname);
+  const params = new URLSearchParams(search);
+  const page = Number(params.get('page') ?? 1);
+  const validPage = Number.isSafeInteger(page) && page >= 1 && page <= 100000;
+  const filtered = !!catalog && ['filters', 'q', 'sort', 'citySlug', 'city', 'filter', 'roasterSlug', 'section'].some(key => params.has(key));
+  const fullTitle = catalog ? `${catalog.heading}${validPage && page > 1 ? `, страница ${page}` : ''} — CoffeePeek`
+    : title ? `CoffeePeek | ${title}` : 'CoffeePeek';
+  const path = canonicalPath ?? (catalog && validPage && page > 1 ? `${pathname}?page=${page}` : pathname);
+  const canonical = LEGAL.siteUrl + (path.replace(/\/$/, '') || '/');
+  const publicPath = pathname === '/' || !!catalog || pathname === '/support' || pathname === '/cities/minsk'
+    || /^\/cities\/minsk\/(?:specialty|laptop-friendly)$/.test(pathname)
+    || /^\/(?:coffee-shops|roasters|coffees|users|collections)\/[^/]+$/.test(pathname) && !pathname.endsWith('/new');
+  const noindex = !publicPath || filtered || !!catalog && !validPage;
+  const pageDescription = description?.trim() || catalog?.description || descriptions[pathname] || `${title || 'Кофейни, кофе и обжарщики'} на CoffeePeek.`;
   const previous = document.head.querySelector('link[rel="canonical"]')?.getAttribute('href');
   if (previous !== canonical) document.head.querySelectorAll('script[type="application/ld+json"]').forEach(element => element.remove());
   const setTag = (selector: string, tag: 'link' | 'meta', attributes: Record<string, string>) => {
@@ -32,6 +42,7 @@ export function updatePageMetadata(title: string, pathname: string, { descriptio
   };
   document.title = fullTitle;
   setTag('link[rel="canonical"]', 'link', { rel: 'canonical', href: canonical });
+  setTag('meta[name="robots"]', 'meta', { name: 'robots', content: `${noindex ? 'noindex' : 'index'}, follow` });
   for (const [attribute, name, content] of [
     ['name', 'description', pageDescription],
     ['property', 'og:title', fullTitle],
@@ -43,12 +54,12 @@ export function updatePageMetadata(title: string, pathname: string, { descriptio
 }
 
 export function usePageTitle(title: string, { description, canonicalPath }: PageMetadata = {}): void {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   useEffect(() => {
-    updatePageMetadata(title, pathname, { description, canonicalPath });
+    updatePageMetadata(title, pathname, { description, canonicalPath, search });
     return () => {
       document.title = 'CoffeePeek';
     };
-  }, [title, pathname, description, canonicalPath]);
+  }, [title, pathname, search, description, canonicalPath]);
 }
 

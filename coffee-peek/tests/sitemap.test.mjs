@@ -37,7 +37,7 @@ test('sitemap includes every catalog page, unique canonical URLs and escaped XML
       assert.ok(xml.includes(`<loc>https://coffeepeek.by${path}</loc>`), path);
     }
     assert.equal(xml.match(/roast&amp;coffee/g)?.length, 1);
-    assert.doesNotMatch(xml, /\/login|\/settings|\/api\/|\/users\/|undefined|null/);
+    assert.doesNotMatch(xml, /\/login|\/settings|\/api\/|\/users\/|\/map<|\/feed<|\/privacy<|\/terms<|undefined|null/);
     assert.equal(calls.length, 5);
   });
 });
@@ -72,6 +72,6 @@ test('empty public catalogs still produce the public section URLs', async () => 
   await withFetch(async input => Response.json({ isSuccess: true, data: String(input).endsWith('/api/Roasters') ? [] : { totalPages: 0, items: [] } }), async () => {
     const response = await handler.fetch();
     assert.equal(response.status, 200);
-    assert.equal((await response.text()).match(/<loc>/g)?.length, 12);
+    assert.equal((await response.text()).match(/<loc>/g)?.length, 8);
   });
 });

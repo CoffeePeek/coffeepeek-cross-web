@@ -37,7 +37,7 @@ test('home HTML contains useful metadata and crawlable navigation without JavaSc
 test('catalog uses inline addresses for links and SEO, in one request', async () => {
   const card = { address, name: shop.name, addressLine: shop.location.address, rating: shop.rating, checkInCount: shop.checkInCount,
     coverPhoto: { fullUrl: '/original.jpg', urls: { card: '/card.jpg' } } };
-  await withMock({ isSuccess: true, data: { items: [card] } }, async calls => {
+  await withMock({ isSuccess: true, data: { items: [card], totalPages: 1 } }, async calls => {
     const result = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?page=shops'));
     assert.equal(result.status, 200);
     assert.match(result.html, /href="\/coffee-shops\/1801"/);
@@ -48,8 +48,61 @@ test('catalog uses inline addresses for links and SEO, in one request', async ()
     assert.equal(calls.length, 1);
     assert.equal(new URL(calls[0].url).pathname, '/api/v1/coffee-shops/search');
     assert.equal(calls[0].init.method, 'POST');
-    assert.deepEqual(JSON.parse(calls[0].init.body), { filters: {}, page: 1, pageSize: 48 });
+    assert.deepEqual(JSON.parse(calls[0].init.body), { filters: { city: 'minsk' }, page: 1, pageSize: 20 });
   });
+});
+
+for (const [kind, section] of [['shops', 'coffee-shops'], ['coffees', 'coffees']]) {
+  test(`${kind}: later catalog pages expose canonical links and crawlable pagination`, async () => {
+    await withMock({ isSuccess: true, data: { items: [{
+      address: { canonicalPath: `/${section}/sample` }, name: 'Кофе <Sample>',
+      roaster: { name: 'Обжарщик' },
+    }], totalPages: 3 } }, async calls => {
+      const request = new Request(`https://coffeepeek.by/api/public-page?view=catalog&kind=${kind}&page=2`);
+      const response = await handler.fetch(request);
+      const html = await response.text();
+      assert.equal(response.status, 200);
+      assert.match(html, new RegExp(`rel="canonical" href="https://coffeepeek.by/${kind}\\?page=2"`));
+      assert.match(html, new RegExp(`href="/${kind}\\?page=3"`));
+      assert.match(html, new RegExp(`href="/${kind}"[^>]*>Назад`));
+      assert.match(html, new RegExp(`href="/${section}/sample"`));
+      assert.match(html, /Кофе &lt;Sample&gt;/);
+      assert.match(html, /name="robots" content="index, follow"/);
+      assert.equal(JSON.parse(calls[0].init.body).page, 2);
+
+      const filtered = await handler.fetch(new Request(`https://coffeepeek.by/api/public-page?view=catalog&kind=${kind}&q=coffee`));
+      assert.match(await filtered.text(), /name="robots" content="noindex, follow"/);
+      for (const page of ['0', '-1', 'NaN', '4']) {
+        const missing = await handler.fetch(new Request(`https://coffeepeek.by/api/public-page?view=catalog&kind=${kind}&page=${page}`));
+        assert.equal(missing.status, 404);
+      }
+    });
+  });
+}
+
+test('roasters catalog links every public profile without linking entries that have no public address', async () => {
+  await withMock({ isSuccess: true, data: [
+    { name: 'Roast', address: { canonicalPath: '/roasters/roast' } },
+    { name: 'Private', address: { canonicalPath: null } },
+  ] }, async calls => {
+    const result = await renderPublicPage(new Request('https://coffeepeek.by/api/public-page?view=catalog&kind=roasters'));
+    assert.equal(result.status, 200);
+    assert.match(result.html, /href="\/roasters\/roast"/);
+    assert.match(result.html, /rel="canonical" href="https:\/\/coffeepeek.by\/roasters"/);
+    assert.doesNotMatch(result.html, /Private/);
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].url, /\/api\/Roasters$/);
+  });
+});
+
+test('catalog outages stay 503 with a retry hint and do not become empty successful pages', async () => {
+  await withMock(null, async () => {
+    const response = await handler.fetch(new Request('https://coffeepeek.by/api/public-page?view=catalog&kind=coffees'));
+    assert.equal(response.status, 503);
+    assert.equal(response.headers.get('Retry-After'), '60');
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.match(await response.text(), /Страница временно недоступна/);
+  }, 500);
 });
 test('Minsk serves city-filtered HTML, crawlable pagination and a safe client snapshot', async () => {
   const name = 'Кофе </script>';

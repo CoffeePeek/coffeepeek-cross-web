@@ -38,7 +38,7 @@ test('home to catalog navigation updates canonical, description and sharing meta
   const homeDescription = matching('meta[name="description"]')[0].getAttribute('content');
   add('script', { type: 'application/ld+json' });
   updatePageMetadata('Кофе', '/coffees');
-  expect(document.title).toBe('CoffeePeek | Кофе');
+  expect(document.title).toBe('Каталог кофе — CoffeePeek');
   expect(matching('link[rel="canonical"]')[0].getAttribute('href')).toBe('https://coffeepeek.by/coffees');
   expect(matching('meta[name="description"]')[0].getAttribute('content')).toContain('Каталог кофе:');
   expect(matching('meta[name="description"]')[0].getAttribute('content')).not.toBe(homeDescription);
@@ -47,6 +47,21 @@ test('home to catalog navigation updates canonical, description and sharing meta
   expect(matching('script[type="application/ld+json"]')).toHaveLength(0);
   updatePageMetadata('Главная', '/');
   expect(matching('meta[name="description"]')[0].getAttribute('content')).toBe(homeDescription);
+});
+
+test('catalog pagination keeps its own canonical after JavaScript starts', () => {
+  updatePageMetadata('Кофе', '/coffees', { search: '?page=2' });
+  expect(matching('link[rel="canonical"]')[0].getAttribute('href')).toBe('https://coffeepeek.by/coffees?page=2');
+  expect(document.title).toBe('Каталог кофе, страница 2 — CoffeePeek');
+  expect(matching('meta[name="robots"]')[0].getAttribute('content')).toBe('index, follow');
+
+  updatePageMetadata('Кофе', '/coffees', { search: '?q=эфиопия' });
+  expect(matching('meta[name="robots"]')[0].getAttribute('content')).toBe('noindex, follow');
+  updatePageMetadata('Вход', '/login');
+  expect(matching('meta[name="robots"]')[0].getAttribute('content')).toBe('noindex, follow');
+  updatePageMetadata('Главная', '/');
+  expect(matching('meta[name="robots"]')).toHaveLength(1);
+  expect(matching('meta[name="robots"]')[0].getAttribute('content')).toBe('index, follow');
 });
 
 test('entity metadata replaces duplicate server tags and uses the resolved canonical address', () => {

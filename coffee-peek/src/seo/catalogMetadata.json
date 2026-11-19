@@ -1,0 +1,17 @@
+{
+  "shops": {
+    "path": "/shops",
+    "heading": "Кофейни",
+    "description": "Каталог кофеен CoffeePeek: адреса, часы работы, рейтинги, меню и фотографии."
+  },
+  "coffees": {
+    "path": "/coffees",
+    "heading": "Каталог кофе",
+    "description": "Каталог кофе: обжарщики, страны происхождения, вкусовые ноты и предложения на CoffeePeek."
+  },
+  "roasters": {
+    "path": "/roasters",
+    "heading": "Обжарщики кофе",
+    "description": "Обжарщики кофе: ассортимент, кофейни и контакты на CoffeePeek."
+  }
+}

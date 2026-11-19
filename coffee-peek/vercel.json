@@ -2,7 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "trailingSlash": false,
   "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.coffeepeek.by" }],
+      "destination": "https://coffeepeek.by/:path*",
+      "permanent": true
+    },
+    { "source": "/index.html", "destination": "/", "permanent": true },
+    { "source": "/support.html", "destination": "/support", "permanent": true },
     {
       "source": "/downloads/:path*",
       "destination": "https://api.coffeepeek.by/downloads/:path*",
@@ -35,7 +44,9 @@
     {"source": "/users/:userId", "destination": "/api/public-page?page=address&kind=users&segment=:userId&path=/users/:userId"},
     {"source": "/coffees/:slug", "destination": "/api/public-page?page=address&kind=coffees&segment=:slug&path=/coffees/:slug"},
     {"source": "/check-ins/:checkInId", "destination": "/api/public-page?page=check-in&id=:checkInId"},
-    { "source": "/shops", "destination": "/api/public-page?page=shops" },
+    { "source": "/shops", "destination": "/api/public-page?view=catalog&kind=shops" },
+    { "source": "/coffees", "destination": "/api/public-page?view=catalog&kind=coffees" },
+    { "source": "/roasters", "destination": "/api/public-page?view=catalog&kind=roasters" },
     { "source": "/cities/minsk", "destination": "/api/public-page?page=minsk" },
     { "source": "/cities/minsk/:topic", "destination": "/api/public-page?page=minsk-topic&topic=:topic" },
     { "source": "/cities/:slug", "destination": "/api/public-page?page=city-redirect&slug=:slug" },
@@ -43,7 +54,7 @@
     { "source": "/download/android", "destination": "https://api.coffeepeek.by/download/android" },
     { "source": "/download/apk", "destination": "https://api.coffeepeek.by/download/apk" },
     { "source": "/download/ios", "destination": "https://api.coffeepeek.by/download/ios" },
-    { "source": "/:page(search|map|roasters|coffees|feed|login|logout|register|privacy|terms|error|confirm-email|confirm-account-deletion|forgot-password|reset-password|profile|settings|check-ins|reviews|dashboard|coffeeshops|shop-change-requests)", "destination": "/spa-shell.html" },
+    { "source": "/:page(search|map|feed|login|logout|register|privacy|terms|error|confirm-email|confirm-account-deletion|forgot-password|reset-password|profile|settings|check-ins|reviews|dashboard|coffeeshops|shop-change-requests)", "destination": "/spa-shell.html" },
     { "source": "/profile/delete", "destination": "/spa-shell.html" },
     { "source": "/my/:kind", "destination": "/spa-shell.html" },
     { "source": "/check-ins/:checkInId/edit", "destination": "/spa-shell.html" },

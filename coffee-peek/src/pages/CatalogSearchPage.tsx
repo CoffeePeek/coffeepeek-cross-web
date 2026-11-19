@@ -73,7 +73,7 @@ export default function CatalogSearchPage({ kind }: { kind: Exclude<CatalogKind,
   const personal = state.filters.favoritesOnly === true || state.filters.visitedOnly === true;
   const enabled = !parsed.error && !Object.keys(localErrors).length && !authLoading && (!personal || !!user);
   const scroll = kind === 'roasters' || kind === 'coffees';
-  const request = { q: state.q, filters: state.filters, sort: state.sort, page: scroll ? 1 : state.page, pageSize: 20 };
+  const request = { q: state.q, filters: state.filters, sort: state.sort, page: state.page, pageSize: 20 };
   const query = useInfiniteQuery<Page<CoffeeCard | RoasterCard | ShopCard>>({
     queryKey: ['catalog', scope, kind, 'pages', request],
     initialPageParam: request.page,
